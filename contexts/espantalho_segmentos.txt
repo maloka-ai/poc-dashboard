@@ -1,0 +1,76 @@
+    # Segmentação de Clientes PF
+
+    Nossa estratégia de segmentação divide os clientes em 8 grupos distintos, baseados em comportamento de compra e valor:
+
+    ## Clientes Ativos
+
+    *Novos*: Clientes recentes (últimos 30 dias) e novos na base (menos de 30 dias).
+
+    *Campeões*: Alto valor (top 10% em gastos) com frequência elevada (8+ compras) e compra nos últimos 6 meses.
+
+    *Fiéis de Alto Valor*: Relacionamento longo (mais de 3 anos), frequência regular (3+ compras), alto valor (top 20% em gastos) e compra nos últimos 6 meses.
+
+    *Fiéis de Baixo Valor*: Relacionamento longo (mais de 3 anos), frequência regular (3+ compras), valor moderado a baixo (até 80% em gastos) e compra nos últimos 6 meses.
+
+    *Recentes de Alto Valor*: Compra nos últimos 6 meses, pelo menos 1 compra e valor significativo (top 60% em gastos).
+
+    *Recentes de Baixo Valor*: Compra nos últimos 6 meses, pelo menos 1 compra e valor moderado a baixo (abaixo dos 40% em gastos).
+
+    ## Clientes Menos Ativos
+
+    *Sumidos*: Sem atividade entre 1 e 2 anos.
+
+    *Inativos*: Sem atividade há mais de 2 anos.
+
+    Análise Detalhada por Segmento PF:
+    ========================================================================================================================
+                        Quantidade Clientes  Média Recency (dias)  \
+    Segmento                                                          
+    Inativos                            65446               1532.79   
+    Sumidos                             18427                538.21   
+    Recentes Baixo Valor                 9701                183.87   
+    Recentes Alto Valor                  7022                166.17   
+    Fiéis Baixo Valor                    5822                168.65   
+    Fiéis Alto Valor                     4535                191.73   
+    Campeões                             3106                 76.77   
+    Novos                                1040                 14.58   
+
+                        Média Frequency  Média Monetary (R$)  Média Age (dias)  
+    Segmento                                                                      
+    Inativos                         2.68              2467.78           1739.67  
+    Sumidos                          4.15              4540.55           1144.61  
+    Recentes Baixo Valor             1.74               540.23            289.94  
+    Recentes Alto Valor              3.78              3662.28            509.70  
+    Fiéis Baixo Valor                5.71              2430.82           1851.02  
+    Fiéis Alto Valor                10.61             10240.14           1928.63  
+    Campeões                        21.44             30660.07           1965.33  
+    Novos                            1.64               995.78             14.86 
+
+################################################################################################################################################
+################################################################################################################################################
+
+
+
+    # Segmentação de Clientes PJ
+
+    Nossa estratégia de segmentação divide os clientes em 8 grupos distintos, baseados em comportamento de compra e valor:
+
+    ## Clientes Ativos
+
+    *Novos*: Clientes recentes (últimos 30 dias) e novos na base (menos de 30 dias).
+
+    *Campeões*: Alto valor (top 10% em gastos) com frequência elevada (8+ compras) e compra nos últimos 6 meses.
+
+    *Fiéis de Alto Valor*: Relacionamento longo (mais de 3 anos), frequência regular (4+ compras), alto valor (top 20% em gastos) e compra nos últimos 6 meses.
+
+    *Fiéis de Baixo Valor*: Relacionamento longo (mais de 3 anos), frequência regular (4+ compras), valor moderado a baixo (até 80% em gastos) e compra nos últimos 6 meses.
+
+    *Recentes de Alto Valor*: Compra nos últimos 6 meses, pelo menos 1 compra e valor significativo (top 60% em gastos).
+
+    *Recentes de Baixo Valor*: Compra nos últimos 6 meses, pelo menos 1 compra e valor moderado a baixo (abaixo dos 40% em gastos).
+
+    ## Clientes Menos Ativos
+
+    *Sumidos*: Sem atividade entre 1 e 2 anos.
+
+    *Inativos*: Sem atividade há mais de 2 anos.

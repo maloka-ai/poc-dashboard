@@ -1,0 +1,48 @@
+# Segmentação de Clientes
+
+    Nossa estratégia de segmentação divide os clientes em 8 grupos distintos, baseados em comportamento de compra e valor:
+
+    ## Clientes Ativos
+
+    *Novos*: Clientes recentes (últimos 30 dias) e novos na base (menos de 30 dias).
+
+    *Campeões*: Alto valor (top 10% em gastos) com frequência elevada (3+ compras) e compra nos últimos 6 meses.
+
+    *Fiéis de Alto Valor*: Relacionamento longo (mais de 2 anos), frequência regular (3+ compras), alto valor (top 20% em gastos) e compra no último ano.
+
+    *Fiéis de Baixo Valor*: Relacionamento longo (mais de 2 anos), frequência regular (3+ compras), valor moderado a baixo (até 80% em gastos) e compra no último ano.
+
+    *Recentes de Alto Valor*: compra no último ano, pelo menos 1 compra e valor significativo (top 40% em gastos).
+
+    *Recentes de Baixo Valor*: compra no último ano, pelo menos 1 compra e valor moderado a baixo (abaixo dos 60% em gastos).
+
+    ## Clientes Menos Ativos.
+
+    *Sumidos*: Sem atividade entre 1 e 2 anos.
+
+    *Inativos*: Sem atividade há mais de 2 anos.
+
+
+Análise Detalhada por Segmento PF:
+========================================================================================================================
+                      Quantidade Clientes  Média Recency (dias)  \
+Segmento                                                          
+Inativos                             2313               1232.65   
+Sumidos                              1300                562.94   
+Recentes Baixo Valor                  833                192.59   
+Recentes Alto Valor                   803                163.77   
+Novos                                 128                 14.97   
+Campeões                               61                 69.31   
+Fiéis Alto Valor                       45                195.20   
+Fiéis Baixo Valor                       6                169.50   
+
+                      Média Frequency  Média Monetary (R$)  Média Age (dias)  
+Segmento                                                                      
+Inativos                         1.21               494.85           1260.27  
+Sumidos                          1.38               584.63            649.44  
+Recentes Baixo Valor             1.06               259.46            204.36  
+Recentes Alto Valor              1.57              1420.17            292.69  
+Novos                            1.05              1097.28             15.36  
+Campeões                         6.16              3282.05            705.21  
+Fiéis Alto Valor                 3.84              1386.78           1141.18  
+Fiéis Baixo Valor                4.00               488.57           1325.67 

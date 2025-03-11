@@ -1,0 +1,48 @@
+# Segmentação de Clientes
+
+    Nossa estratégia de segmentação divide os clientes em 8 grupos distintos, baseados em comportamento de compra e valor:
+
+    ## Clientes Ativos
+
+    *Novos*: Clientes recentes (últimos 30 dias) e novos na base (menos de 30 dias).
+
+    *Campeões*: Alto valor (top 10% em gastos) com frequência elevada (34+ compras) e compra nos últimos 6 meses.
+
+    *Fiéis de Alto Valor*: Relacionamento longo (mais de 2 anos), frequência regular (4+ compras), alto valor (top 20% em gastos) e compra nos últimos 6 meses.
+
+    *Fiéis de Baixo Valor*: Relacionamento longo (mais de 2 anos), frequência regular (4+ compras), valor moderado a baixo (até 80% em gastos) e compra nos últimos 6 meses.
+
+    *Recentes de Alto Valor*: Compra nos últimos 6 meses, pelo menos 1 compra e valor significativo (top 40% em gastos).
+
+    *Recentes de Baixo Valor*: Compra nos últimos 6 meses, pelo menos 1 compra e valor moderado a baixo (abaixo dos 60% em gastos).
+
+    ## Clientes Menos Ativos
+
+    *Sumidos*: Sem atividade entre 6 meses e 2 anos.
+
+    *Inativos*: Sem atividade há mais de 2 anos.
+
+
+Análise Detalhada por Segmento:
+========================================================================================================================
+                      Quantidade Clientes  Média Recency (dias)  \
+Segmento                                                          
+Inativos                              517               1254.25   
+Sumidos                               175                398.86   
+Recentes Alto Valor                   120                 35.05   
+Campeões                               72                 11.74   
+Recentes Baixo Valor                   72                 77.67   
+Fiéis Baixo Valor                      51                 44.12   
+Fiéis Alto Valor                       48                 30.06   
+Novos                                   9                 14.22   
+
+                      Média Frequency  Média Monetary (R$)  Média Age (dias)  
+Segmento                                                                      
+Inativos                         3.30              1333.30           1335.91  
+Sumidos                         10.19              8559.81            686.66  
+Recentes Alto Valor             14.02             12592.01            370.35  
+Campeões                        84.94             83853.67           1129.19  
+Recentes Baixo Valor             4.53               731.31            227.14  
+Fiéis Baixo Valor               18.16              4887.67           1149.00  
+Fiéis Alto Valor                31.19             20643.36           1144.52  
+Novos                            1.11               429.30             16.56 

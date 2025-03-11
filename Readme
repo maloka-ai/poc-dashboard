@@ -1,0 +1,49 @@
+Arquitetura do Projeto
+
+project_root/
+│
+├── app.py                      # Ponto de entrada principal
+├── config.py                   # Configurações globais (cores, estilos, etc.)
+│
+├── components/                 # Componentes reutilizáveis
+│   ├── __init__.py
+│   ├── cards.py                # Funções de card e métricas
+│   └── sidebar.py              # Componente de barra lateral
+│
+├── layouts/                    # Layouts de páginas
+│   ├── __init__.py
+│   ├── rfma.py                 # Layout de análise RFMA
+│   ├── segmentacao.py          # Layout de segmentação
+│   ├── predicao.py             # Layout de previsão 
+│   ├── retencao.py             # Layout de retenção
+│   ├── chat.py                 # Layout de chat
+│   ├── recorrencia/            # Layouts de recorrência
+│   │   ├── __init__.py
+│   │   ├── mensal.py
+│   │   ├── trimestral.py
+│   │   └── anual.py
+│   └── faturamento/            # Layouts de faturamento
+│       ├── __init__.py
+│       └── anual.py
+│
+├── utils/                      # Funções utilitárias
+│   ├── __init__.py
+│   ├── ai_helpers.py           # Formatação de valores
+│   ├── data_loading.py         # Carregamento de dados
+│   └── formatting.py           # Funções de IA
+│
+├── callbacks/                  # Callbacks organizados por funcionalidade
+│   ├── __init__.py
+│   ├── chat.py                 # Seleção de cliente/tipo
+│   ├── client_selection.py     # Interações de segmentação
+│   ├── page_navigation.py      # Interações de previsão
+│   ├── predicao.py             # Navegação entre páginas
+│   ├── segmentacao.py          # Controles da sidebar
+│   └── sidebar.py              # Funcionalidade de chat
+│
+├── data/                       # Funções para gerenciar dados
+│   └── clients.py              # Gerenciamento de clientes
+│
+├── assets/                     # Arquivos estáticos (CSS, imagens)
+├── contexts/                   # Contextos específicos de clientes
+└── cache/                      # Diretório para cache

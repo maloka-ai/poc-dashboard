@@ -1,0 +1,11 @@
+dash[diskcache]
+dash-bootstrap-components
+pandas
+numpy
+plotly
+openai
+openpyxl
+Flask-Caching
+dash-bootstrap-templates
+flask
+gunicorn
