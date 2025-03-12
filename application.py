@@ -5,6 +5,7 @@ import zipfile
 import base64
 import dash
 import dash_bootstrap_components as dbc
+import dotenv
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output, State
 import pandas as pd
@@ -29,7 +30,7 @@ long_callback_manager = DiskcacheLongCallbackManager(cache)
 # =============================================================================
 # Funções auxiliares pro chat
 # =============================================================================
-openai.api_key = "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"
+openai.api_key = os.getenv("chatKey")
 
 # Contexto padrão - caso não haja contexto específico para um cliente
 CONTEXTO_PADRAO = """
