@@ -3446,13 +3446,16 @@ def get_produtos_layout(data):
         labels={'x': 'Nível de Criticidade', 'y': 'Quantidade de Produtos'},
         template='plotly_white'
     )
-    
+    total_produtos = contagem_criticidade.sum()
+    porcentagens = (contagem_criticidade / total_produtos * 100).round(1)
+
     # Adicionar valores nas barras
     for i, v in enumerate(contagem_criticidade.values):
+        percentage = porcentagens[contagem_criticidade.index[i]]
         fig_criticidade.add_annotation(
             x=contagem_criticidade.index[i],
             y=v,
-            text=str(v),
+            text=f"{str(v)} ({percentage:.1f}%)".replace(".", ","),
             showarrow=False,
             yshift=10,
             font=dict(size=14, color="black", family="Montserrat", weight="bold")
@@ -3469,6 +3472,69 @@ def get_produtos_layout(data):
         paper_bgcolor='rgba(0,0,0,0)'
     )
 
+    # Filtrar produtos críticos e ordenar pelo percentual de cobertura (do menor para o maior)
+    df_produtos_criticos = df_criticos.sort_values('percentual_cobertura')
+
+    if len(df_criticos[df_criticos['criticidade'] == 'Crítico']) > 0:
+        top_20_criticos = df_criticos[df_criticos['criticidade'] == 'Crítico'].sort_values('percentual_cobertura').head(20)
+    else:
+        top_20_criticos = df_produtos_criticos.head(20)
+
+    # Verificar a coluna de descrição do produto
+    produto_col = 'desc_produto' if 'desc_produto' in df_criticos.columns else 'Produto' if 'Produto' in df_criticos.columns else None
+
+    if produto_col:
+
+        top_20_criticos['produto_display'] = top_20_criticos[produto_col].apply(lambda x: (x[:30] + '...') if len(str(x)) > 30 else x)
+        
+        fig_top_criticos = px.bar(
+            top_20_criticos,
+            y='produto_display',
+            x='percentual_cobertura',
+            orientation='h',
+            color='percentual_cobertura',
+            color_continuous_scale=['darkred', 'orange', color['warning']],
+            range_color=[0, 50],
+            labels={'percentual_cobertura': 'Cobertura (%)', 'produto_display': 'Produto'},
+            template='plotly_white'
+        )
+        
+        if 'cd_produto' in top_20_criticos.columns:
+            fig_top_criticos.update_traces(
+                hovertemplate='<b>%{y}</b><br>Código: %{customdata[0]}<br>Cobertura: %{x:.1f}%',
+                customdata=top_20_criticos[['cd_produto']]
+            )
+        
+        fig_top_criticos.update_layout(
+            title_font=dict(size=16, family="Montserrat", color=color['primary']),
+            yaxis_title="",
+            xaxis_title="Percentual de Cobertura (%)",
+            margin=dict(l=200, r=20, t=30, b=30),
+            height=500,
+            yaxis=dict(autorange="reversed"),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        
+        
+        fig_top_criticos.add_shape(
+            type="line",
+            x0=30, y0=-0.5,
+            x1=30, y1=len(top_20_criticos) - 0.5,
+            line=dict(color="darkred", width=2, dash="dash"),
+        )
+        
+        
+        for i, row in enumerate(top_20_criticos.itertuples()):
+            fig_top_criticos.add_annotation(
+                x=row.percentual_cobertura,
+                y=row.produto_display,
+                text=f"{row.percentual_cobertura:.1f}%".replace(".", ","),
+                showarrow=False,
+                xshift=15,
+                font=dict(size=12, color="black", family="Montserrat")
+            )
+
     # Layout final
     layout = html.Div([
         html.H2("Análise de Criticidade de Estoque", className="dashboard-title"),
@@ -3478,10 +3544,20 @@ def get_produtos_layout(data):
         
         # Primeira linha: Gráfico de criticidade e gráfico de pizza
         dbc.Row([
-            create_card(
-                "Produtos por Nível de Criticidade",
-                dcc.Graph(id="produtos-criticidade-bar", figure=fig_criticidade, config={"responsive": True})
-            ) 
+            dbc.Col(
+                create_card(
+                    "Produtos por Nível de Criticidade",
+                    dcc.Graph(id="produtos-criticidade-bar", figure=fig_criticidade, config={"responsive": True})
+                ),
+                lg=6, md=12
+            ),
+            dbc.Col(
+                create_card(
+                    "Top 20 Produtos Mais Críticos",
+                    dcc.Graph(id="produtos-criticidade-top20", figure=fig_top_criticos if produto_col else {}, config={"responsive": True})
+                ),
+                lg=6, md=12
+            ),
         ], className="mb-4"),
         
         # Segunda linha: Tabela detalhada de produtos por criticidade
@@ -3529,14 +3605,10 @@ def get_produtos_layout(data):
 @application.callback(
     [Output("produtos-criticidade-header", "children"),
      Output("produtos-criticidade-list", "children")],
-    [Input("produtos-criticidade-pie", "clickData"),
-     Input("produtos-criticidade-bar", "clickData"),
-     Input("produtos-criticidade-scatter", "clickData"),
-     Input("produtos-criticidade-distribuicao", "clickData"),
-     Input("produtos-criticidade-boxplot", "clickData")],
+    [Input("produtos-criticidade-bar", "clickData")],
     State("selected-data", "data")
 )
-def update_produtos_criticidade_list(clickData_pie, clickData_bar, clickData_scatter, clickData_dist, clickData_box, data):
+def update_produtos_criticidade_list(clickData_bar, data):
     ctx = dash.callback_context
     
     if not ctx.triggered:
@@ -3560,29 +3632,8 @@ def update_produtos_criticidade_list(clickData_pie, clickData_bar, clickData_sca
     # Initialize default criticidade
     selected_criticidade = None
     
-    if trigger_id == 'produtos-criticidade-pie' and clickData_pie:
-        selected_criticidade = clickData_pie['points'][0]['label']
-    elif trigger_id == 'produtos-criticidade-bar' and clickData_bar:
+    if trigger_id == 'produtos-criticidade-bar' and clickData_bar:
         selected_criticidade = clickData_bar['points'][0]['x']
-    elif trigger_id == 'produtos-criticidade-scatter' and clickData_scatter:
-        if 'customdata' in clickData_scatter['points'][0] and clickData_scatter['points'][0]['customdata']:
-            selected_criticidade = clickData_scatter['points'][0]['customdata'][3]  # Assume customdata[3] tem criticidade
-        else:
-            # Tentar extrair criticidade com base no ponto clicado
-            selected_criticidade = df_produtos.loc[clickData_scatter['points'][0]['pointIndex'], 'criticidade']
-    elif trigger_id == 'produtos-criticidade-distribuicao' and clickData_dist:
-        # Para o histograma de distribuição, vamos identificar baseado na cor ou na legenda
-        if 'curveNumber' in clickData_dist['points'][0]:
-            curve_number = clickData_dist['points'][0]['curveNumber']
-            # Mapear o número da curva para a categoria de criticidade
-            criticidade_map = {0: 'Crítico', 1: 'Muito Baixo', 2: 'Baixo', 3: 'Adequado', 4: 'Excesso'}
-            selected_criticidade = criticidade_map.get(curve_number, None)
-        if selected_criticidade is None and 'customdata' in clickData_dist['points'][0]:
-            # Se tiver customdata, tentar usar
-            selected_criticidade = clickData_dist['points'][0]['customdata']
-    elif trigger_id == 'produtos-criticidade-boxplot' and clickData_box:
-        # Para o boxplot, o eixo x já contém a criticidade
-        selected_criticidade = clickData_box['points'][0]['x']
     
     if selected_criticidade is None:
         return "Produtos do Nível de Criticidade Selecionado", html.Div([
@@ -3671,10 +3722,10 @@ def update_produtos_criticidade_list(clickData_pie, clickData_bar, clickData_sca
             {
                 "if": {"column_id": "percentual_cobertura"},
                 "fontWeight": "bold",
-                "color": "#e74c3c" if selected_criticidade == "Crítico" else 
-                        "#f39c12" if selected_criticidade == "Muito Baixo" else
-                        "#3498db" if selected_criticidade == "Baixo" else
-                        "#2ecc71" if selected_criticidade == "Adequado" else "#9b59b6"
+                "color": "darkred" if selected_criticidade == "Crítico" else 
+                        "orange" if selected_criticidade == "Muito Baixo" else
+                        color['warning'] if selected_criticidade == "Baixo" else
+                        "green" if selected_criticidade == "Adequado" else color['secondary']
             },
             {
                 "if": {"column_id": "custo1"},
@@ -3704,28 +3755,7 @@ def update_produtos_criticidade_list(clickData_pie, clickData_bar, clickData_sca
         ], style={"marginBottom": "1rem", "fontSize": "0.9rem", "color": "#666"})
     ])
     
-    # Adicionar botões de ação
-    action_buttons = html.Div([
-        dbc.Button(
-            [html.I(className="fas fa-file-excel me-2"), "Exportar Lista"],
-            color="success",
-            className="me-2",
-            style=button_style
-        ),
-        dbc.Button(
-            [html.I(className="fas fa-shopping-cart me-2"), "Gerar Pedido de Compra"],
-            color="primary",
-            className="me-2",
-            style=button_style
-        ),
-        dbc.Button(
-            [html.I(className="fas fa-chart-line me-2"), "Análise Detalhada"],
-            color="secondary",
-            style=button_style
-        )
-    ], className="mb-3")
-    
-    return header_text, html.Div([summary, action_buttons, table])
+    return header_text, html.Div([summary, table])
 
 # =============================================================================
 # Callback para renderizar o conteúdo conforme a URL
