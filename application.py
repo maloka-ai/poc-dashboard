@@ -3574,6 +3574,24 @@ def get_produtos_layout(data):
                 ])
             )
         ),
+
+        # Terceira linha: detalhe de um produto específico
+        create_card(
+            html.Div(id="produto-consumo-header", children="Gráfico de Consumo do Produto Selecionado"),
+            html.Div(
+                id="produto-consumo-grafico",
+                children=html.Div([
+                    html.P("Selecione um produto na lista acima para visualizar o gráfico de consumo.", 
+                        className="text-center text-muted my-4"),
+                    html.Div(className="text-center", children=[
+                        html.I(className="fas fa-chart-line fa-2x text-muted"),
+                        html.P("O gráfico mostrará o histórico de consumo e sugestões de compra", 
+                            className="text-muted mt-2")
+                    ])
+                ])
+            )
+        ),
+
         
         # Quarta linha: Card explicativo
         create_card(
@@ -3599,8 +3617,131 @@ def get_produtos_layout(data):
     
     return layout
 
-# Esta função está mostrando apenas os produtos críticos
-# Vamos corrigir para mostrar todos os produtos da categoria selecionada
+@application.callback(
+    [Output("produto-consumo-header", "children"),
+     Output("produto-consumo-grafico", "children")],
+    [Input("produtos-criticidade-table", "active_cell"),
+     Input("produtos-criticidade-table", "derived_virtual_data"),
+     Input("produtos-criticidade-table", "derived_virtual_selected_rows")],
+    [State("selected-data", "data")]
+)
+def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, data):
+    """
+    Atualiza o gráfico de consumo quando um produto é selecionado na tabela.
+    """
+    # Verificar se temos seleção e dados válidos
+    if active_cell is None or virtual_data is None or not virtual_data:
+        return "Gráfico de Consumo do Produto Selecionado", html.Div([
+            html.P("Selecione um produto na lista acima para visualizar o gráfico de consumo.", 
+                   className="text-center text-muted my-4"),
+            html.Div(className="text-center", children=[
+                html.I(className="fas fa-chart-line fa-2x text-muted"),
+                html.P("O gráfico mostrará o histórico de consumo e sugestões de compra", 
+                       className="text-muted mt-2")
+            ])
+        ])
+    
+    if data is None or data.get("df_relatorio_produtos") is None:
+        return "Dados não disponíveis", "Não foi possível carregar os dados dos produtos."
+    
+    try:
+        # Obter o produto selecionado da tabela
+        row_id = active_cell["row"]
+        if row_id >= len(virtual_data):
+            return "Erro de seleção", "A linha selecionada está fora dos limites da tabela."
+            
+        produto_selecionado = virtual_data[row_id]
+        
+        # Encontrar a coluna que contém o código do produto
+        codigo_colunas = ['cd_produto', 'Código', 'codigo', 'ID']
+        desc_colunas = ['desc_produto', 'Produto', 'Descrição', 'Nome', 'descricao']
+        
+        cd_produto = None
+        for col in codigo_colunas:
+            if col in produto_selecionado and produto_selecionado[col]:
+                cd_produto = str(produto_selecionado[col])
+                break
+                
+        if not cd_produto:
+            return "Código não encontrado", "Não foi possível identificar o código do produto."
+            
+        # Obter a descrição do produto
+        desc_produto = None
+        for col in desc_colunas:
+            if col in produto_selecionado and produto_selecionado[col]:
+                desc_produto = produto_selecionado[col]
+                break
+                
+        if not desc_produto:
+            desc_produto = f"Produto {cd_produto}"
+        
+        # Carregar dados de produtos
+        df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+        
+        # Verificar se o produto existe no dataframe
+        # Tentar diferentes formatos de código para aumentar compatibilidade
+        cd_produto_encontrado = False
+        for valor in [cd_produto, int(cd_produto) if cd_produto.isdigit() else cd_produto]:
+            if valor in df_produtos['cd_produto'].values:
+                cd_produto = valor
+                cd_produto_encontrado = True
+                break
+        
+        if not cd_produto_encontrado:
+            return f"Produto não encontrado: {cd_produto}", html.Div([
+                html.P(f"O produto com código {cd_produto} não foi encontrado na base de dados.", 
+                       className="text-center text-muted my-4")
+            ])
+        
+        # Chamar a função para criar o gráfico
+        fig = criar_grafico_produto(df_produtos, cd_produto)
+        
+        # Adicionar título legível e detalhes
+        header = html.Div([
+            html.H5(f"Consumo do Produto - {desc_produto}", className="mb-2"),
+            html.Div([
+                html.Span("Código: ", className="font-weight-bold"),
+                html.Span(f"{cd_produto}", className="mr-3"),
+                
+                # Adicionar mais detalhes se disponíveis, como estoque atual e média
+                html.Span("Estoque atual: ", className="font-weight-bold ml-3") if 'estoque_11-03-25' in produto_selecionado else None,
+                html.Span(f"{produto_selecionado.get('estoque_11-03-25', '')}", className="mr-3") if 'estoque_11-03-25' in produto_selecionado else None,
+                
+                html.Span("Média 3M: ", className="font-weight-bold ml-3") if 'Media 3M' in produto_selecionado else None,
+                html.Span(f"{produto_selecionado.get('Media 3M', '')}", className="mr-3") if 'Media 3M' in produto_selecionado else None
+            ], className="text-muted mb-3")
+        ])
+        
+        # Adicionar o gráfico com legenda explicativa
+        grafico_component = html.Div([
+            dcc.Graph(
+                figure=fig,
+                config={"responsive": True},
+                style={"height": "500px"}
+            ),
+            html.Div([
+                html.P([
+                    "O gráfico mostra o histórico de consumo nos últimos meses e a sugestão de compra.",
+                    html.Br(),
+                    html.Span("Sugestão 1M: ", className="font-weight-bold"),
+                    "Quantidade sugerida para compra no próximo mês.", 
+                    html.Br(),
+                    html.Span("Sugestão 3M: ", className="font-weight-bold"),
+                    "Quantidade sugerida para compra nos próximos três meses."
+                ], className="text-muted small mt-2")
+            ])
+        ])
+        
+        return header, grafico_component
+    
+    except Exception as e:
+        return "Erro ao gerar gráfico", html.Div([
+            html.P(f"Ocorreu um erro ao gerar o gráfico: {str(e)}", 
+                   className="text-center text-danger my-4"),
+            html.Pre(str(e), className="bg-light p-3 text-danger")
+        ])
+
+# Modifique o callback update_produtos_criticidade_list para adicionar busca case-insensitive
 
 @application.callback(
     [Output("produtos-criticidade-header", "children"),
@@ -3626,6 +3767,16 @@ def update_produtos_criticidade_list(clickData_bar, data):
     
     df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
     
+    # Converta as colunas de string para lowercase para facilitar buscas case-insensitive
+    # Isso é útil caso alguém implemente uma busca personalizada além da filtragem nativa
+    string_columns = df_produtos.select_dtypes(include=['object']).columns
+    for col in string_columns:
+        try:
+            # Tentar converter para lowercase, mas ignorar erros (se houver valores não-string)
+            df_produtos[f"{col}_lower"] = df_produtos[col].str.lower()
+        except:
+            pass
+    
     # Determine which chart was clicked
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
@@ -3642,8 +3793,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
     
     header_text = f"Produtos com Criticidade: {selected_criticidade}"
     
-    # CORREÇÃO IMPORTANTE: Filtrar TODOS os produtos desta criticidade
-    # sem nenhuma limitação de quantidade
+    # Filtrar TODOS os produtos desta criticidade
     filtered_df = df_produtos[df_produtos["criticidade"] == selected_criticidade]
     
     if filtered_df.empty:
@@ -3698,12 +3848,12 @@ def update_produtos_criticidade_list(clickData_bar, data):
         filtered_df['valor_estimado'] = filtered_df['Sug_1M_num'] * filtered_df['custo1_num']
         valor_total = filtered_df['valor_estimado'].sum()
     
-    # Criar tabela aprimorada
+    # Criar tabela aprimorada com filtro case-insensitive
     table = dash_table.DataTable(
         id='produtos-criticidade-table',  # ID único para a tabela
         columns=[{"name": col_rename.get(col, col), "id": col} for col in existing_columns],
         data=filtered_df_display.to_dict("records"),
-        page_size=30,  # Aumentado para mostrar mais produtos por página
+        page_size=10,  # Aumentado para mostrar mais produtos por página
         style_table={"overflowX": "auto"},
         style_cell={
             "textAlign": "left",
@@ -3739,7 +3889,11 @@ def update_produtos_criticidade_list(clickData_bar, data):
         filter_action="native",
         sort_action="native",
         sort_mode="multi",
-        export_format="xlsx"
+        export_format="xlsx",
+        # Configuração para tornar o filtro case-insensitive
+        filter_options={
+            'case': 'insensitive'   # Ignora maiúsculas/minúsculas nos filtros
+        }
     )
     
     # Adicionar resumo acima da tabela
@@ -3756,6 +3910,295 @@ def update_produtos_criticidade_list(clickData_bar, data):
     ])
     
     return header_text, html.Div([summary, table])
+
+# """"""""""""""""""""""""""""""""""""""""""""""""""""""
+# Geração de gráficos de consumo de produtos
+# """"""""""""""""""""""""""""""""""""""""""""""""""""""
+
+def criar_grafico_simulado(produto, valores, meses_labels):
+    """
+    Cria um gráfico simulado quando as colunas não estão no formato esperado.
+    
+    Args:
+        produto: Série com os dados do produto
+        valores: Lista de valores mensais
+        meses_labels: Lista de rótulos para os meses
+    
+    Returns:
+        Uma figura Plotly configurada
+    """
+    try:
+        # Obter as sugestões de compra
+        sug_1m = float(produto['Sug 1M']) if 'Sug 1M' in produto else 0
+        sug_3m = float(produto['Sug 3M']) if 'Sug 3M' in produto else 0
+        
+        # Nome do produto
+        nome_produto = produto.get('desc_produto', produto.get('Produto', f"Produto {produto.get('cd_produto', '')}"))
+        
+        # Criar o gráfico
+        fig = make_subplots(specs=[[{"secondary_y": False}]])
+        
+        # Adicionar linha de consumo mensal
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=valores,
+                mode='lines+markers+text',
+                name='Consumo',
+                line=dict(color='#0077B6', width=3),
+                marker=dict(size=8, color='#0077B6'),
+                text=[str(int(v)) for v in valores],
+                textposition='top center',
+                textfont=dict(size=10)
+            )
+        )
+        
+        # Adicionar barras para Sugestão 1M e 3M
+        x_all = meses_labels + ['Sugestão\n1M', 'Sugestão\n3M']
+        
+        # Adicionar barra para Sugestão 1M
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n1M'],
+                y=[sug_1m],
+                name='Sugestão 1M',
+                marker_color='#3CB371',
+                text=[str(int(sug_1m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Adicionar barra para Sugestão 3M 
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n3M'],
+                y=[sug_3m],
+                name='Sugestão 3M',
+                marker_color='#3CB371',
+                text=[str(int(sug_3m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Configurar layout
+        fig.update_layout(
+            title=f"Consumo Mensal - {nome_produto}",
+            title_font=dict(size=16, family="Montserrat", color='#001514'),
+            xaxis=dict(
+                title="",
+                tickmode='array',
+                tickvals=x_all,
+                ticktext=x_all,
+                tickangle=-45,
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            yaxis=dict(
+                title="Quantidade",
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=40, r=40, t=80, b=80),
+            height=500
+        )
+        
+        # Adicionar linha horizontal no zero
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=0,
+            x1=len(x_all) - 1,
+            y1=0,
+            line=dict(color="black", width=1)
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erro ao gerar gráfico simulado: {str(e)}")
+        # Retornar um gráfico de erro
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Erro ao gerar gráfico simulado: {str(e)}",
+            showarrow=False,
+            font=dict(size=12, color="red")
+        )
+        return fig
+
+def criar_grafico_produto(df_produto, cd_produto):
+    """
+    Cria um gráfico de consumo mensal para um produto específico,
+    similar ao da imagem de referência.
+    
+    Args:
+        df_produto: DataFrame contendo os dados dos produtos
+        cd_produto: Código do produto para gerar o gráfico
+    
+    Returns:
+        Uma figura Plotly configurada
+    """
+    try:
+        # Filtrar o produto específico
+        produto = df_produto[df_produto['cd_produto'] == cd_produto].iloc[0]
+        
+        # Obter colunas que representam meses (formato: YYYY_MM)
+        colunas_meses = [col for col in df_produto.columns if col.startswith('202')]
+        
+        # Se não houver colunas de meses no formato YYYY_MM, verificar outros formatos possíveis
+        if not colunas_meses:
+            # Tentar encontrar colunas numéricas que possam representar meses
+            colunas_numericas = [col for col in df_produto.columns 
+                                if isinstance(col, str) and col not in ['cd_produto', 'desc_produto', 'estoque_11-03-25', 
+                                                                       'Media 3M', 'Sug 1M', 'Sug 3M', 'custo1', 'Fornecedor1']]
+            
+            # Se tivermos pelo menos 12 colunas numéricas, podemos assumir que são meses
+            if len(colunas_numericas) >= 12:
+                colunas_meses = colunas_numericas[:14]  # Limitar a 14 meses como no exemplo
+                
+                # Criar rótulos simulados de meses (Jan-24, Fev-24, etc.)
+                meses_labels = [
+                    'Jan-24', 'Fev-24', 'Mar-24', 'Abr-24', 'Mai-24', 'Jun-24', 
+                    'Jul-24', 'Ago-24', 'Set-24', 'Out-24', 'Nov-24', 'Dez-24', 
+                    'Jan-25', 'Fev-25'
+                ][:len(colunas_meses)]
+                
+                # Simular valores se estiverem faltando
+                valores = []
+                for col in colunas_meses:
+                    try:
+                        val = float(produto[col])
+                        valores.append(val)
+                    except:
+                        valores.append(0)  # Valor padrão se não conseguir converter
+                
+                return criar_grafico_simulado(produto, valores, meses_labels)
+        
+        colunas_meses.sort()  # Garantir ordem cronológica
+        
+        # Extrair valores mensais de consumo
+        valores = []
+        for col in colunas_meses:
+            try:
+                valores.append(float(produto[col]))
+            except (ValueError, TypeError):
+                # Se não conseguir converter para float, usar 0
+                valores.append(0)
+        
+        # Obter as sugestões de compra
+        sug_1m = float(produto['Sug 1M']) if 'Sug 1M' in produto else 0
+        sug_3m = float(produto['Sug 3M']) if 'Sug 3M' in produto else 0
+        
+        # Criar rótulos para os meses no formato "MMM-YY"
+        meses_labels = []
+        for col in colunas_meses:
+            ano, mes = col.split('_')
+            ano_curto = ano[2:]  # Pegar só os dois últimos dígitos do ano
+            # Converter mês numérico para nome abreviado
+            mes_nomes = {
+                '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
+                '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+                '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
+            }
+            mes_nome = mes_nomes.get(mes, mes)
+            meses_labels.append(f"{mes_nome}-{ano_curto}")
+        
+        # Criar o gráfico
+        fig = make_subplots(specs=[[{"secondary_y": False}]])
+        
+        # Adicionar linha de consumo mensal
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=valores,
+                mode='lines+markers+text',
+                name='Consumo',
+                line=dict(color='#0077B6', width=3),
+                marker=dict(size=8, color='#0077B6'),
+                text=[str(int(v)) for v in valores],
+                textposition='top center',
+                textfont=dict(size=10)
+            )
+        )
+        
+        # Adicionar barras para Sugestão 1M e 3M
+        x_all = meses_labels + ['Sugestão\n1M', 'Sugestão\n3M']
+        
+        # Adicionar barra para Sugestão 1M
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n1M'],
+                y=[sug_1m],
+                name='Sugestão 1M',
+                marker_color='#3CB371',
+                text=[str(int(sug_1m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Adicionar barra para Sugestão 3M 
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n3M'],
+                y=[sug_3m],
+                name='Sugestão 3M',
+                marker_color='#3CB371',
+                text=[str(int(sug_3m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Configurar layout
+        fig.update_layout(
+            title=f"Consumo Mensal - {produto['desc_produto']}",
+            title_font=dict(size=16, family="Montserrat", color='#001514'),
+            xaxis=dict(
+                title="",
+                tickmode='array',
+                tickvals=x_all,
+                ticktext=x_all,
+                tickangle=-45,
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            yaxis=dict(
+                title="Quantidade",
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=40, r=40, t=80, b=80),
+            height=500
+        )
+        
+        # Adicionar linha horizontal no zero
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=0,
+            x1=len(x_all) - 1,
+            y1=0,
+            line=dict(color="black", width=1)
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erro ao gerar gráfico para o produto {cd_produto}: {str(e)}")
+        # Retornar um gráfico de erro
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Erro ao gerar gráfico: {str(e)}",
+            showarrow=False,
+            font=dict(size=12, color="red")
+        )
+        return fig
 
 # =============================================================================
 # Callback para renderizar o conteúdo conforme a URL
