@@ -117,7 +117,8 @@ DATAFRAME_KEYS = """
 INITIAL_COLLAPSE_STATE = False  # False = iniciar fechados, True = iniciar abertos
 collapse_states = {
     "clientes": INITIAL_COLLAPSE_STATE,
-    "faturamento": INITIAL_COLLAPSE_STATE
+    "faturamento": INITIAL_COLLAPSE_STATE,
+    "estoque": INITIAL_COLLAPSE_STATE
 }
 
 def classificar_pergunta(pergunta):
@@ -346,7 +347,8 @@ def load_data(client, data_type):
     fat_anual_path = f"{base_path}/faturamento_anual.xlsx"
     fat_anual_geral_path = f"{base_path}/faturamento_anual_geral.xlsx"
     fat_mensal_path = f"{base_path}/faturamento_mensal.xlsx"
-        
+    vendas_atipicas_path = f"{base_path}/vendas_atipicas_atual.xlsx"
+    
     # Carregar arquivos
     df = pd.read_csv(analytics_path[0])
     df_RC_Mensal = pd.read_excel(rc_mensal_path) if os.path.exists(rc_mensal_path) else None
@@ -357,6 +359,7 @@ def load_data(client, data_type):
     df_fat_Anual = pd.read_excel(fat_anual_path) if os.path.exists(fat_anual_path) else None
     df_fat_Anual_Geral = pd.read_excel(fat_anual_geral_path) if os.path.exists(fat_anual_geral_path) else None
     df_fat_Mensal = pd.read_excel(fat_mensal_path) if os.path.exists(fat_mensal_path) else None
+    df_Vendas_Atipicas = pd.read_excel(vendas_atipicas_path) if os.path.exists(vendas_atipicas_path) else None
         
     titulo = f"{client} - {data_type}"
 
@@ -388,6 +391,7 @@ def load_data(client, data_type):
         "df_fat_Anual": df_fat_Anual,
         "df_fat_Anual_Geral": df_fat_Anual_Geral,
         "df_fat_Mensal": df_fat_Mensal,
+        "df_Vendas_Atipicas": df_Vendas_Atipicas,
         "titulo": titulo,
         "company_context": company_context,
         "segmentos_context": segmentos_context,
@@ -776,7 +780,7 @@ def create_sidebar(client=None, available_data_types=None):
                 ),
             ], style={"marginBottom": "1.5rem"}),
             
-            # Segundo Collapse: "Faturamento" - Análise financeira
+            # Segunda Collapse: "Faturamento" - Análise financeira
             html.Div([
                 dbc.Button(
                     [html.I(className="fas fa-chart-line me-2"), "Desempenho Comercial"],
@@ -809,6 +813,43 @@ def create_sidebar(client=None, available_data_types=None):
                     ),
                     id="faturamento-collapse",
                     is_open=collapse_states["faturamento"],
+                    style={"paddingLeft": "1rem"}
+                ),
+            ], style={"marginBottom": "1.5rem"}),
+
+            # Terceira Collapse: "Estoque" - Gestão de estoque
+            html.Div([
+                dbc.Button(
+                    [html.I(className="fas fa-boxes me-2"), "Estoque"],
+                    id="estoque-collapse-button",
+                    color="link",
+                    style={
+                        "color": "rgba(255, 255, 255, 0.8)",
+                        "fontWeight": "500",
+                        "fontSize": "0.9rem",
+                        "textDecoration": "none",
+                        "width": "100%",
+                        "textAlign": "left",
+                        "padding": "0.5rem 0.8rem",
+                        "marginBottom": "0rem"
+                    }
+                ),
+                dbc.Collapse(
+                    dbc.Nav(
+                        [
+                            dbc.NavLink(
+                                [html.I(className="fas fa-exclamation-triangle me-2"), "Vendas Atípicas"], 
+                                href="/estoque/vendas-atipicas", 
+                                active="exact",
+                                style=nav_link_style,
+                                className="my-1"
+                            ),
+                        ],
+                        vertical=True,
+                        pills=True,
+                    ),
+                    id="estoque-collapse",
+                    is_open=collapse_states["estoque"],
                     style={"paddingLeft": "1rem"}
                 ),
             ], style={"marginBottom": "1.5rem"}),
@@ -917,6 +958,19 @@ def toggle_faturamento_collapse(n, is_open):
     if n:
         # Atualiza a variável global com o novo estado
         collapse_states["faturamento"] = not is_open
+        return not is_open
+    return is_open
+
+@application.callback(
+    Output("estoque-collapse", "is_open"),
+    [Input("estoque-collapse-button", "n_clicks")],
+    [State("estoque-collapse", "is_open")],
+)
+def toggle_estoque_collapse(n, is_open):
+    global collapse_states  # Acessa a variável global
+    if n:
+        # Atualiza a variável global com o novo estado
+        collapse_states["estoque"] = not is_open
         return not is_open
     return is_open
 
@@ -1952,13 +2006,6 @@ def get_recorrencia_mensal_layout(data):
         title_font=dict(size=14, family="Montserrat"),
         gridcolor='rgba(0,0,0,0.05)'
     )
-    
-    # fig_mensal.update_traces(
-    #     text=df_RC_Mensal['retention_rate'].apply(lambda x: formatar_percentual(x)),
-    #     textposition='top center',
-    #     mode='lines+markers+text',
-    #     textfont=dict(family="Montserrat")
-    # )
     
     # Enhanced table
     colunas_mensais = ["yearmonth", "retained_customers", "prev_total_customers", "retention_rate"]
@@ -3135,6 +3182,161 @@ def get_chat_layout(data):
     
     return chat_layout
 
+def get_vendas_atipicas_layout(data):
+    """
+    Cria o layout da página de vendas atípicas com gráficos e tabelas interativas
+    para análise de comportamentos fora do padrão no estoque.
+    """
+    if data.get("df_Vendas_Atipicas") is None:
+        return html.Div([
+            html.H2("Vendas Atípicas", className="dashboard-title"),
+            create_card(
+                "Dados Indisponíveis",
+                html.Div([
+                    html.P("Não foram encontrados dados de vendas atípicas para este cliente.", className="text-center text-muted my-4"),
+                    html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
+                    html.P("Verifique se o arquivo vendas_atipicas_atual.xlsx está presente", 
+                           className="text-muted text-center")
+                ])
+            )
+        ], style=content_style)
+    
+    # Carregamos os dados de vendas atípicas
+    df_atipicas = pd.read_json(io.StringIO(data["df_Vendas_Atipicas"]), orient='split')
+    
+    # Convertemos a coluna 'Dia' para o formato de data, se ainda não estiver
+    if df_atipicas['Dia'].dtype == 'object':
+        df_atipicas['Dia'] = pd.to_datetime(df_atipicas['Dia'])
+
+    df_atipicas['Dia_formatada'] = df_atipicas['Dia'].dt.strftime('%d/%m/%Y')
+
+    
+    # Calculamos métricas gerais para cards de resumo
+    total_produtos_atipicos = len(df_atipicas)
+    total_quantidade_atipica = df_atipicas['quantidade_atipica'].sum()
+    media_por_produto = total_quantidade_atipica / total_produtos_atipicos if total_produtos_atipicos > 0 else 0
+    dias_unicos = df_atipicas['Dia'].nunique()
+    
+    # Criamos as métricas para a primeira linha de cards
+    metrics = [
+        {"title": "Total de Produtos Atípicos", "value": formatar_numero(total_produtos_atipicos), "color": color['primary']},
+        {"title": "Quantidade Total Atípica", "value": formatar_numero(total_quantidade_atipica), "color": color['accent']},
+        {"title": "Média por Produto", "value": formatar_numero(media_por_produto, 1), "color": color['secondary']},
+        {"title": "Período Analisado", "value": f"{dias_unicos} dias", "color": color['success']}
+    ]
+    
+    metrics_row = create_metric_row(metrics)
+    
+    # Criamos um gráfico de barras para os produtos com maior quantidade atípica
+    top_produtos = df_atipicas.sort_values('quantidade_atipica', ascending=False).head(10)
+    
+    fig_top_produtos = px.bar(
+        top_produtos,
+        y='produto',
+        x='quantidade_atipica',
+        orientation='h',
+        color='quantidade_atipica',
+        color_continuous_scale='Blues',
+        labels={'quantidade_atipica': 'Quantidade Atípica', 'produto': 'Produto'},
+        template='plotly_white'
+    )
+    
+    fig_top_produtos.update_layout(
+        title="Top 10 Produtos com Vendas Atípicas",
+        title_font=dict(size=16, family="Montserrat", color=color['primary']),
+        xaxis_title="Quantidade",
+        yaxis_title="",
+        yaxis=dict(autorange="reversed"),  # Para mostrar o maior valor no topo
+        height=500,
+        margin=dict(l=200, r=20, t=70, b=70),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    # Criamos uma tabela interativa com os dados completos
+    table = dash_table.DataTable(
+        id='table-vendas-atipicas',
+        columns=[
+            {"name": "Data", "id": "Dia_formatada"},
+            {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
+            {"name": "Cliente", "id": "cliente"},
+            {"name": "Código Produto", "id": "cd_produto"},
+            {"name": "Produto", "id": "produto"},
+            {"name": "Estoque Atual", "id": "estoque_11-03-25"}
+        ],
+        data=df_atipicas.reset_index().to_dict("records"),
+        filter_action="native",
+        sort_action="native",
+        sort_mode="multi",
+        page_size=10,
+        export_format="xlsx",
+        style_table={"overflowX": "auto"},
+        style_cell={
+            "textAlign": "left",
+            "padding": "10px 15px",
+            "fontFamily": "Montserrat",
+            "fontSize": "14px"
+        },
+        style_header={
+            "backgroundColor": "rgb(240,240,240)",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "fontSize": "14px",
+            "fontFamily": "Montserrat"
+        },
+        style_data_conditional=[
+            {
+                "if": {"column_id": "quantidade_atipica"},
+                "fontWeight": "bold",
+                "color": color['accent']
+            },
+            {
+                "if": {"row_index": "odd"},
+                "backgroundColor": "rgb(248, 248, 248)"
+            }
+        ]
+    )
+    
+    # Incluímos todos os elementos no layout
+    layout = html.Div([
+        html.H2("Análise de Vendas Atípicas", className="dashboard-title"),
+        
+        # Linha de cartões de métricas
+        metrics_row,
+        
+        # Primeira linha de gráficos
+        create_card(
+            "Top Produtos com Vendas Atípicas",
+            dcc.Graph(id="grafico-top-produtos", figure=fig_top_produtos, config={"responsive": True})
+        ), 
+        
+        # Terceira linha - Tabela de dados
+        create_card(
+            "Detalhamento de Vendas Atípicas",
+            html.Div([
+                html.P("Esta tabela apresenta todos os produtos com vendas fora do padrão esperado. Utilize os filtros e ordenação para análise detalhada.", className="text-muted mb-3"),
+                table
+            ])
+        ),
+        
+        # Quarta linha - Cartão explicativo
+        create_card(
+            "Interpretação dos Dados",
+            html.Div([
+                html.P("As vendas atípicas representam situações onde o volume de vendas foi significativamente diferente do padrão esperado para aquele produto, podendo indicar:"),
+                html.Ul([
+                    html.Li("Oportunidades de expansão para produtos com vendas acima do esperado"),
+                    html.Li("Clientes com potencial para aumento de volume"),
+                    html.Li("Produtos que podem precisar de ajuste no estoque ou previsão"),
+                    html.Li("Possíveis problemas de registro ou cadastro quando extremamente fora do padrão")
+                ]),
+                html.P("Recomendamos a análise detalhada dos casos mais significativos para definir estratégias de negócio.")
+            ])
+        )
+    ], style=content_style)
+    
+    return layout
+
 # =============================================================================
 # Callback para renderizar o conteúdo conforme a URL
 # =============================================================================
@@ -3203,6 +3405,8 @@ def render_page_content(pathname, data, selected_client, selected_data_type):
         return get_predicao_layout(data), None
     elif pathname == "/faturamento/anual": 
         return get_faturamento_anual_layout(data), None
+    elif pathname == "/estoque/vendas-atipicas":
+        return get_vendas_atipicas_layout(data), None
     elif pathname == "/chat" or pathname == "/app/": 
         return get_chat_layout(data), None
     
@@ -3263,6 +3467,7 @@ def load_data_callback(selected_client, selected_data_type):
         "df_fat_Anual": data["df_fat_Anual"].to_json(date_format='iso', orient='split') if data["df_fat_Anual"] is not None else None,
         "df_fat_Anual_Geral": data["df_fat_Anual_Geral"].to_json(date_format='iso', orient='split') if data["df_fat_Anual_Geral"] is not None else None,
         "df_fat_Mensal": data["df_fat_Mensal"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal"] is not None else None,
+        "df_Vendas_Atipicas": data["df_Vendas_Atipicas"].to_json(date_format='iso', orient='split') if data["df_Vendas_Atipicas"] is not None else None,
         "company_context": data["company_context"],
         "segmentos_context": data["segmentos_context"]
     }
@@ -3333,12 +3538,21 @@ def responde(n_clicks, user_input, chat_history, data, selected_client):
     
     # 3. Importar dataframes
     if data:
+        #segmentacao de clientes
         df = pd.read_json(io.StringIO(data["df"]), orient='split') if data.get("df") else None
         df_RC_Mensal = pd.read_json(io.StringIO(data["df_RC_Mensal"]), orient='split') if data.get("df_RC_Mensal") else None
         df_RC_Trimestral = pd.read_json(io.StringIO(data["df_RC_Trimestral"]), orient='split') if data.get("df_RC_Trimestral") else None
         df_RC_Anual = pd.read_json(io.StringIO(data["df_RC_Anual"]), orient='split') if data.get("df_RC_Anual") else None
         df_RT_Anual = pd.read_json(io.StringIO(data["df_RT_Anual"]), orient='split') if data.get("df_RT_Anual") else None
         df_Previsoes = pd.read_json(io.StringIO(data["df_Previsoes"]), orient='split') if data.get("df_Previsoes") else None
+
+        #estoque
+        df_Vendas_Atipicas = pd.read_json(io.StringIO(data["df_Vendas_Atipicas"]), orient='split') if data.get("df_Vendas_Atipicas") else None
+
+        #faturamento
+        df_fat_Anual = pd.read_json(io.StringIO(data["df_fat_Anual"]), orient='split') if data.get("df_fat_Anual") else None
+        df_fat_Anual_Geral = pd.read_json(io.StringIO(data["df_fat_Anual_Geral"]), orient='split') if data.get("df_fat_Anual_Geral") else None
+        df_fat_Mensal = pd.read_json(io.StringIO(data["df_fat_Mensal"]), orient='split') if data.get("df_fat_Mensal") else None
 
         # Obter contexto específico do cliente
         company_context = data.get("company_context", CONTEXTO_PADRAO)
@@ -3352,7 +3566,7 @@ def responde(n_clicks, user_input, chat_history, data, selected_client):
         - Contexto do negócio: {company_context}
         - Dataframes considerados úteis: {dataframes}
         - Categorias identificadas para a pergunta: {categorias}
-        - Dataframes: {df, df_RC_Mensal, df_RC_Trimestral, df_RC_Anual, df_RT_Anual, df_Previsoes}
+        - Dataframes: {df, df_RC_Mensal, df_RC_Trimestral, df_RC_Anual, df_RT_Anual, df_Previsoes, df_Vendas_Atipicas, df_fat_Anual, df_fat_Anual_Geral, df_fat_Mensal}
         
         Perguntas sobre segmentos de clientes:
         - Para perguntas sobre os segmentos dos clientes, considere: {segmentos_context}
