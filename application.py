@@ -117,7 +117,8 @@ DATAFRAME_KEYS = """
 INITIAL_COLLAPSE_STATE = False  # False = iniciar fechados, True = iniciar abertos
 collapse_states = {
     "clientes": INITIAL_COLLAPSE_STATE,
-    "faturamento": INITIAL_COLLAPSE_STATE
+    "faturamento": INITIAL_COLLAPSE_STATE,
+    "estoque": INITIAL_COLLAPSE_STATE
 }
 
 def classificar_pergunta(pergunta):
@@ -346,7 +347,9 @@ def load_data(client, data_type):
     fat_anual_path = f"{base_path}/faturamento_anual.xlsx"
     fat_anual_geral_path = f"{base_path}/faturamento_anual_geral.xlsx"
     fat_mensal_path = f"{base_path}/faturamento_mensal.xlsx"
-        
+    vendas_atipicas_path = f"{base_path}/vendas_atipicas_atual.xlsx"
+    relatorio_produtos_path = f"{base_path}/relatorio_produtos.xlsx"
+    
     # Carregar arquivos
     df = pd.read_csv(analytics_path[0])
     df_RC_Mensal = pd.read_excel(rc_mensal_path) if os.path.exists(rc_mensal_path) else None
@@ -357,7 +360,9 @@ def load_data(client, data_type):
     df_fat_Anual = pd.read_excel(fat_anual_path) if os.path.exists(fat_anual_path) else None
     df_fat_Anual_Geral = pd.read_excel(fat_anual_geral_path) if os.path.exists(fat_anual_geral_path) else None
     df_fat_Mensal = pd.read_excel(fat_mensal_path) if os.path.exists(fat_mensal_path) else None
-        
+    df_Vendas_Atipicas = pd.read_excel(vendas_atipicas_path) if os.path.exists(vendas_atipicas_path) else None
+    df_relatorio_produtos = pd.read_excel(relatorio_produtos_path, sheet_name=0) if os.path.exists(relatorio_produtos_path) else None
+
     titulo = f"{client} - {data_type}"
 
     # =============================================================================
@@ -388,6 +393,8 @@ def load_data(client, data_type):
         "df_fat_Anual": df_fat_Anual,
         "df_fat_Anual_Geral": df_fat_Anual_Geral,
         "df_fat_Mensal": df_fat_Mensal,
+        "df_Vendas_Atipicas": df_Vendas_Atipicas,
+        "df_relatorio_produtos": df_relatorio_produtos,
         "titulo": titulo,
         "company_context": company_context,
         "segmentos_context": segmentos_context,
@@ -700,7 +707,7 @@ def create_sidebar(client=None, available_data_types=None):
             # Primeiro Collapse: "Meus Clientes" - Análises de cliente
             html.Div([
                 dbc.Button(
-                    [html.I(className="fas fa-users me-2"), "Gestão de Clientes"],
+                    [html.I(className="fas fa-users me-2"), "Relacionamento com Clientes"],
                     id="clientes-collapse-button",
                     color="link",
                     style={
@@ -776,10 +783,10 @@ def create_sidebar(client=None, available_data_types=None):
                 ),
             ], style={"marginBottom": "1.5rem"}),
             
-            # Segundo Collapse: "Faturamento" - Análise financeira
+            # Segunda Collapse: "Faturamento" - Análise financeira
             html.Div([
                 dbc.Button(
-                    [html.I(className="fas fa-chart-line me-2"), "Desempenho Comercial"],
+                    [html.I(className="fas fa-chart-line me-2"), "Vendas"],
                     id="faturamento-collapse-button",
                     color="link",
                     style={
@@ -803,12 +810,56 @@ def create_sidebar(client=None, available_data_types=None):
                                 style=nav_link_style,
                                 className="my-1"
                             ),
+                            dbc.NavLink(
+                                [html.I(className="fas fa-exclamation-triangle me-2"), "Vendas Atípicas"], 
+                                href="/estoque/vendas-atipicas", 
+                                active="exact",
+                                style=nav_link_style,
+                                className="my-1"
+                            ),
                         ],
                         vertical=True,
                         pills=True,
                     ),
                     id="faturamento-collapse",
                     is_open=collapse_states["faturamento"],
+                    style={"paddingLeft": "1rem"}
+                ),
+            ], style={"marginBottom": "1.5rem"}),
+
+            # Terceira Collapse: "Estoque" - Gestão de estoque
+            html.Div([
+                dbc.Button(
+                    [html.I(className="fas fa-boxes me-2"), "Gestão do Estoque"],
+                    id="estoque-collapse-button",
+                    color="link",
+                    style={
+                        "color": "rgba(255, 255, 255, 0.8)",
+                        "fontWeight": "500",
+                        "fontSize": "0.9rem",
+                        "textDecoration": "none",
+                        "width": "100%",
+                        "textAlign": "left",
+                        "padding": "0.5rem 0.8rem",
+                        "marginBottom": "0rem"
+                    }
+                ),
+                dbc.Collapse(
+                    dbc.Nav(
+                        [
+                            dbc.NavLink(
+                                [html.I(className="fas fa-exclamation-circle me-2"), "Recomendação de Compras"], 
+                                href="/estoque/produtos",
+                                active="exact",
+                                style=nav_link_style,
+                                className="my-1"
+                            ),
+                        ],
+                        vertical=True,
+                        pills=True,
+                    ),
+                    id="estoque-collapse",
+                    is_open=collapse_states["estoque"],
                     style={"paddingLeft": "1rem"}
                 ),
             ], style={"marginBottom": "1.5rem"}),
@@ -921,6 +972,19 @@ def toggle_faturamento_collapse(n, is_open):
     return is_open
 
 @application.callback(
+    Output("estoque-collapse", "is_open"),
+    [Input("estoque-collapse-button", "n_clicks")],
+    [State("estoque-collapse", "is_open")],
+)
+def toggle_estoque_collapse(n, is_open):
+    global collapse_states  # Acessa a variável global
+    if n:
+        # Atualiza a variável global com o novo estado
+        collapse_states["estoque"] = not is_open
+        return not is_open
+    return is_open
+
+@application.callback(
     Output("titulo-app", "children"),
     [Input("selected-client", "data"),
      Input("selected-data-type", "data")]
@@ -969,7 +1033,7 @@ def validar_login(n_clicks, email, senha):
         return dbc.Alert("Por favor, preencha email e senha.", color="warning"), dash.no_update
     
     # Verificar se a senha está correta - com trim
-    SENHA_PADRAO = 'Maloka2025'
+    SENHA_PADRAO = os.getenv("senhaLogin")
     if senha.strip() != SENHA_PADRAO:
         return dbc.Alert("Senha incorreta.", color="danger"), dash.no_update
     
@@ -1953,13 +2017,6 @@ def get_recorrencia_mensal_layout(data):
         gridcolor='rgba(0,0,0,0.05)'
     )
     
-    # fig_mensal.update_traces(
-    #     text=df_RC_Mensal['retention_rate'].apply(lambda x: formatar_percentual(x)),
-    #     textposition='top center',
-    #     mode='lines+markers+text',
-    #     textfont=dict(family="Montserrat")
-    # )
-    
     # Enhanced table
     colunas_mensais = ["yearmonth", "retained_customers", "prev_total_customers", "retention_rate"]
     renomear_mensal = {
@@ -2175,13 +2232,6 @@ def get_recorrencia_trimestral_layout(data):
         title_font=dict(size=14, family="Montserrat"),
         gridcolor='rgba(0,0,0,0.05)'
     )
-    
-    # fig_trimestral_line.update_traces(
-    #     text=df_RC_Trimestral['recurrence_rate'].apply(lambda x: formatar_percentual(x)),
-    #     textposition='top center',
-    #     mode='lines+markers+text',
-    #     textfont=dict(family="Montserrat")
-    # )
     
     # Enhanced customer composition chart
     fig_trimestral_bar = px.bar(
@@ -3135,6 +3185,1038 @@ def get_chat_layout(data):
     
     return chat_layout
 
+def get_vendas_atipicas_layout(data):
+    """
+    Cria o layout da página de vendas atípicas com gráficos e tabelas interativas
+    para análise de comportamentos fora do padrão no estoque.
+    """
+    if data.get("df_Vendas_Atipicas") is None:
+        return html.Div([
+            html.H2("Vendas Atípicas", className="dashboard-title"),
+            create_card(
+                "Dados Indisponíveis",
+                html.Div([
+                    html.P("Não foram encontrados dados de vendas atípicas para este cliente.", className="text-center text-muted my-4"),
+                    html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
+                    html.P("Verifique se o arquivo vendas_atipicas_atual.xlsx está presente", 
+                           className="text-muted text-center")
+                ])
+            )
+        ], style=content_style)
+    
+    # Carregamos os dados de vendas atípicas
+    df_atipicas = pd.read_json(io.StringIO(data["df_Vendas_Atipicas"]), orient='split')
+    
+    # Convertemos a coluna 'Dia' para o formato de data, se ainda não estiver
+    if df_atipicas['Dia'].dtype == 'object':
+        df_atipicas['Dia'] = pd.to_datetime(df_atipicas['Dia'])
+
+    df_atipicas['Dia_formatada'] = df_atipicas['Dia'].dt.strftime('%d/%m/%Y')
+
+    
+    # Calculamos métricas gerais para cards de resumo
+    total_produtos_atipicos = len(df_atipicas)
+    total_quantidade_atipica = df_atipicas['quantidade_atipica'].sum()
+    media_por_produto = total_quantidade_atipica / total_produtos_atipicos if total_produtos_atipicos > 0 else 0
+    dias_unicos = df_atipicas['Dia'].nunique()
+    
+    # Criamos as métricas para a primeira linha de cards
+    metrics = [
+        {"title": "Total de Produtos Atípicos", "value": formatar_numero(total_produtos_atipicos), "color": color['primary']},
+        {"title": "Quantidade Total Atípica", "value": formatar_numero(total_quantidade_atipica), "color": color['accent']},
+        {"title": "Média por Produto", "value": formatar_numero(media_por_produto, 1), "color": color['secondary']},
+        {"title": "Período Analisado", "value": f"{dias_unicos} dias", "color": color['success']}
+    ]
+    
+    metrics_row = create_metric_row(metrics)
+    
+    # Criamos um gráfico de barras para os produtos com maior quantidade atípica
+    top_produtos = df_atipicas.sort_values('quantidade_atipica', ascending=False).head(10)
+    
+    fig_top_produtos = px.bar(
+        top_produtos,
+        y='produto',
+        x='quantidade_atipica',
+        orientation='h',
+        color='quantidade_atipica',
+        color_continuous_scale='Blues',
+        labels={'quantidade_atipica': 'Quantidade Atípica', 'produto': 'Produto'},
+        template='plotly_white'
+    )
+    
+    fig_top_produtos.update_layout(
+        title="Top 10 Produtos com Vendas Atípicas",
+        title_font=dict(size=16, family="Montserrat", color=color['primary']),
+        xaxis_title="Quantidade",
+        yaxis_title="",
+        yaxis=dict(autorange="reversed"),  # Para mostrar o maior valor no topo
+        height=500,
+        margin=dict(l=200, r=20, t=70, b=70),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    # Criamos uma tabela interativa com os dados completos
+    table = dash_table.DataTable(
+        id='table-vendas-atipicas',
+        columns=[
+            {"name": "Data", "id": "Dia_formatada"},
+            {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
+            {"name": "Cliente", "id": "cliente"},
+            {"name": "Código Produto", "id": "cd_produto"},
+            {"name": "Produto", "id": "produto"},
+            {"name": "Estoque Atual", "id": "estoque_11-03-25"}
+        ],
+        data=df_atipicas.reset_index().to_dict("records"),
+        filter_action="native",
+        sort_action="native",
+        sort_mode="multi",
+        page_size=10,
+        export_format="xlsx",
+        style_table={"overflowX": "auto"},
+        style_cell={
+            "textAlign": "left",
+            "padding": "10px 15px",
+            "fontFamily": "Montserrat",
+            "fontSize": "14px"
+        },
+        style_header={
+            "backgroundColor": "rgb(240,240,240)",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "fontSize": "14px",
+            "fontFamily": "Montserrat"
+        },
+        style_data_conditional=[
+            {
+                "if": {"column_id": "quantidade_atipica"},
+                "fontWeight": "bold",
+                "color": color['accent']
+            },
+            {
+                "if": {"row_index": "odd"},
+                "backgroundColor": "rgb(248, 248, 248)"
+            }
+        ]
+    )
+    
+    # Incluímos todos os elementos no layout
+    layout = html.Div([
+        html.H2("Análise de Vendas Atípicas", className="dashboard-title"),
+        
+        # Linha de cartões de métricas
+        metrics_row,
+        
+        # Primeira linha de gráficos
+        create_card(
+            "Top Produtos com Vendas Atípicas",
+            dcc.Graph(id="grafico-top-produtos", figure=fig_top_produtos, config={"responsive": True})
+        ), 
+        
+        # Terceira linha - Tabela de dados
+        create_card(
+            "Detalhamento de Vendas Atípicas",
+            html.Div([
+                html.P("Esta tabela apresenta todos os produtos com vendas fora do padrão esperado. Utilize os filtros e ordenação para análise detalhada.", className="text-muted mb-3"),
+                table
+            ])
+        ),
+        
+        # Quarta linha - Cartão explicativo
+        create_card(
+            "Interpretação dos Dados",
+            html.Div([
+                html.P("As vendas atípicas representam situações onde o volume de vendas foi significativamente diferente do padrão esperado para aquele produto, podendo indicar:"),
+                html.Ul([
+                    html.Li("Oportunidades de expansão para produtos com vendas acima do esperado"),
+                    html.Li("Clientes com potencial para aumento de volume"),
+                    html.Li("Produtos que podem precisar de ajuste no estoque ou previsão"),
+                    html.Li("Possíveis problemas de registro ou cadastro quando extremamente fora do padrão")
+                ]),
+                html.P("Recomendamos a análise detalhada dos casos mais significativos para definir estratégias de negócio.")
+            ])
+        )
+    ], style=content_style)
+    
+    return layout
+
+
+def get_produtos_layout(data):
+    """
+    Cria o layout da página de criticidade de produtos com gráficos e tabelas interativas
+    para análise completa de todos os níveis de criticidade do estoque.
+    """
+    if data.get("df_relatorio_produtos") is None:
+        return html.Div([
+            html.H2("Análise de Criticidade de Estoque", className="dashboard-title"),
+            create_card(
+                "Dados Indisponíveis",
+                html.Div([
+                    html.P("Não foram encontrados dados de produtos para este cliente.", className="text-center text-muted my-4"),
+                    html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
+                    html.P(            "Verifique se o arquivo relatorio_produtos_criticos.xlsx está presente no diretório de dados",  
+                           className="text-muted text-center")
+                ])
+            )
+        ], style=content_style)
+    
+    # Carregamos os dados de produtos críticos
+    df_criticos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+    
+    # Verificar se a coluna de criticidade existe, caso contrário, precisamos criá-la
+    if 'criticidade' not in df_criticos.columns:
+        # Verifica se tem a coluna percentual_cobertura
+        if 'percentual_cobertura' in df_criticos.columns:
+            # Definir categorias de criticidade
+            df_criticos['criticidade'] = pd.cut(
+                df_criticos['percentual_cobertura'],
+                bins=[-float('inf'), 30, 50, 80, 100, float('inf')],
+                labels=['Crítico', 'Muito Baixo', 'Baixo', 'Adequado', 'Excesso']
+            )
+        else:
+            # Se não tiver percentual_cobertura, verifica se tem as colunas para calcular
+            if 'estoque_11-03-25' in df_criticos.columns and 'Media 3M' in df_criticos.columns:
+                # Calcular percentual de cobertura
+                df_criticos['percentual_cobertura'] = (df_criticos['estoque_11-03-25'] / df_criticos['Media 3M'] * 100).round(1)
+                # Definir categorias de criticidade
+                df_criticos['criticidade'] = pd.cut(
+                    df_criticos['percentual_cobertura'],
+                    bins=[-float('inf'), 30, 50, 80, 100, float('inf')],
+                    labels=['Crítico', 'Muito Baixo', 'Baixo', 'Adequado', 'Excesso']
+                )
+            else:
+                return html.Div([
+                    html.H2("Produtos Críticos", className="dashboard-title"),
+                    create_card(
+                        "Dados Insuficientes",
+                        html.Div([
+                            html.P("Os dados não contêm as colunas necessárias para análise de criticidade.", className="text-center text-muted my-4"),
+                            html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
+                            html.P("São necessárias as colunas: 'percentual_cobertura' ou 'estoque_11-03-25' e 'Media 3M'", 
+                                   className="text-muted text-center")
+                        ])
+                    )
+                ], style=content_style)
+    
+    # Contar produtos por categoria de criticidade
+    contagem_criticidade = df_criticos['criticidade'].value_counts().sort_index()
+    
+    # Calcular métricas para a primeira linha de cards
+    total_produtos = len(df_criticos)
+    produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
+    produtos_baixos = len(df_criticos[df_criticos['criticidade'].isin(['Muito Baixo', 'Baixo'])])
+    
+    # Calcular valor estimado para compra, se disponível
+    valor_estimado = None
+    if 'Sug 1M' in df_criticos.columns and 'custo1' in df_criticos.columns:
+        df_criticos['valor_estimado'] = df_criticos['Sug 1M'] * df_criticos['custo1']
+        valor_estimado = df_criticos['valor_estimado'].sum()
+    
+    # Contar produtos por cada categoria de criticidade para os cards de métrica
+    produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
+    produtos_muito_baixos = len(df_criticos[df_criticos['criticidade'] == 'Muito Baixo'])
+    produtos_baixos = len(df_criticos[df_criticos['criticidade'] == 'Baixo'])
+    produtos_adequados = len(df_criticos[df_criticos['criticidade'] == 'Adequado'])
+    produtos_excesso = len(df_criticos[df_criticos['criticidade'] == 'Excesso'])
+    
+    # Criar métricas para a primeira linha de cards - mostrando todas as categorias
+    metrics = [
+        {"title": "Total de Produtos", "value": formatar_numero(total_produtos), "color": color['primary']},
+        {"title": "Crítico (0-30%)", "value": formatar_numero(produtos_criticos), "color": 'darkred'},
+        {"title": "Muito Baixo (30-50%)", "value": formatar_numero(produtos_muito_baixos), "color": 'orange'},
+        {"title": "Baixo (50-80%)", "value": formatar_numero(produtos_baixos), "color": color['warning']},
+        {"title": "Adequado (80-100%)", "value": formatar_numero(produtos_adequados), "color": gradient_colors['green_gradient'][0]},
+        {"title": "Excesso (>100%)", "value": formatar_numero(produtos_excesso), "color": color['secondary']}
+    ]
+    
+    metrics_row = create_metric_row(metrics)
+    
+    # Criar gráfico de barras para criticidade (similar ao do Jupyter)
+    fig_criticidade = px.bar(
+        x=contagem_criticidade.index,
+        y=contagem_criticidade.values,
+        color=contagem_criticidade.index,
+        color_discrete_map={
+            'Crítico': 'darkred',
+            'Muito Baixo': 'orange',
+            'Baixo': color['warning'],
+            'Adequado': gradient_colors['green_gradient'][0],
+            'Excesso': color['secondary']
+        },
+        labels={'x': 'Nível de Criticidade', 'y': 'Quantidade de Produtos'},
+        template='plotly_white'
+    )
+    total_produtos = contagem_criticidade.sum()
+    porcentagens = (contagem_criticidade / total_produtos * 100).round(1)
+
+    # Adicionar valores nas barras
+    for i, v in enumerate(contagem_criticidade.values):
+        percentage = porcentagens[contagem_criticidade.index[i]]
+        fig_criticidade.add_annotation(
+            x=contagem_criticidade.index[i],
+            y=v,
+            text=f"{str(v)} ({percentage:.1f}%)".replace(".", ","),
+            showarrow=False,
+            yshift=10,
+            font=dict(size=14, color="black", family="Montserrat", weight="bold")
+        )
+    
+    fig_criticidade.update_layout(
+        title_font=dict(size=16, family="Montserrat", color=color['primary']),
+        xaxis_title="Nível de Criticidade",
+        yaxis_title="Quantidade de Produtos",
+        margin=dict(t=50, b=50, l=50, r=50),
+        height=500,
+        showlegend=False,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+
+    # Filtrar produtos críticos e ordenar pelo percentual de cobertura (do menor para o maior)
+    df_produtos_criticos = df_criticos.sort_values('percentual_cobertura')
+
+    if len(df_criticos[df_criticos['criticidade'] == 'Crítico']) > 0:
+        top_20_criticos = df_criticos[df_criticos['criticidade'] == 'Crítico'].sort_values('percentual_cobertura').head(20)
+    else:
+        top_20_criticos = df_produtos_criticos.head(20)
+
+    # Verificar a coluna de descrição do produto
+    produto_col = 'desc_produto' if 'desc_produto' in df_criticos.columns else 'Produto' if 'Produto' in df_criticos.columns else None
+
+    if produto_col:
+
+        top_20_criticos['produto_display'] = top_20_criticos[produto_col].apply(lambda x: (x[:30] + '...') if len(str(x)) > 30 else x)
+        
+        fig_top_criticos = px.bar(
+            top_20_criticos,
+            y='produto_display',
+            x='percentual_cobertura',
+            orientation='h',
+            color='percentual_cobertura',
+            color_continuous_scale=['darkred', 'orange', color['warning']],
+            range_color=[0, 50],
+            labels={'percentual_cobertura': 'Cobertura (%)', 'produto_display': 'Produto'},
+            template='plotly_white'
+        )
+        
+        if 'cd_produto' in top_20_criticos.columns:
+            fig_top_criticos.update_traces(
+                hovertemplate='<b>%{y}</b><br>Código: %{customdata[0]}<br>Cobertura: %{x:.1f}%',
+                customdata=top_20_criticos[['cd_produto']]
+            )
+        
+        fig_top_criticos.update_layout(
+            title_font=dict(size=16, family="Montserrat", color=color['primary']),
+            yaxis_title="",
+            xaxis_title="Percentual de Cobertura (%)",
+            margin=dict(l=200, r=20, t=30, b=30),
+            height=500,
+            yaxis=dict(autorange="reversed"),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        
+        
+        fig_top_criticos.add_shape(
+            type="line",
+            x0=30, y0=-0.5,
+            x1=30, y1=len(top_20_criticos) - 0.5,
+            line=dict(color="darkred", width=2, dash="dash"),
+        )
+        
+        
+        for i, row in enumerate(top_20_criticos.itertuples()):
+            fig_top_criticos.add_annotation(
+                x=row.percentual_cobertura,
+                y=row.produto_display,
+                text=f"{row.percentual_cobertura:.1f}%".replace(".", ","),
+                showarrow=False,
+                xshift=15,
+                font=dict(size=12, color="black", family="Montserrat")
+            )
+
+    # Layout final
+    layout = html.Div([
+        html.H2("Análise de Criticidade de Estoque", className="dashboard-title"),
+        
+        # Linha de cartões de métricas
+        metrics_row,
+        
+        # Primeira linha: Gráfico de criticidade e gráfico de pizza
+        dbc.Row([
+            dbc.Col(
+                create_card(
+                    "Produtos por Nível de Criticidade",
+                    dcc.Graph(id="produtos-criticidade-bar", figure=fig_criticidade, config={"responsive": True})
+                ),
+                lg=6, md=12
+            ),
+            dbc.Col(
+                create_card(
+                    "Top 20 Produtos Mais Críticos",
+                    dcc.Graph(id="produtos-criticidade-top20", figure=fig_top_criticos if produto_col else {}, config={"responsive": True})
+                ),
+                lg=6, md=12
+            ),
+        ], className="mb-4"),
+        
+        # Segunda linha: Tabela detalhada de produtos por criticidade
+        create_card(
+            html.Div(id="produtos-criticidade-header", children="Produtos do Nível de Criticidade Selecionado"),
+            html.Div(
+                id="produtos-criticidade-list",
+                children=html.Div([
+                    html.P("Selecione um nível de criticidade nos gráficos acima para ver os produtos.", className="text-center text-muted my-4"),
+                    html.Div(className="text-center", children=[
+                        html.I(className="fas fa-mouse-pointer fa-2x text-muted"),
+                        html.P("Clique em uma fatia, barra ou ponto para visualizar detalhes", className="text-muted mt-2")
+                    ])
+                ])
+            )
+        ),
+
+        # Terceira linha: detalhe de um produto específico
+        create_card(
+            html.Div(id="produto-consumo-header", children="Gráfico de Consumo do Produto Selecionado"),
+            html.Div(
+                id="produto-consumo-grafico",
+                children=html.Div([
+                    html.P("Selecione um produto na lista acima para visualizar o gráfico de consumo.", 
+                        className="text-center text-muted my-4"),
+                    html.Div(className="text-center", children=[
+                        html.I(className="fas fa-chart-line fa-2x text-muted"),
+                        html.P("O gráfico mostrará o histórico de consumo e sugestões de compra", 
+                            className="text-muted mt-2")
+                    ])
+                ])
+            )
+        ),
+
+        
+        # Quarta linha: Card explicativo
+        create_card(
+            "Interpretação dos Níveis de Criticidade",
+            html.Div([
+                html.P("A análise de criticidade de estoque é baseada no percentual de cobertura, calculado como a relação entre o estoque atual e o consumo médio trimestral:"),
+                html.Ul([
+                    html.Li([html.Span("Crítico (0-30%): ", style={"color": "darkred", "fontWeight": "bold"}), 
+                           "Necessidade urgente de reposição. Risco iminente de ruptura de estoque."]),
+                    html.Li([html.Span("Muito Baixo (30-50%): ", style={"color": "red", "fontWeight": "bold"}), 
+                           "Estoque baixo, reposição necessária em curto prazo."]),
+                    html.Li([html.Span("Baixo (50-80%): ", style={"color": "orange", "fontWeight": "bold"}), 
+                           "Estoque moderado, monitorar e planejar reposição."]),
+                    html.Li([html.Span("Adequado (80-100%): ", style={"color": "green", "fontWeight": "bold"}), 
+                           "Nível de estoque ideal, bem dimensionado para o consumo."]),
+                    html.Li([html.Span("Excesso (>100%): ", style={"color": "blue", "fontWeight": "bold"}), 
+                           "Estoque acima do necessário, possível capital imobilizado."])
+                ]),
+                html.P("Recomenda-se priorizar a reposição dos itens críticos e com muito baixa cobertura para evitar rupturas e garantir o atendimento ao cliente.")
+            ])
+        )
+    ], style=content_style)
+    
+    return layout
+
+@application.callback(
+    [Output("produto-consumo-header", "children"),
+     Output("produto-consumo-grafico", "children")],
+    [Input("produtos-criticidade-table", "active_cell"),
+     Input("produtos-criticidade-table", "derived_virtual_data"),
+     Input("produtos-criticidade-table", "derived_virtual_selected_rows")],
+    [State("selected-data", "data")]
+)
+def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, data):
+    """
+    Atualiza o gráfico de consumo quando um produto é selecionado na tabela.
+    """
+    # Verificar se temos seleção e dados válidos
+    if active_cell is None or virtual_data is None or not virtual_data:
+        return "Gráfico de Consumo do Produto Selecionado", html.Div([
+            html.P("Selecione um produto na lista acima para visualizar o gráfico de consumo.", 
+                   className="text-center text-muted my-4"),
+            html.Div(className="text-center", children=[
+                html.I(className="fas fa-chart-line fa-2x text-muted"),
+                html.P("O gráfico mostrará o histórico de consumo e sugestões de compra", 
+                       className="text-muted mt-2")
+            ])
+        ])
+    
+    if data is None or data.get("df_relatorio_produtos") is None:
+        return "Dados não disponíveis", "Não foi possível carregar os dados dos produtos."
+    
+    try:
+        # Obter o produto selecionado da tabela
+        row_id = active_cell["row"]
+        if row_id >= len(virtual_data):
+            return "Erro de seleção", "A linha selecionada está fora dos limites da tabela."
+            
+        produto_selecionado = virtual_data[row_id]
+        
+        # Encontrar a coluna que contém o código do produto
+        codigo_colunas = ['cd_produto', 'Código', 'codigo', 'ID']
+        desc_colunas = ['desc_produto', 'Produto', 'Descrição', 'Nome', 'descricao']
+        
+        cd_produto = None
+        for col in codigo_colunas:
+            if col in produto_selecionado and produto_selecionado[col]:
+                cd_produto = str(produto_selecionado[col])
+                break
+                
+        if not cd_produto:
+            return "Código não encontrado", "Não foi possível identificar o código do produto."
+            
+        # Obter a descrição do produto
+        desc_produto = None
+        for col in desc_colunas:
+            if col in produto_selecionado and produto_selecionado[col]:
+                desc_produto = produto_selecionado[col]
+                break
+                
+        if not desc_produto:
+            desc_produto = f"Produto {cd_produto}"
+        
+        # Carregar dados de produtos
+        df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+        
+        # Verificar se o produto existe no dataframe
+        # Tentar diferentes formatos de código para aumentar compatibilidade
+        cd_produto_encontrado = False
+        for valor in [cd_produto, int(cd_produto) if cd_produto.isdigit() else cd_produto]:
+            if valor in df_produtos['cd_produto'].values:
+                cd_produto = valor
+                cd_produto_encontrado = True
+                break
+        
+        if not cd_produto_encontrado:
+            return f"Produto não encontrado: {cd_produto}", html.Div([
+                html.P(f"O produto com código {cd_produto} não foi encontrado na base de dados.", 
+                       className="text-center text-muted my-4")
+            ])
+        
+        # Chamar a função para criar o gráfico
+        fig = criar_grafico_produto(df_produtos, cd_produto)
+        
+        # Adicionar título legível e detalhes
+        header = html.Div([
+            html.H5(f"Consumo do Produto - {desc_produto}", className="mb-2"),
+            html.Div([
+                html.Span("Código: ", className="font-weight-bold"),
+                html.Span(f"{cd_produto}", className="mr-3"),
+                
+                # Adicionar mais detalhes se disponíveis, como estoque atual e média
+                html.Span("Estoque atual: ", className="font-weight-bold ml-3") if 'estoque_11-03-25' in produto_selecionado else None,
+                html.Span(f"{produto_selecionado.get('estoque_11-03-25', '')}", className="mr-3") if 'estoque_11-03-25' in produto_selecionado else None,
+                
+                html.Span("Média 3M: ", className="font-weight-bold ml-3") if 'Media 3M' in produto_selecionado else None,
+                html.Span(f"{produto_selecionado.get('Media 3M', '')}", className="mr-3") if 'Media 3M' in produto_selecionado else None
+            ], className="text-muted mb-3")
+        ])
+        
+        # Adicionar o gráfico com legenda explicativa
+        grafico_component = html.Div([
+            dcc.Graph(
+                figure=fig,
+                config={"responsive": True},
+                style={"height": "500px"}
+            ),
+            html.Div([
+                html.P([
+                    "O gráfico mostra o histórico de consumo nos últimos meses e a sugestão de compra.",
+                    html.Br(),
+                    html.Span("Sugestão 1M: ", className="font-weight-bold"),
+                    "Quantidade sugerida para compra no próximo mês.", 
+                    html.Br(),
+                    html.Span("Sugestão 3M: ", className="font-weight-bold"),
+                    "Quantidade sugerida para compra nos próximos três meses."
+                ], className="text-muted small mt-2")
+            ])
+        ])
+        
+        return header, grafico_component
+    
+    except Exception as e:
+        return "Erro ao gerar gráfico", html.Div([
+            html.P(f"Ocorreu um erro ao gerar o gráfico: {str(e)}", 
+                   className="text-center text-danger my-4"),
+            html.Pre(str(e), className="bg-light p-3 text-danger")
+        ])
+
+# Modifique o callback update_produtos_criticidade_list para adicionar busca case-insensitive
+
+@application.callback(
+    [Output("produtos-criticidade-header", "children"),
+     Output("produtos-criticidade-list", "children")],
+    [Input("produtos-criticidade-bar", "clickData")],
+    State("selected-data", "data")
+)
+def update_produtos_criticidade_list(clickData_bar, data):
+    ctx = dash.callback_context
+    
+    if not ctx.triggered:
+        # No clicks yet
+        return "Produtos do Nível de Criticidade Selecionado", html.Div([
+            html.P("Selecione um nível de criticidade nos gráficos acima para ver os produtos.", className="text-center text-muted my-4"),
+            html.Div(className="text-center", children=[
+                html.I(className="fas fa-mouse-pointer fa-2x text-muted"),
+                html.P("Clique em uma fatia, barra ou ponto para visualizar detalhes", className="text-muted mt-2")
+            ])
+        ])
+    
+    if data is None or data.get("df_relatorio_produtos") is None:
+        return "Produtos do Nível de Criticidade Selecionado", "Dados não disponíveis."
+    
+    df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+    
+    # Converta as colunas de string para lowercase para facilitar buscas case-insensitive
+    # Isso é útil caso alguém implemente uma busca personalizada além da filtragem nativa
+    string_columns = df_produtos.select_dtypes(include=['object']).columns
+    for col in string_columns:
+        try:
+            # Tentar converter para lowercase, mas ignorar erros (se houver valores não-string)
+            df_produtos[f"{col}_lower"] = df_produtos[col].str.lower()
+        except:
+            pass
+    
+    # Determine which chart was clicked
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Initialize default criticidade
+    selected_criticidade = None
+    
+    if trigger_id == 'produtos-criticidade-bar' and clickData_bar:
+        selected_criticidade = clickData_bar['points'][0]['x']
+    
+    if selected_criticidade is None:
+        return "Produtos do Nível de Criticidade Selecionado", html.Div([
+            html.P("Não foi possível identificar a criticidade selecionada.", className="text-center text-muted my-4")
+        ])
+    
+    header_text = f"Produtos com Criticidade: {selected_criticidade}"
+    
+    # Filtrar TODOS os produtos desta criticidade
+    filtered_df = df_produtos[df_produtos["criticidade"] == selected_criticidade]
+    
+    if filtered_df.empty:
+        return header_text, "Nenhum produto encontrado para a criticidade selecionada."
+    
+    # Determinar colunas de exibição
+    display_columns = [
+        "cd_produto", "desc_produto", "fornecedor","estoque_11-03-25", "Media 3M", 
+        "percentual_cobertura", "Sug 1M", 
+        "Data1", "Quantidade1", "custo1", "Fornecedor1", 
+        "Data2", "Quantidade2", "custo2", "Fornecedor1",
+        "Data3", "Quantidade3", "custo3", "Fornecedor1"
+    ]
+    
+    # Usar apenas colunas que existem no DataFrame
+    existing_columns = [col for col in display_columns if col in filtered_df.columns]
+    if not existing_columns:
+        return header_text, "Estrutura de dados incompatível para exibição de detalhes."
+    
+    # Renomear colunas para melhor visualização
+    col_rename = {
+        "cd_produto": "Código",
+        "desc_produto": "Produto",
+        "fornecedor": "Fornecedor",
+        "estoque_11-03-25": "Estoque Atual",
+        "Media 3M": "Consumo Médio (3M)",
+        "percentual_cobertura": "Cobertura (%)",
+        "Sug 1M": "Sugestão (1M)",
+        "Sug 3M": "Sugestão (3M)",
+        "Data1": "Data 1",
+        "Quantidade1": "Quantidade 1",
+        "custo1": "Custo Unitário 1",
+        "Fornecedor1": "Fornecedor 1",
+        "Data2": "Data 2",
+        "Quantidade2": "Quantidade 2",
+        "custo2": "Custo Unitário 2",
+        "Fornecedor2": "Fornecedor 2",
+        "Quantidade3": "Quantidade 3",
+        "Data3": "Data 3",
+        "custo3": "Custo Unitário 3",
+        "Fornecedor3": "Fornecedor 3"
+    }
+    
+    # Adicionar fornecedor se disponível
+    if 'Fornecedor1' in filtered_df.columns:
+        existing_columns.append('Fornecedor1')
+    
+    # Formatação especial para valores monetários e percentuais
+    filtered_df_display = filtered_df[existing_columns].copy()
+    
+    if 'percentual_cobertura' in filtered_df_display.columns:
+        filtered_df_display['percentual_cobertura'] = filtered_df_display['percentual_cobertura'].apply(
+            lambda x: f"{x:.1f}%".replace(".", ",")
+        )
+    
+    if 'custo1' in filtered_df_display.columns:
+        filtered_df_display['custo1'] = filtered_df_display['custo1'].apply(
+            lambda x: formatar_moeda(x) if not pd.isna(x) else ""
+        )
+    
+    # Calcular valor total estimado, se possível
+    valor_total = None
+    if 'Sug 1M' in filtered_df.columns and 'custo1' in filtered_df.columns:
+        # Tentar converter para numérico (pode já ser string formatada)
+        filtered_df['Sug_1M_num'] = pd.to_numeric(filtered_df['Sug 1M'], errors='coerce')
+        filtered_df['custo1_num'] = pd.to_numeric(filtered_df['custo1'], errors='coerce')
+        
+        # Calcular o valor total
+        filtered_df['valor_estimado'] = filtered_df['Sug_1M_num'] * filtered_df['custo1_num']
+        valor_total = filtered_df['valor_estimado'].sum()
+    
+    # Criar tabela aprimorada com filtro case-insensitive
+    table = dash_table.DataTable(
+        id='produtos-criticidade-table',  # ID único para a tabela
+        columns=[{"name": col_rename.get(col, col), "id": col} for col in existing_columns],
+        data=filtered_df_display.to_dict("records"),
+        page_size=10,  # Aumentado para mostrar mais produtos por página
+        style_table={"overflowX": "auto"},
+        style_cell={
+            "textAlign": "left",
+            "padding": "10px 15px",
+            "fontFamily": "Montserrat",
+            "fontSize": "14px"
+        },
+        style_header={
+            "backgroundColor": "rgb(240,240,240)",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "fontSize": "14px",
+            "fontFamily": "Montserrat"
+        },
+        style_data_conditional=[
+            {
+                "if": {"column_id": "percentual_cobertura"},
+                "fontWeight": "bold",
+                "color": "darkred" if selected_criticidade == "Crítico" else 
+                        "orange" if selected_criticidade == "Muito Baixo" else
+                        color['warning'] if selected_criticidade == "Baixo" else
+                        "green" if selected_criticidade == "Adequado" else color['secondary']
+            },
+            {
+                "if": {"column_id": "custo1"},
+                "fontWeight": "bold"
+            },
+            {
+                "if": {"row_index": "odd"},
+                "backgroundColor": "rgb(248, 248, 248)"
+            }
+        ],
+        filter_action="native",
+        sort_action="native",
+        sort_mode="multi",
+        export_format="xlsx",
+        # Configuração para tornar o filtro case-insensitive
+        filter_options={
+            'case': 'insensitive'   # Ignora maiúsculas/minúsculas nos filtros
+        }
+    )
+    
+    # Adicionar resumo acima da tabela
+    total_categoria = len(filtered_df)
+    summary = html.Div([
+        html.P([
+            f"Exibindo todos os ", 
+            html.Strong(formatar_numero(total_categoria)), 
+            f" produtos com criticidade ", 
+            html.Strong(selected_criticidade),
+            valor_total and f". Valor estimado de compra: " or "",
+            valor_total and html.Strong(formatar_moeda(valor_total)) or ""
+        ], style={"marginBottom": "1rem", "fontSize": "0.9rem", "color": "#666"})
+    ])
+    
+    return header_text, html.Div([summary, table])
+
+# """"""""""""""""""""""""""""""""""""""""""""""""""""""
+# Geração de gráficos de consumo de produtos
+# """"""""""""""""""""""""""""""""""""""""""""""""""""""
+
+def criar_grafico_simulado(produto, valores, meses_labels):
+    """
+    Cria um gráfico simulado quando as colunas não estão no formato esperado.
+    
+    Args:
+        produto: Série com os dados do produto
+        valores: Lista de valores mensais
+        meses_labels: Lista de rótulos para os meses
+    
+    Returns:
+        Uma figura Plotly configurada
+    """
+    try:
+        # Obter as sugestões de compra
+        sug_1m = float(produto['Sug 1M']) if 'Sug 1M' in produto else 0
+        sug_3m = float(produto['Sug 3M']) if 'Sug 3M' in produto else 0
+        
+        # Nome do produto
+        nome_produto = produto.get('desc_produto', produto.get('Produto', f"Produto {produto.get('cd_produto', '')}"))
+        
+        # Criar o gráfico
+        fig = make_subplots(specs=[[{"secondary_y": False}]])
+        
+        # Adicionar linha de consumo mensal
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=valores,
+                mode='lines+markers+text',
+                name='Consumo',
+                line=dict(color='#0077B6', width=3),
+                marker=dict(size=8, color='#0077B6'),
+                text=[str(int(v)) for v in valores],
+                textposition='top center',
+                textfont=dict(size=10)
+            )
+        )
+        
+        # Adicionar barras para Sugestão 1M e 3M
+        x_all = meses_labels + ['Sugestão\n1M', 'Sugestão\n3M']
+        
+        # Adicionar barra para Sugestão 1M
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n1M'],
+                y=[sug_1m],
+                name='Sugestão 1M',
+                marker_color='#3CB371',
+                text=[str(int(sug_1m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Adicionar barra para Sugestão 3M 
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n3M'],
+                y=[sug_3m],
+                name='Sugestão 3M',
+                marker_color='#3CB371',
+                text=[str(int(sug_3m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Configurar layout
+        fig.update_layout(
+            title=f"Consumo Mensal - {nome_produto}",
+            title_font=dict(size=16, family="Montserrat", color='#001514'),
+            xaxis=dict(
+                title="",
+                tickmode='array',
+                tickvals=x_all,
+                ticktext=x_all,
+                tickangle=-45,
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            yaxis=dict(
+                title="Quantidade",
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=40, r=40, t=80, b=80),
+            height=500
+        )
+        
+        # Adicionar linha horizontal no zero
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=0,
+            x1=len(x_all) - 1,
+            y1=0,
+            line=dict(color="black", width=1)
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erro ao gerar gráfico simulado: {str(e)}")
+        # Retornar um gráfico de erro
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Erro ao gerar gráfico simulado: {str(e)}",
+            showarrow=False,
+            font=dict(size=12, color="red")
+        )
+        return fig
+
+def criar_grafico_produto(df_produto, cd_produto):
+    """
+    Cria um gráfico de consumo mensal para um produto específico,
+    similar ao da imagem de referência.
+    
+    Args:
+        df_produto: DataFrame contendo os dados dos produtos
+        cd_produto: Código do produto para gerar o gráfico
+    
+    Returns:
+        Uma figura Plotly configurada
+    """
+    try:
+        # Filtrar o produto específico
+        produto = df_produto[df_produto['cd_produto'] == cd_produto].iloc[0]
+        
+        # Obter colunas que representam meses (formato: YYYY_MM)
+        colunas_meses = [col for col in df_produto.columns if col.startswith('202')]
+        
+        # Se não houver colunas de meses no formato YYYY_MM, verificar outros formatos possíveis
+        if not colunas_meses:
+            # Tentar encontrar colunas numéricas que possam representar meses
+            colunas_numericas = [col for col in df_produto.columns 
+                                if isinstance(col, str) and col not in ['cd_produto', 'desc_produto', 'estoque_11-03-25', 
+                                                                       'Media 3M', 'Sug 1M', 'Sug 3M', 'custo1', 'Fornecedor1']]
+            
+            # Se tivermos pelo menos 12 colunas numéricas, podemos assumir que são meses
+            if len(colunas_numericas) >= 12:
+                colunas_meses = colunas_numericas[:14]  # Limitar a 14 meses como no exemplo
+                
+                # Criar rótulos simulados de meses (Jan-24, Fev-24, etc.)
+                meses_labels = [
+                    'Jan-24', 'Fev-24', 'Mar-24', 'Abr-24', 'Mai-24', 'Jun-24', 
+                    'Jul-24', 'Ago-24', 'Set-24', 'Out-24', 'Nov-24', 'Dez-24', 
+                    'Jan-25', 'Fev-25'
+                ][:len(colunas_meses)]
+                
+                # Simular valores se estiverem faltando
+                valores = []
+                for col in colunas_meses:
+                    try:
+                        val = float(produto[col])
+                        valores.append(val)
+                    except:
+                        valores.append(0)  # Valor padrão se não conseguir converter
+                
+                return criar_grafico_simulado(produto, valores, meses_labels)
+        
+        colunas_meses.sort()  # Garantir ordem cronológica
+        
+        # Extrair valores mensais de consumo
+        valores = []
+        for col in colunas_meses:
+            try:
+                valores.append(float(produto[col]))
+            except (ValueError, TypeError):
+                # Se não conseguir converter para float, usar 0
+                valores.append(0)
+        
+        # Obter as sugestões de compra
+        sug_1m = float(produto['Sug 1M']) if 'Sug 1M' in produto else 0
+        sug_3m = float(produto['Sug 3M']) if 'Sug 3M' in produto else 0
+        
+        # Criar rótulos para os meses no formato "MMM-YY"
+        meses_labels = []
+        for col in colunas_meses:
+            ano, mes = col.split('_')
+            ano_curto = ano[2:]  # Pegar só os dois últimos dígitos do ano
+            # Converter mês numérico para nome abreviado
+            mes_nomes = {
+                '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
+                '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+                '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
+            }
+            mes_nome = mes_nomes.get(mes, mes)
+            meses_labels.append(f"{mes_nome}-{ano_curto}")
+        
+        # Criar o gráfico
+        fig = make_subplots(specs=[[{"secondary_y": False}]])
+        
+        # Adicionar linha de consumo mensal
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=valores,
+                mode='lines+markers+text',
+                name='Consumo',
+                line=dict(color='#0077B6', width=3),
+                marker=dict(size=8, color='#0077B6'),
+                text=[str(int(v)) for v in valores],
+                textposition='top center',
+                textfont=dict(size=10)
+            )
+        )
+        
+        # Adicionar barras para Sugestão 1M e 3M
+        x_all = meses_labels + ['Sugestão\n1M', 'Sugestão\n3M']
+        
+        # Adicionar barra para Sugestão 1M
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n1M'],
+                y=[sug_1m],
+                name='Sugestão 1M',
+                marker_color='#3CB371',
+                text=[str(int(sug_1m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Adicionar barra para Sugestão 3M 
+        fig.add_trace(
+            go.Bar(
+                x=['Sugestão\n3M'],
+                y=[sug_3m],
+                name='Sugestão 3M',
+                marker_color='#3CB371',
+                text=[str(int(sug_3m))],
+                textposition='outside',
+                width=[0.6]
+            )
+        )
+        
+        # Configurar layout
+        fig.update_layout(
+            title=f"Consumo Mensal - {produto['desc_produto']}",
+            title_font=dict(size=16, family="Montserrat", color='#001514'),
+            xaxis=dict(
+                title="",
+                tickmode='array',
+                tickvals=x_all,
+                ticktext=x_all,
+                tickangle=-45,
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            yaxis=dict(
+                title="Quantidade",
+                gridcolor='rgba(0,0,0,0.1)'
+            ),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=40, r=40, t=80, b=80),
+            height=500
+        )
+        
+        # Adicionar linha horizontal no zero
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=0,
+            x1=len(x_all) - 1,
+            y1=0,
+            line=dict(color="black", width=1)
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erro ao gerar gráfico para o produto {cd_produto}: {str(e)}")
+        # Retornar um gráfico de erro
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Erro ao gerar gráfico: {str(e)}",
+            showarrow=False,
+            font=dict(size=12, color="red")
+        )
+        return fig
+
 # =============================================================================
 # Callback para renderizar o conteúdo conforme a URL
 # =============================================================================
@@ -3203,6 +4285,10 @@ def render_page_content(pathname, data, selected_client, selected_data_type):
         return get_predicao_layout(data), None
     elif pathname == "/faturamento/anual": 
         return get_faturamento_anual_layout(data), None
+    elif pathname == "/estoque/vendas-atipicas":
+        return get_vendas_atipicas_layout(data), None
+    elif pathname == "/estoque/produtos":
+        return get_produtos_layout(data), None
     elif pathname == "/chat" or pathname == "/app/": 
         return get_chat_layout(data), None
     
@@ -3263,6 +4349,8 @@ def load_data_callback(selected_client, selected_data_type):
         "df_fat_Anual": data["df_fat_Anual"].to_json(date_format='iso', orient='split') if data["df_fat_Anual"] is not None else None,
         "df_fat_Anual_Geral": data["df_fat_Anual_Geral"].to_json(date_format='iso', orient='split') if data["df_fat_Anual_Geral"] is not None else None,
         "df_fat_Mensal": data["df_fat_Mensal"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal"] is not None else None,
+        "df_Vendas_Atipicas": data["df_Vendas_Atipicas"].to_json(date_format='iso', orient='split') if data["df_Vendas_Atipicas"] is not None else None,
+        "df_relatorio_produtos": data["df_relatorio_produtos"].to_json(date_format='iso', orient='split') if "df_relatorio_produtos" in data and data["df_relatorio_produtos"] is not None else None,
         "company_context": data["company_context"],
         "segmentos_context": data["segmentos_context"]
     }
@@ -3333,12 +4421,22 @@ def responde(n_clicks, user_input, chat_history, data, selected_client):
     
     # 3. Importar dataframes
     if data:
+        #segmentacao de clientes
         df = pd.read_json(io.StringIO(data["df"]), orient='split') if data.get("df") else None
         df_RC_Mensal = pd.read_json(io.StringIO(data["df_RC_Mensal"]), orient='split') if data.get("df_RC_Mensal") else None
         df_RC_Trimestral = pd.read_json(io.StringIO(data["df_RC_Trimestral"]), orient='split') if data.get("df_RC_Trimestral") else None
         df_RC_Anual = pd.read_json(io.StringIO(data["df_RC_Anual"]), orient='split') if data.get("df_RC_Anual") else None
         df_RT_Anual = pd.read_json(io.StringIO(data["df_RT_Anual"]), orient='split') if data.get("df_RT_Anual") else None
         df_Previsoes = pd.read_json(io.StringIO(data["df_Previsoes"]), orient='split') if data.get("df_Previsoes") else None
+
+        #estoque
+        df_Vendas_Atipicas = pd.read_json(io.StringIO(data["df_Vendas_Atipicas"]), orient='split') if data.get("df_Vendas_Atipicas") else None
+        df_relatorio_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split') if data.get("df_relatorio_produtos") else None
+
+        #faturamento
+        df_fat_Anual = pd.read_json(io.StringIO(data["df_fat_Anual"]), orient='split') if data.get("df_fat_Anual") else None
+        df_fat_Anual_Geral = pd.read_json(io.StringIO(data["df_fat_Anual_Geral"]), orient='split') if data.get("df_fat_Anual_Geral") else None
+        df_fat_Mensal = pd.read_json(io.StringIO(data["df_fat_Mensal"]), orient='split') if data.get("df_fat_Mensal") else None
 
         # Obter contexto específico do cliente
         company_context = data.get("company_context", CONTEXTO_PADRAO)
@@ -3352,7 +4450,18 @@ def responde(n_clicks, user_input, chat_history, data, selected_client):
         - Contexto do negócio: {company_context}
         - Dataframes considerados úteis: {dataframes}
         - Categorias identificadas para a pergunta: {categorias}
-        - Dataframes: {df, df_RC_Mensal, df_RC_Trimestral, df_RC_Anual, df_RT_Anual, df_Previsoes}
+        - Dataframes: {
+            df, df_RC_Mensal, 
+            df_RC_Trimestral, 
+            df_RC_Anual, 
+            df_RT_Anual, 
+            df_Previsoes, 
+            df_Vendas_Atipicas, 
+            df_fat_Anual, 
+            df_fat_Anual_Geral, 
+            df_fat_Mensal, 
+            df_relatorio_produtos
+        }
         
         Perguntas sobre segmentos de clientes:
         - Para perguntas sobre os segmentos dos clientes, considere: {segmentos_context}
