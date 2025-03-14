@@ -1487,7 +1487,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         df_mensal_long = df_mensal.melt(id_vars="Mês", var_name="Ano", value_name="Faturamento")
         
         # Enhanced monthly sales chart with custom colors
-        custom_colors = [color['secondary'], color['accent'], gradient_colors['green_gradient'][1], color['warning']]
+        custom_colors = ["orange", "darkred", color['secondary'], color['accent'], gradient_colors['green_gradient'][1], color['warning']]
         
         fig_mensal = px.bar(
             df_mensal_long,
@@ -3802,10 +3802,10 @@ def update_produtos_criticidade_list(clickData_bar, data):
     # Determinar colunas de exibição
     display_columns = [
         "cd_produto", "desc_produto", "fornecedor","estoque_11-03-25", "Media 3M", 
-        "percentual_cobertura", "Sug 1M", 
+        "percentual_cobertura", "Sug 1M", "Sug 3M", 
         "Data1", "Quantidade1", "custo1", "Fornecedor1", 
-        "Data2", "Quantidade2", "custo2", "Fornecedor1",
-        "Data3", "Quantidade3", "custo3", "Fornecedor1"
+        "Data2", "Quantidade2", "custo2", "Fornecedor2",
+        "Data3", "Quantidade3", "custo3", "Fornecedor3"
     ]
     
     # Usar apenas colunas que existem no DataFrame
@@ -3836,10 +3836,6 @@ def update_produtos_criticidade_list(clickData_bar, data):
         "custo3": "Custo Unitário 3",
         "Fornecedor3": "Fornecedor 3"
     }
-    
-    # Adicionar fornecedor se disponível
-    if 'Fornecedor1' in filtered_df.columns:
-        existing_columns.append('Fornecedor1')
     
     # Formatação especial para valores monetários e percentuais
     filtered_df_display = filtered_df[existing_columns].copy()
