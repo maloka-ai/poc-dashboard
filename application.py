@@ -707,7 +707,7 @@ def create_sidebar(client=None, available_data_types=None):
             # Primeiro Collapse: "Meus Clientes" - Análises de cliente
             html.Div([
                 dbc.Button(
-                    [html.I(className="fas fa-users me-2"), "Gestão de Clientes"],
+                    [html.I(className="fas fa-users me-2"), "Relacionamento com Clientes"],
                     id="clientes-collapse-button",
                     color="link",
                     style={
@@ -786,7 +786,7 @@ def create_sidebar(client=None, available_data_types=None):
             # Segunda Collapse: "Faturamento" - Análise financeira
             html.Div([
                 dbc.Button(
-                    [html.I(className="fas fa-chart-line me-2"), "Desempenho Comercial"],
+                    [html.I(className="fas fa-chart-line me-2"), "Vendas"],
                     id="faturamento-collapse-button",
                     color="link",
                     style={
@@ -810,6 +810,13 @@ def create_sidebar(client=None, available_data_types=None):
                                 style=nav_link_style,
                                 className="my-1"
                             ),
+                            dbc.NavLink(
+                                [html.I(className="fas fa-exclamation-triangle me-2"), "Vendas Atípicas"], 
+                                href="/estoque/vendas-atipicas", 
+                                active="exact",
+                                style=nav_link_style,
+                                className="my-1"
+                            ),
                         ],
                         vertical=True,
                         pills=True,
@@ -823,7 +830,7 @@ def create_sidebar(client=None, available_data_types=None):
             # Terceira Collapse: "Estoque" - Gestão de estoque
             html.Div([
                 dbc.Button(
-                    [html.I(className="fas fa-boxes me-2"), "Estoque"],
+                    [html.I(className="fas fa-boxes me-2"), "Gestão do Estoque"],
                     id="estoque-collapse-button",
                     color="link",
                     style={
@@ -841,15 +848,8 @@ def create_sidebar(client=None, available_data_types=None):
                     dbc.Nav(
                         [
                             dbc.NavLink(
-                                [html.I(className="fas fa-exclamation-triangle me-2"), "Vendas Atípicas"], 
-                                href="/estoque/vendas-atipicas", 
-                                active="exact",
-                                style=nav_link_style,
-                                className="my-1"
-                            ),
-                            dbc.NavLink(
-                                [html.I(className="fas fa-exclamation-circle me-2"), "Relatório de Produtos"], 
-                                href="/estoque/produtos", 
+                                [html.I(className="fas fa-exclamation-circle me-2"), "Recomendação de Compras"], 
+                                href="/estoque/produtos",
                                 active="exact",
                                 style=nav_link_style,
                                 className="my-1"
@@ -3800,8 +3800,13 @@ def update_produtos_criticidade_list(clickData_bar, data):
         return header_text, "Nenhum produto encontrado para a criticidade selecionada."
     
     # Determinar colunas de exibição
-    display_columns = ["cd_produto", "desc_produto", "estoque_11-03-25", "Media 3M", 
-                      "percentual_cobertura", "Sug 1M", "custo1"]
+    display_columns = [
+        "cd_produto", "desc_produto", "fornecedor","estoque_11-03-25", "Media 3M", 
+        "percentual_cobertura", "Sug 1M", 
+        "Data1", "Quantidade1", "custo1", "Fornecedor1", 
+        "Data2", "Quantidade2", "custo2", "Fornecedor1",
+        "Data3", "Quantidade3", "custo3", "Fornecedor1"
+    ]
     
     # Usar apenas colunas que existem no DataFrame
     existing_columns = [col for col in display_columns if col in filtered_df.columns]
@@ -3812,12 +3817,24 @@ def update_produtos_criticidade_list(clickData_bar, data):
     col_rename = {
         "cd_produto": "Código",
         "desc_produto": "Produto",
+        "fornecedor": "Fornecedor",
         "estoque_11-03-25": "Estoque Atual",
         "Media 3M": "Consumo Médio (3M)",
         "percentual_cobertura": "Cobertura (%)",
         "Sug 1M": "Sugestão (1M)",
-        "custo1": "Custo Unitário (R$)",
-        "Fornecedor1": "Fornecedor"
+        "Sug 3M": "Sugestão (3M)",
+        "Data1": "Data 1",
+        "Quantidade1": "Quantidade 1",
+        "custo1": "Custo Unitário 1",
+        "Fornecedor1": "Fornecedor 1",
+        "Data2": "Data 2",
+        "Quantidade2": "Quantidade 2",
+        "custo2": "Custo Unitário 2",
+        "Fornecedor2": "Fornecedor 2",
+        "Quantidade3": "Quantidade 3",
+        "Data3": "Data 3",
+        "custo3": "Custo Unitário 3",
+        "Fornecedor3": "Fornecedor 3"
     }
     
     # Adicionar fornecedor se disponível
