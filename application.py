@@ -27,6 +27,9 @@ from flask import Flask, redirect, url_for, session, request
 cache = diskcache.Cache("./cache")
 long_callback_manager = DiskcacheLongCallbackManager(cache)
 
+cache.reset('size', int(1e9))  # Limite de 1GB para o cache
+
+
 # =============================================================================
 # Funções auxiliares pro chat
 # =============================================================================
@@ -311,6 +314,7 @@ def load_data(client, data_type):
         client (str): Nome do cliente (ex: 'BENY', 'CLIENTE2')
         data_type (str): Tipo de dados ('PF' ou 'PJ')
     """
+    print(f"[CACHE] Verificando cache para {client}_{data_type}")
     print("Carrega dados para um cliente e tipo específicos")
     # Verificar formato esperado: dados/{cliente}/Dados_{cliente}_{data_type}
     expected_path = os.path.join("dados", client, f"Dados_{client}_{data_type}")
@@ -382,7 +386,7 @@ def load_data(client, data_type):
     # Obter contexto específico do cliente
     company_context = get_client_context(client)
     segmentos_context = get_client_segmentos(client)
-
+    print(f"[CACHE] Dados carregados para {client}_{data_type}")
     return {
         "df": df,
         "df_RC_Mensal": df_RC_Mensal,
@@ -1103,7 +1107,7 @@ def display_page(pathname):
         
         # Layout do dashboard
         return html.Div([
-            dcc.Store(id='selected-data'),
+            dcc.Store(id='selected-data', storage_type='session'),
             dcc.Store(id='selected-client', data=cliente),
             dcc.Store(id='selected-data-type', data="PF"),
             dcc.Store(id='last-data-load-time', data=time.time()),
@@ -4221,44 +4225,36 @@ def criar_grafico_produto(df_produto, cd_produto):
     Output("loading-output-overlay", "children"),
     Input("url", "pathname"),
     Input("selected-data", "data"),
-    Input("selected-client", "data"),
-    Input("selected-data-type", "data"),
     prevent_initial_call=True
 )
-def render_page_content(pathname, data, selected_client, selected_data_type):       
-    # Verificar se estamos em uma página de administração (que não precisa de dados)
-    if pathname is not None and pathname.startswith("/admin"):
-        # Renderiza páginas de admin sem verificar dados
-        return admin_layout(), None
-    
-    # Verificar se não temos dados e precisamos carregar
+def render_page_content(pathname, data):       
+    # Verificar se temos dados carregados e válidos
     if data is None:
-        # Verificar se temos cliente e tipo de dados selecionados
-        if selected_client is None or selected_data_type is None:
-            # Sem cliente ou tipo de dados selecionado - exibir mensagem para escolher
-            return html.Div([
-                html.Div(className="text-center", style={"marginTop": "20%"},
-                    children=[
-                        html.H4("Selecione um cliente e tipo de dados", className="mb-3"),
-                        html.P("Use o menu lateral para escolher um cliente e o tipo de dados (PF/PJ)")
-                    ]
-                )
-            ], style=content_style), None
-        else:
-            # Temos cliente e tipo de dados, mas os dados ainda não foram carregados
-            # Iniciar o carregamento de dados através de outro callback
-            print(f"**************** Solicitando carregamento de dados para {selected_client} - {selected_data_type}")
-            
-            # Exibir tela de carregamento
-            return html.Div([
-                html.Div(className="text-center", style={"marginTop": "20%"},
-                    children=[
-                        html.Div(className="loading-spinner mb-4"),
-                        html.H4(f"Carregando dados para {selected_client} - {selected_data_type}"),
-                        html.P("Por favor, aguarde...")
-                    ]
-                )
-            ], style=content_style), None
+        # Verificar se temos cliente e tipo de dados no store
+        return html.Div([
+            html.Div(className="text-center", style={"marginTop": "20%"},
+                children=[
+                    html.H4("Carregando dados...", className="mb-3"),
+                    html.P("Aguarde enquanto os dados são preparados."),
+                    html.Div(className="loading-spinner")
+                ]
+            )
+        ], style=content_style), None
+    
+    # Verificar se os dados contêm a chave de identificação
+    if 'client_info' not in data:
+        return html.Div([
+            html.Div(className="text-center", style={"marginTop": "20%"},
+                children=[
+                    html.H4("Dados incompletos", className="mb-3"),
+                    html.P("Os dados carregados não contêm as informações necessárias."),
+                    html.P("Tente selecionar novamente o cliente e o tipo de dados.")
+                ]
+            )
+        ], style=content_style), None
+    
+    # Log para depuração
+    print(f"Renderizando {pathname} com dados do cliente {data['client_info']}")
     
     # Se chegamos aqui, os dados estão disponíveis
     # Pequeno delay para melhor experiência do usuário
@@ -4316,26 +4312,33 @@ def render_page_content(pathname, data, selected_client, selected_data_type):
     Output("selected-data", "data"),
     Input("selected-client", "data"),
     Input("selected-data-type", "data"),
+    State("selected-data", "data"),
     prevent_initial_call=True
 )
-def load_data_callback(selected_client, selected_data_type):
-    if selected_client is None or selected_data_type is None:
+def load_data_callback(selected_client, selected_data_type, current_data):
+    # Verificar se os inputs são válidos
+    if not selected_client or not selected_data_type:
         return None
     
-    # Carrega os dados
+    # Criar uma chave de cache consistente
+    cache_key = f"{selected_client}_{selected_data_type}"
+    
+    # Se já temos dados em cache para este cliente/tipo, use-os
+    if current_data and 'client_info' in current_data and current_data['client_info'] == cache_key:
+        print(f"Usando dados em cache para {cache_key}")
+        return current_data
+    
+    # Senão, carregue os dados
     print(f"**************** Carregando dados para {selected_client} - {selected_data_type}")
     data = load_data(selected_client, selected_data_type)
-    
-    if data.get("error", False):
-        return None
     
     if data.get("error", False):
         print(f"Erro ao carregar dados: {data.get('message', 'Erro desconhecido')}")
         return None
     
-    # Serializar os DataFrames antes de retorná-los
-    print(f"Dados carregados com sucesso para {selected_client} - {selected_data_type}")
-    return {
+    # Crie um objeto com os dados serializados e a informação do cliente
+    cached_data = {
+        "client_info": cache_key,
         "df": data["df"].to_json(date_format='iso', orient='split') if data["df"] is not None else None,
         "df_RC_Mensal": data["df_RC_Mensal"].to_json(date_format='iso', orient='split') if data["df_RC_Mensal"] is not None else None,
         "df_RC_Trimestral": data["df_RC_Trimestral"].to_json(date_format='iso', orient='split') if data["df_RC_Trimestral"] is not None else None,
@@ -4350,23 +4353,32 @@ def load_data_callback(selected_client, selected_data_type):
         "company_context": data["company_context"],
         "segmentos_context": data["segmentos_context"]
     }
+    
+    print(f"Dados carregados com sucesso para {selected_client} - {selected_data_type}")
+    return cached_data
 
 @application.callback(
-    Output("selected-data-type", "data"),
-    Output("selected-data", "data", allow_duplicate=True),  # Limpar os dados atuais
+    Output("selected-data", "data", allow_duplicate=True),
     Input("data-type-selection", "value"),
     State("selected-client", "data"),
+    State("selected-data", "data"),
     prevent_initial_call=True
 )
-def update_data_type(selected_type, selected_client):
-    if selected_type is None:
-        return dash.no_update, dash.no_update
+def update_data_type(selected_type, selected_client, current_data):
+    if selected_type is None or selected_client is None:
+        return dash.no_update
     
-    print(f"Alterando tipo de dados para: {selected_type}")
+    # Crie a chave de cache
+    cache_key = f"{selected_client}_{selected_type}"
     
-    # Limpa os dados atuais para forçar o recarregamento
-    # Retornamos None para o selected-data para forçar o recarregamento
-    return selected_type, None
+    # Se já temos os dados e são do mesmo tipo, não recarregue
+    if current_data and 'client_info' in current_data and current_data['client_info'] == cache_key:
+        print(f"Usando cache existente para {cache_key}")
+        return dash.no_update
+    
+    # Caso contrário, retorne None para forçar o carregamento dos dados corretos
+    print(f"Cache inválido para {cache_key}. Forçando recarregamento.")
+    return None
 # =============================================================================
 # Callbacks específicos para atualizar componentes nas páginas
 # =============================================================================
