@@ -421,6 +421,44 @@ def formatar_numero(valor, decimais=0):
     formato = f"{{:,.{decimais}f}}"
     return formato.format(valor).replace(",", "X").replace(".", ",").replace("X", ".")
 
+# Função específica para lidar com o formato ISO que você está recebendo
+def format_iso_date(date_str):
+    if date_str == '-' or not date_str:
+        return '-'
+    
+    try:
+        # Específico para o formato que você está recebendo: 2025-01-06T00:00:00.000
+        if isinstance(date_str, str) and 'T' in date_str:
+            # Pega apenas a parte da data (antes do T)
+            date_part = date_str.split('T')[0]
+            # Divide por traços para obter ano, mês e dia
+            year, month, day = date_part.split('-')
+            return f"{day}/{month}/{year}"
+            
+        # Se for uma string de data em outro formato
+        elif isinstance(date_str, str):
+            from datetime import datetime
+            try:
+                # Tenta vários formatos comuns
+                for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%Y/%m/%d', '%d/%m/%Y']:
+                    try:
+                        date_obj = datetime.strptime(date_str, fmt)
+                        return date_obj.strftime('%d/%m/%Y')
+                    except ValueError:
+                        continue
+            except:
+                return date_str
+                
+        # Se for um objeto datetime
+        elif hasattr(date_str, 'strftime'):
+            return date_str.strftime('%d/%m/%Y')
+            
+        # Retorna o original se nenhum método funcionar
+        return date_str
+    except Exception as e:
+        # Em caso de qualquer erro, retorne o original
+        return f"{date_str}"
+
 # Define a base color palette with gradients
 color = {
     'primary': '#001514',
@@ -3352,7 +3390,7 @@ def get_produtos_layout(data):
     """
     if data.get("df_relatorio_produtos") is None:
         return html.Div([
-            html.H2("Análise de Criticidade de Estoque", className="dashboard-title"),
+            html.H2("Análise de Cobertura de Estoque", className="dashboard-title"),
             create_card(
                 "Dados Indisponíveis",
                 html.Div([
@@ -3541,7 +3579,7 @@ def get_produtos_layout(data):
 
     # Layout final
     layout = html.Div([
-        html.H2("Análise de Criticidade de Estoque", className="dashboard-title"),
+        html.H2("Análise de Cobertura de Estoque", className="dashboard-title"),
         
         # Linha de cartões de métricas
         metrics_row,
@@ -3550,7 +3588,7 @@ def get_produtos_layout(data):
         dbc.Row([
             dbc.Col(
                 create_card(
-                    "Produtos por Nível de Criticidade",
+                    "Produtos por Nível de Cobertura",
                     dcc.Graph(id="produtos-criticidade-bar", figure=fig_criticidade, config={"responsive": True})
                 ),
                 lg=6, md=12
@@ -3566,11 +3604,11 @@ def get_produtos_layout(data):
         
         # Segunda linha: Tabela detalhada de produtos por criticidade
         create_card(
-            html.Div(id="produtos-criticidade-header", children="Produtos do Nível de Criticidade Selecionado"),
+            html.Div(id="produtos-criticidade-header", children="Produtos do Nível de Cobertura Selecionado"),
             html.Div(
                 id="produtos-criticidade-list",
                 children=html.Div([
-                    html.P("Selecione um nível de criticidade nos gráficos acima para ver os produtos.", className="text-center text-muted my-4"),
+                    html.P("Selecione um nível de cobertura nos gráficos acima para ver os produtos.", className="text-center text-muted my-4"),
                     html.Div(className="text-center", children=[
                         html.I(className="fas fa-mouse-pointer fa-2x text-muted"),
                         html.P("Clique em uma fatia, barra ou ponto para visualizar detalhes", className="text-muted mt-2")
@@ -3599,9 +3637,9 @@ def get_produtos_layout(data):
         
         # Quarta linha: Card explicativo
         create_card(
-            "Interpretação dos Níveis de Criticidade",
+            "Interpretação dos Níveis de Cobertura",
             html.Div([
-                html.P("A análise de criticidade de estoque é baseada no percentual de cobertura, calculado como a relação entre o estoque atual e o consumo médio trimestral:"),
+                html.P("A análise de cobertura de estoque é baseada no percentual de cobertura, calculado como a relação entre o estoque atual e o consumo médio trimestral:"),
                 html.Ul([
                     html.Li([html.Span("Crítico (0-30%): ", style={"color": "darkred", "fontWeight": "bold"}), 
                            "Necessidade urgente de reposição. Risco iminente de ruptura de estoque."]),
@@ -3702,18 +3740,84 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
         
         # Adicionar título legível e detalhes
         header = html.Div([
-            html.H5(f"Consumo do Produto - {desc_produto}", className="mb-2"),
+            # Informações de fornecedor 1
             html.Div([
-                html.Span("Código: ", className="font-weight-bold"),
-                html.Span(f"{cd_produto}", className="mr-3"),
-                
-                # Adicionar mais detalhes se disponíveis, como estoque atual e média
-                html.Span("Estoque atual: ", className="font-weight-bold ml-3") if 'estoque_11-03-25' in produto_selecionado else None,
-                html.Span(f"{produto_selecionado.get('estoque_11-03-25', '')}", className="mr-3") if 'estoque_11-03-25' in produto_selecionado else None,
-                
-                html.Span("Média 3M: ", className="font-weight-bold ml-3") if 'Media 3M' in produto_selecionado else None,
-                html.Span(f"{produto_selecionado.get('Media 3M', '')}", className="mr-3") if 'Media 3M' in produto_selecionado else None
-            ], className="text-muted mb-3")
+                html.H6("Últimas 3 Compras", className="mt-4 mb-3"),
+                html.Div([
+                    # Usando blocos com grande espaçamento horizontal
+                    html.Div([
+                        html.Span("Data: ", className="font-weight-bold"),
+                        html.Span(format_iso_date(produto_selecionado.get('Data1', '-')))
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Qtd: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('Quantidade1', '-')}")
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Custo: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('custo1', '-')}")
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Fornecedor: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('Fornecedor1', '-')}")
+                    ], style={"display": "inline-block"})
+                ], className="text-muted")
+            ], className="mt-4 pb-3 border-bottom") if 'Data1' in produto_selecionado or 'Quantidade1' in produto_selecionado or 'custo1' in produto_selecionado or 'Fornecedor1' in produto_selecionado else None,
+            
+            # Informações de fornecedor 2
+            html.Div([
+                html.Div([
+                    # Usando blocos com grande espaçamento horizontal
+                    html.Div([
+                        html.Span("Data: ", className="font-weight-bold"),
+                        html.Span(format_iso_date(produto_selecionado.get('Data2', '-')))
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Qtd: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('Quantidade2', '-')}")
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Custo: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('custo2', '-')}")
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Fornecedor: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('Fornecedor2', '-')}")
+                    ], style={"display": "inline-block"})
+                ], className="text-muted")
+            ], className="mt-4 pb-3 border-bottom") if 'Data2' in produto_selecionado or 'Quantidade2' in produto_selecionado or 'custo2' in produto_selecionado or 'Fornecedor2' in produto_selecionado else None,
+            
+            # Informações de fornecedor 3
+            html.Div([
+                html.Div([
+                    # Usando blocos com grande espaçamento horizontal
+                    html.Div([
+                        html.Span("Data: ", className="font-weight-bold"),
+                        html.Span(format_iso_date(produto_selecionado.get('Data3', '-')))
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Qtd: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('Quantidade3', '-')}")
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Custo: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('custo3', '-')}")
+                    ], style={"display": "inline-block", "marginRight": "60px"}),
+                    
+                    html.Div([
+                        html.Span("Fornecedor: ", className="font-weight-bold"),
+                        html.Span(f"{produto_selecionado.get('Fornecedor3', '-')}")
+                    ], style={"display": "inline-block"})
+                ], className="text-muted")
+            ], className="mt-4") if 'Data3' in produto_selecionado or 'Quantidade3' in produto_selecionado or 'custo3' in produto_selecionado or 'Fornecedor3' in produto_selecionado else None
         ])
         
         # Adicionar o gráfico com legenda explicativa
@@ -3758,7 +3862,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
     
     if not ctx.triggered:
         # No clicks yet
-        return "Produtos do Nível de Criticidade Selecionado", html.Div([
+        return "Produtos do Nível de Cobertura Selecionado", html.Div([
             html.P("Selecione um nível de criticidade nos gráficos acima para ver os produtos.", className="text-center text-muted my-4"),
             html.Div(className="text-center", children=[
                 html.I(className="fas fa-mouse-pointer fa-2x text-muted"),
@@ -3767,7 +3871,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
         ])
     
     if data is None or data.get("df_relatorio_produtos") is None:
-        return "Produtos do Nível de Criticidade Selecionado", "Dados não disponíveis."
+        return "Produtos do Nível de Cobertura Selecionado", "Dados não disponíveis."
     
     df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
     
@@ -3791,8 +3895,8 @@ def update_produtos_criticidade_list(clickData_bar, data):
         selected_criticidade = clickData_bar['points'][0]['x']
     
     if selected_criticidade is None:
-        return "Produtos do Nível de Criticidade Selecionado", html.Div([
-            html.P("Não foi possível identificar a criticidade selecionada.", className="text-center text-muted my-4")
+        return "Produtos do Nível de Cobertura Selecionado", html.Div([
+            html.P("Não foi possível identificar a cobertura selecionada.", className="text-center text-muted my-4")
         ])
     
     header_text = f"Produtos com Criticidade: {selected_criticidade}"
@@ -3805,7 +3909,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
     
     # Determinar colunas de exibição
     display_columns = [
-        "cd_produto", "desc_produto", "fornecedor","estoque_11-03-25", "Media 3M", 
+        "cd_produto", "desc_produto","estoque_11-03-25", "Media 3M", 
         "percentual_cobertura", "Sug 1M", "Sug 3M", 
         "Data1", "Quantidade1", "custo1", "Fornecedor1", 
         "Data2", "Quantidade2", "custo2", "Fornecedor2",
@@ -3821,7 +3925,6 @@ def update_produtos_criticidade_list(clickData_bar, data):
     col_rename = {
         "cd_produto": "Código",
         "desc_produto": "Produto",
-        "fornecedor": "Fornecedor",
         "estoque_11-03-25": "Estoque Atual",
         "Media 3M": "Consumo Médio (3M)",
         "percentual_cobertura": "Cobertura (%)",
@@ -4122,6 +4225,16 @@ def criar_grafico_produto(df_produto, cd_produto):
             }
             mes_nome = mes_nomes.get(mes, mes)
             meses_labels.append(f"{mes_nome}-{ano_curto}")
+
+        # Calcular a média móvel de 3 meses
+        media_movel_3m = []
+        for i in range(len(valores)):
+            if i < 2:  # Para os dois primeiros meses, não temos 3 meses completos
+                media_movel_3m.append(None)
+            else:
+                # Média dos 3 meses anteriores (incluindo o atual)
+                media = sum(valores[i-2:i+1]) / 3
+                media_movel_3m.append(media)
         
         # Criar o gráfico
         fig = make_subplots(specs=[[{"secondary_y": False}]])
@@ -4138,6 +4251,19 @@ def criar_grafico_produto(df_produto, cd_produto):
                 text=[str(int(v)) for v in valores],
                 textposition='top center',
                 textfont=dict(size=10)
+            )
+        )
+
+        # Adicionar linha de média móvel de 3 meses
+        fig.add_trace(
+            go.Scatter(
+                x=meses_labels,
+                y=media_movel_3m,
+                mode='lines',
+                name='Média Móvel 3M',
+                line=dict(color='#FF8C00', width=2, dash='dash'),
+                hoverinfo='text',
+                hovertext=[f'Média 3M: {round(m, 1)}' if m is not None else '' for m in media_movel_3m]
             )
         )
         
@@ -4822,7 +4948,7 @@ if __name__ == "__main__":
     os.makedirs("assets", exist_ok=True)
     
     print("Iniciando servidor Dashboard...")
-    server.config['DEBUG'] = True
+    server.config['DEBUG'] = False
     server.secret_key = 'maloka_ai_secret_key_2025'
     
     # Rode na porta padrão (127.0.0.1:5000)
