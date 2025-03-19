@@ -1856,36 +1856,6 @@ def get_segmentacao_layout(data):
         clickmode='event+select'
     )
     
-    # Create a pie chart for segment distribution
-    fig_pie = px.pie(
-        segment_counts,
-        values='Quantidade de Clientes',
-        names='Segmento',
-        color='Segmento',
-        color_discrete_map=cores_segmento,
-        template='plotly_white',
-        hole=0.4
-    )
-    
-    fig_pie.update_layout(
-        margin=dict(t=30, b=30, l=30, r=30),
-        height=450,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.2,
-            xanchor="center",
-            x=0.5
-        )
-    )
-    
-    fig_pie.update_traces(
-        textposition='inside',
-        textinfo='percent+label',
-        textfont=dict(size=12, family="Montserrat"),
-        pull=[0.1 if s == 'Campeões' else 0 for s in segment_counts['Segmento']]
-    )
-    
     # Layout with cards
     layout = html.Div(
         [
@@ -1896,32 +1866,21 @@ def get_segmentacao_layout(data):
             
             # Distribution row
             dbc.Row(
-                [
-                    dbc.Col(
-                        create_card(
-                            "Distribuição de Segmentos",
-                            dcc.Graph(
-                                id="segment-distribution",
-                                figure=fig_segments,
-                                config={"responsive": True, "displayModeBar": False}
-                            )
-                        ),
-                        lg=8, md=12
+            [
+                dbc.Col(
+                    create_card(
+                        "Distribuição de Segmentos",
+                        dcc.Graph(
+                            id="segment-distribution",
+                            figure=fig_segments,
+                            config={"responsive": True, "displayModeBar": False}
+                        )
                     ),
-                    dbc.Col(
-                        create_card(
-                            "Proporção de Segmentos",
-                            dcc.Graph(
-                                id="segment-pie",
-                                figure=fig_pie,
-                                config={"responsive": True, "displayModeBar": False}
-                            )
-                        ),
-                        lg=4, md=12
-                    ),
-                ],
-                className="mb-4",
-            ),
+                    width=12  # Ocupa toda a largura disponível
+                ),
+            ],
+            className="mb-4",
+        ),
             
             # Client list
             create_card(
@@ -3260,14 +3219,12 @@ def get_vendas_atipicas_layout(data):
     total_produtos_atipicos = len(df_atipicas)
     total_quantidade_atipica = df_atipicas['quantidade_atipica'].sum()
     media_por_produto = total_quantidade_atipica / total_produtos_atipicos if total_produtos_atipicos > 0 else 0
-    dias_unicos = df_atipicas['Dia'].nunique()
     
     # Criamos as métricas para a primeira linha de cards
     metrics = [
         {"title": "Total de Produtos Atípicos", "value": formatar_numero(total_produtos_atipicos), "color": color['primary']},
         {"title": "Quantidade Total Atípica", "value": formatar_numero(total_quantidade_atipica), "color": color['accent']},
-        {"title": "Média por Produto", "value": formatar_numero(media_por_produto, 1), "color": color['secondary']},
-        {"title": "Período Analisado", "value": f"{dias_unicos} dias", "color": color['success']}
+        {"title": "Média por Produto", "value": formatar_numero(media_por_produto, 1), "color": color['secondary']}
     ]
     
     metrics_row = create_metric_row(metrics)
@@ -3306,7 +3263,9 @@ def get_vendas_atipicas_layout(data):
             {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
             {"name": "Cliente", "id": "cliente"},
             {"name": "Produto", "id": "produto"},
-            {"name": "Estoque Atual", "id": "estoque_atualizado"}
+            {"name": "Estoque Atual", "id": "estoque_atualizado"},
+            {"name": "Critico", "id": "critico"}
+
         ],
         data=df_atipicas.reset_index().to_dict("records"),
         filter_action="native",
@@ -3444,6 +3403,11 @@ def get_produtos_layout(data):
     
     # Calcular métricas para a primeira linha de cards
     total_produtos = len(df_criticos)
+
+    # Criar uma Series com o total e concatenar com a contagem_criticidade
+    total_series = pd.Series([total_produtos], index=['Todos'])
+    contagem_criticidade = pd.concat([contagem_criticidade, total_series])
+
     produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
     produtos_baixos = len(df_criticos[df_criticos['criticidade'].isin(['Muito Baixo', 'Baixo'])])
     
@@ -3482,7 +3446,8 @@ def get_produtos_layout(data):
             'Muito Baixo': 'orange',
             'Baixo': color['warning'],
             'Adequado': gradient_colors['green_gradient'][0],
-            'Excesso': color['secondary']
+            'Excesso': color['secondary'],
+            'Todos': color['primary']
         },
         labels={'x': 'Nível de Criticidade', 'y': 'Quantidade de Produtos'},
         template='plotly_white'
@@ -3898,17 +3863,21 @@ def update_produtos_criticidade_list(clickData_bar, data):
             html.P("Não foi possível identificar a cobertura selecionada.", className="text-center text-muted my-4")
         ])
     
-    header_text = f"Produtos com Criticidade: {selected_criticidade}"
-    
-    # Filtrar TODOS os produtos desta criticidade
-    filtered_df = df_produtos[df_produtos["criticidade"] == selected_criticidade]
+    # Checar se foi selecionado "Todos"
+    if selected_criticidade == 'Todos':
+        header_text = "Todos os Produtos"
+        filtered_df = df_produtos  # Usar todo o DataFrame
+    else:
+        header_text = f"Produtos com Criticidade: {selected_criticidade}"
+        # Filtrar TODOS os produtos desta criticidade
+        filtered_df = df_produtos[df_produtos["criticidade"] == selected_criticidade]
     
     if filtered_df.empty:
         return header_text, "Nenhum produto encontrado para a criticidade selecionada."
     
     # Determinar colunas de exibição
     display_columns = [
-        "cd_produto", "desc_produto","estoque_atualizado", "Media 3M", 
+        "cd_produto", "desc_produto", "critico", "estoque_atualizado", "Media 3M", 
         "percentual_cobertura", "Sug 1M", "Sug 3M", 
         "Data1", "Quantidade1", "custo1", "Fornecedor1", 
         "Data2", "Quantidade2", "custo2", "Fornecedor2",
@@ -3924,6 +3893,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
     col_rename = {
         "cd_produto": "Código",
         "desc_produto": "Produto",
+        "critico": "Reposição Não-Local (Crítico)",
         "estoque_atualizado": "Estoque Atual",
         "Media 3M": "Consumo Médio (3M)",
         "percentual_cobertura": "Cobertura (%)",
@@ -4081,7 +4051,7 @@ def criar_grafico_simulado(produto, valores, meses_labels):
                 x=['Sugestão\n1M'],
                 y=[sug_1m],
                 name='Sugestão 1M',
-                marker_color='#3CB371',
+                marker_color='#0077B6',
                 text=[str(int(sug_1m))],
                 textposition='outside',
                 width=[0.6]
@@ -4094,7 +4064,7 @@ def criar_grafico_simulado(produto, valores, meses_labels):
                 x=['Sugestão\n3M'],
                 y=[sug_3m],
                 name='Sugestão 3M',
-                marker_color='#3CB371',
+                marker_color='#0077B6',
                 text=[str(int(sug_3m))],
                 textposition='outside',
                 width=[0.6]
@@ -4275,7 +4245,7 @@ def criar_grafico_produto(df_produto, cd_produto):
                 x=['Sugestão\n1M'],
                 y=[sug_1m],
                 name='Sugestão 1M',
-                marker_color='#3CB371',
+                marker_color='#0077B6',
                 text=[str(int(sug_1m))],
                 textposition='outside',
                 width=[0.6]
@@ -4288,7 +4258,7 @@ def criar_grafico_produto(df_produto, cd_produto):
                 x=['Sugestão\n3M'],
                 y=[sug_3m],
                 name='Sugestão 3M',
-                marker_color='#3CB371',
+                marker_color='#0077B6',
                 text=[str(int(sug_3m))],
                 textposition='outside',
                 width=[0.6]
