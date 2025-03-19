@@ -3305,9 +3305,8 @@ def get_vendas_atipicas_layout(data):
             {"name": "Data", "id": "Dia_formatada"},
             {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
             {"name": "Cliente", "id": "cliente"},
-            {"name": "Código Produto", "id": "cd_produto"},
             {"name": "Produto", "id": "produto"},
-            {"name": "Estoque Atual", "id": "estoque_11-03-25"}
+            {"name": "Estoque Atual", "id": "estoque_atualizado"}
         ],
         data=df_atipicas.reset_index().to_dict("records"),
         filter_action="native",
@@ -3417,9 +3416,9 @@ def get_produtos_layout(data):
             )
         else:
             # Se não tiver percentual_cobertura, verifica se tem as colunas para calcular
-            if 'estoque_11-03-25' in df_criticos.columns and 'Media 3M' in df_criticos.columns:
+            if 'estoque_atualizado' in df_criticos.columns and 'Media 3M' in df_criticos.columns:
                 # Calcular percentual de cobertura
-                df_criticos['percentual_cobertura'] = (df_criticos['estoque_11-03-25'] / df_criticos['Media 3M'] * 100).round(1)
+                df_criticos['percentual_cobertura'] = (df_criticos['estoque_atualizado'] / df_criticos['Media 3M'] * 100).round(1)
                 # Definir categorias de criticidade
                 df_criticos['criticidade'] = pd.cut(
                     df_criticos['percentual_cobertura'],
@@ -3434,7 +3433,7 @@ def get_produtos_layout(data):
                         html.Div([
                             html.P("Os dados não contêm as colunas necessárias para análise de criticidade.", className="text-center text-muted my-4"),
                             html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
-                            html.P("São necessárias as colunas: 'percentual_cobertura' ou 'estoque_11-03-25' e 'Media 3M'", 
+                            html.P("São necessárias as colunas: 'percentual_cobertura' ou 'estoque_atualizado' e 'Media 3M'", 
                                    className="text-muted text-center")
                         ])
                     )
@@ -3909,7 +3908,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
     
     # Determinar colunas de exibição
     display_columns = [
-        "cd_produto", "desc_produto","estoque_11-03-25", "Media 3M", 
+        "cd_produto", "desc_produto","estoque_atualizado", "Media 3M", 
         "percentual_cobertura", "Sug 1M", "Sug 3M", 
         "Data1", "Quantidade1", "custo1", "Fornecedor1", 
         "Data2", "Quantidade2", "custo2", "Fornecedor2",
@@ -3925,7 +3924,7 @@ def update_produtos_criticidade_list(clickData_bar, data):
     col_rename = {
         "cd_produto": "Código",
         "desc_produto": "Produto",
-        "estoque_11-03-25": "Estoque Atual",
+        "estoque_atualizado": "Estoque Atual",
         "Media 3M": "Consumo Médio (3M)",
         "percentual_cobertura": "Cobertura (%)",
         "Sug 1M": "Sugestão (1M)",
@@ -4172,7 +4171,7 @@ def criar_grafico_produto(df_produto, cd_produto):
         if not colunas_meses:
             # Tentar encontrar colunas numéricas que possam representar meses
             colunas_numericas = [col for col in df_produto.columns 
-                                if isinstance(col, str) and col not in ['cd_produto', 'desc_produto', 'estoque_11-03-25', 
+                                if isinstance(col, str) and col not in ['cd_produto', 'desc_produto', 'estoque_atualizado', 
                                                                        'Media 3M', 'Sug 1M', 'Sug 3M', 'custo1', 'Fornecedor1']]
             
             # Se tivermos pelo menos 12 colunas numéricas, podemos assumir que são meses
