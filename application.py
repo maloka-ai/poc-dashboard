@@ -3402,7 +3402,7 @@ def get_produtos_layout(data):
         dbc.Button(
             [
                 html.I(className="fas fa-filter me-2"), 
-                "Mostrar Apenas Produtos Críticos"
+                "Mostrar Produtos com Reposição Não-Local"
             ],
             id="btn-filtro-criticos",
             color="danger",
@@ -3424,12 +3424,6 @@ def get_produtos_layout(data):
 
     produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
     produtos_baixos = len(df_criticos[df_criticos['criticidade'].isin(['Muito Baixo', 'Baixo'])])
-    
-    # Calcular valor estimado para compra, se disponível
-    valor_estimado = None
-    if 'Sug 1M' in df_criticos.columns and 'custo1' in df_criticos.columns:
-        df_criticos['valor_estimado'] = df_criticos['Sug 1M'] * df_criticos['custo1']
-        valor_estimado = df_criticos['valor_estimado'].sum()
     
     # Contar produtos por cada categoria de criticidade para os cards de métrica
     produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
@@ -3727,12 +3721,26 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
         
         # Chamar a função para criar o gráfico
         fig = criar_grafico_produto(df_produtos, cd_produto)
-        
+
+        # Verificar se todos os custos são zero
+        def todos_custos_zerados():
+            custo1 = produto_selecionado.get('custo1', 'R$ 0,00')
+            custo2 = produto_selecionado.get('custo2', '0')
+            custo3 = produto_selecionado.get('custo3', '0')
+            
+            # Converter para string se for número
+            if not isinstance(custo1, str): custo1 = str(custo1)
+            if not isinstance(custo2, str): custo2 = str(custo2)
+            if not isinstance(custo3, str): custo3 = str(custo3)
+            
+            # Verificar se todos são zero ou vazios
+            return (custo1 == 'R$ 0,00' or custo1 == '') and (custo2 == '0' or custo2 == '') and (custo3 == '0' or custo3 == '')
+                
         # Adicionar título legível e detalhes
-        header = html.Div([
+        header = None if todos_custos_zerados() else html.Div([
             # Informações de fornecedor 1
+            html.H6("Últimas Compras", className="mt-4 mb-3"),
             html.Div([
-                html.H6("Últimas 3 Compras", className="mt-4 mb-3"),
                 html.Div([
                     # Usando blocos com grande espaçamento horizontal
                     html.Div([
@@ -3746,17 +3754,22 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
                     ], style={"display": "inline-block", "marginRight": "60px"}),
                     
                     html.Div([
-                        html.Span("Custo: ", className="font-weight-bold"),
+                        html.Span("Custo Unitário: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('custo1', '-')}")
                     ], style={"display": "inline-block", "marginRight": "60px"}),
                     
                     html.Div([
                         html.Span("Fornecedor: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('Fornecedor1', '-')}")
-                    ], style={"display": "inline-block"})
+                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor1') and produto_selecionado.get('Fornecedor1') != '0' and produto_selecionado.get('Fornecedor1') != 0 else None
                 ], className="text-muted")
-            ], className="mt-4 pb-3 border-bottom") if 'Data1' in produto_selecionado or 'Quantidade1' in produto_selecionado or 'custo1' in produto_selecionado or 'Fornecedor1' in produto_selecionado else None,
-            
+            ], className="mt-4 pb-3 border-bottom") if (
+            produto_selecionado.get('Fornecedor1') != '0' and 
+            produto_selecionado.get('Fornecedor1') != 0 or 
+            produto_selecionado.get('custo1') != 'R$ 0,00' and 
+            produto_selecionado.get('custo1') != 0) 
+            else None,
+
             # Informações de fornecedor 2
             html.Div([
                 html.Div([
@@ -3772,17 +3785,22 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
                     ], style={"display": "inline-block", "marginRight": "60px"}),
                     
                     html.Div([
-                        html.Span("Custo: ", className="font-weight-bold"),
+                        html.Span("Custo Unitário: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('custo2', '-')}")
                     ], style={"display": "inline-block", "marginRight": "60px"}),
                     
                     html.Div([
                         html.Span("Fornecedor: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('Fornecedor2', '-')}")
-                    ], style={"display": "inline-block"})
+                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor2') and produto_selecionado.get('Fornecedor2') != '0' and produto_selecionado.get('Fornecedor2') != 0 else None
                 ], className="text-muted")
-            ], className="mt-4 pb-3 border-bottom") if 'Data2' in produto_selecionado or 'Quantidade2' in produto_selecionado or 'custo2' in produto_selecionado or 'Fornecedor2' in produto_selecionado else None,
-            
+            ], className="mt-4 pb-3 border-bottom") if (
+            produto_selecionado.get('Fornecedor2') != '0' and 
+            produto_selecionado.get('Fornecedor2') != 0 or 
+            produto_selecionado.get('custo2') != '0' and 
+            produto_selecionado.get('custo2') != 0) 
+            else None,
+
             # Informações de fornecedor 3
             html.Div([
                 html.Div([
@@ -3798,16 +3816,21 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
                     ], style={"display": "inline-block", "marginRight": "60px"}),
                     
                     html.Div([
-                        html.Span("Custo: ", className="font-weight-bold"),
+                        html.Span("Custo Unitário: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('custo3', '-')}")
                     ], style={"display": "inline-block", "marginRight": "60px"}),
                     
                     html.Div([
                         html.Span("Fornecedor: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('Fornecedor3', '-')}")
-                    ], style={"display": "inline-block"})
+                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor3') and produto_selecionado.get('Fornecedor3') != '0' and produto_selecionado.get('Fornecedor3') != 0 else None
                 ], className="text-muted")
-            ], className="mt-4") if 'Data3' in produto_selecionado or 'Quantidade3' in produto_selecionado or 'custo3' in produto_selecionado or 'Fornecedor3' in produto_selecionado else None
+            ], className="mt-4 pb-3 border-bottom") if (
+            produto_selecionado.get('Fornecedor3') != '0' and 
+            produto_selecionado.get('Fornecedor3') != 0 or 
+            produto_selecionado.get('custo3') != '0' and 
+            produto_selecionado.get('custo3') != 0) 
+            else None,
         ])
         
         # Adicionar o gráfico com legenda explicativa
@@ -4209,17 +4232,6 @@ def update_produtos_criticidade_list(clickData_bar, filtro_ativo, data):
             lambda x: formatar_moeda(x) if not pd.isna(x) else ""
         )
     
-    # Calcular valor total estimado, se possível
-    valor_total = None
-    if 'Sug 1M' in filtered_df.columns and 'custo1' in filtered_df.columns:
-        # Tentar converter para numérico (pode já ser string formatada)
-        filtered_df['Sug_1M_num'] = pd.to_numeric(filtered_df['Sug 1M'], errors='coerce')
-        filtered_df['custo1_num'] = pd.to_numeric(filtered_df['custo1'], errors='coerce')
-        
-        # Calcular o valor total
-        filtered_df['valor_estimado'] = filtered_df['Sug_1M_num'] * filtered_df['custo1_num']
-        valor_total = filtered_df['valor_estimado'].sum()
-    
     # Criar tabela aprimorada com filtro case-insensitive
     table = dash_table.DataTable(
         id='produtos-criticidade-table',  # ID único para a tabela
@@ -4274,10 +4286,8 @@ def update_produtos_criticidade_list(clickData_bar, filtro_ativo, data):
         html.P([
             f"Exibindo todos os ", 
             html.Strong(formatar_numero(total_categoria)), 
-            f" produtos com criticidade ", 
-            html.Strong(selected_criticidade),
-            valor_total and f". Valor estimado de compra: " or "",
-            valor_total and html.Strong(formatar_moeda(valor_total)) or ""
+            f" produtos com cobertura: ", 
+            html.Strong(selected_criticidade)
         ], style={"marginBottom": "1rem", "fontSize": "0.9rem", "color": "#666"})
     ])
     
