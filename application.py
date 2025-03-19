@@ -3264,8 +3264,7 @@ def get_vendas_atipicas_layout(data):
             {"name": "Cliente", "id": "cliente"},
             {"name": "Produto", "id": "produto"},
             {"name": "Estoque Atual", "id": "estoque_atualizado"},
-            {"name": "Critico", "id": "critico"}
-
+            {"name": "Reposição Não-Local (Crítico)", "id": "critico"}
         ],
         data=df_atipicas.reset_index().to_dict("records"),
         filter_action="native",
@@ -3397,6 +3396,21 @@ def get_produtos_layout(data):
                         ])
                     )
                 ], style=content_style)
+
+    # Botão de filtro críticos (Toggle) - Adicionado
+    filtro_criticos = html.Div([
+        dbc.Button(
+            [
+                html.I(className="fas fa-filter me-2"), 
+                "Mostrar Apenas Produtos Críticos"
+            ],
+            id="btn-filtro-criticos",
+            color="danger",
+            className="mb-3",
+            style={"marginTop": "-2rem", "marginBottom": "1rem"}
+        ),
+        dcc.Store(id="filtro-criticos-ativo", data=False),
+    ], className="d-flex justify-content-end")
     
     # Contar produtos por categoria de criticidade
     contagem_criticidade = df_criticos['criticidade'].value_counts().sort_index()
@@ -3544,9 +3558,21 @@ def get_produtos_layout(data):
     # Layout final
     layout = html.Div([
         html.H2("Análise de Cobertura de Estoque", className="dashboard-title"),
+
+        # Armazenamento para os dados de produtos
+        dcc.Store(
+            id="store-produtos-data", 
+            data=data["df_relatorio_produtos"] if data and "df_relatorio_produtos" in data else None
+        ),
+
+        # Botão de filtro críticos adicionado abaixo do título
+        filtro_criticos,
         
         # Linha de cartões de métricas
-        metrics_row,
+        html.Div(
+            id="div-metrics-row",
+            children=metrics_row
+        ),
         
         # Primeira linha: Gráfico de criticidade e gráfico de pizza
         dbc.Row([
@@ -3813,15 +3839,270 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
             html.Pre(str(e), className="bg-light p-3 text-danger")
         ])
 
-# Modifique o callback update_produtos_criticidade_list para adicionar busca case-insensitive
+
+# Callback para atualizar o estado do filtro e o texto do botão
+@application.callback(
+    [Output("filtro-criticos-ativo", "data"),
+     Output("btn-filtro-criticos", "children"),
+     Output("btn-filtro-criticos", "color")],
+    Input("btn-filtro-criticos", "n_clicks"),
+    State("filtro-criticos-ativo", "data"),
+    prevent_initial_call=True
+)
+def toggle_filtro_criticos(n_clicks, filtro_ativo):
+    if n_clicks is None:
+        return dash.no_update, dash.no_update, dash.no_update
+    
+    # Inverte o estado atual do filtro
+    novo_estado = not filtro_ativo
+    
+    # Texto e cor do botão dependendo do estado
+    if novo_estado:
+        # Se o filtro estiver ativo (mostrando apenas críticos)
+        texto_botao = [html.I(className="fas fa-filter me-2"), "Mostrar Todos os Produtos"]
+        cor_botao = "primary"
+    else:
+        # Se o filtro estiver inativo (mostrando todos)
+        texto_botao = [html.I(className="fas fa-filter me-2"), "Mostrar Produtos com Reposição Não-Local"]
+        cor_botao = "danger"
+    
+    return novo_estado, texto_botao, cor_botao
+
+# Callback para atualizar o gráfico de barras com base no filtro
+@application.callback(
+    Output("produtos-criticidade-bar", "figure"),
+    [Input("filtro-criticos-ativo", "data"),
+     Input("store-produtos-data", "data")],
+    prevent_initial_call=True
+)
+def update_grafico_barras(filtro_ativo, produtos_data):
+    if produtos_data is None:
+        return dash.no_update
+    
+    # Carregamos os dados
+    df_criticos = pd.read_json(io.StringIO(produtos_data), orient='split')
+    
+    # Se o filtro estiver ativo, filtrar para mostrar apenas produtos críticos
+    if filtro_ativo:
+        # Em vez de filtrar a contagem, vamos filtrar o dataframe original
+        df_filtrado = df_criticos[df_criticos['critico'] == True]
+
+        contagem_criticidade = df_filtrado['criticidade'].value_counts().sort_index()
+
+        total_produtos = len(df_filtrado)
+        total_series = pd.Series([total_produtos], index=['Todos'])
+        contagem_criticidade = pd.concat([contagem_criticidade, total_series])
+    else:
+        # Contagem normal de todos os produtos por criticidade
+        contagem_criticidade = df_criticos['criticidade'].value_counts().sort_index()
+        # Adicionar o total
+        total_produtos = len(df_criticos)
+        total_series = pd.Series([total_produtos], index=['Todos'])
+        contagem_criticidade = pd.concat([contagem_criticidade, total_series])
+    
+    # Calcular porcentagens para anotações
+    porcentagens = (contagem_criticidade / total_produtos * 100).round(1)
+    
+    # Criar gráfico de barras
+    fig = px.bar(
+        x=contagem_criticidade.index,
+        y=contagem_criticidade.values,
+        color=contagem_criticidade.index,
+        color_discrete_map={
+            'Crítico': 'darkred',
+            'Muito Baixo': 'orange',
+            'Baixo': color['warning'],
+            'Adequado': gradient_colors['green_gradient'][0],
+            'Excesso': color['secondary'],
+            'Todos': color['primary']
+        },
+        labels={'x': 'Nível de Criticidade', 'y': 'Quantidade de Produtos'},
+        template='plotly_white'
+    )
+    
+    # Adicionar valores nas barras
+    for i, v in enumerate(contagem_criticidade.values):
+        percentage = porcentagens[contagem_criticidade.index[i]]
+        fig.add_annotation(
+            x=contagem_criticidade.index[i],
+            y=v,
+            text=f"{str(v)} ({percentage:.1f}%)".replace(".", ","),
+            showarrow=False,
+            yshift=10,
+            font=dict(size=14, color="black", family="Montserrat", weight="bold")
+        )
+    
+    fig.update_layout(
+        title_font=dict(size=16, family="Montserrat", color=color['primary']),
+        xaxis_title="Nível de Criticidade",
+        yaxis_title="Quantidade de Produtos",
+        margin=dict(t=50, b=50, l=50, r=50),
+        height=500,
+        showlegend=False,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    return fig
+
+# Callback para atualizar o Top 20 produtos críticos com base no filtro
+@application.callback(
+    Output("produtos-criticidade-top20", "figure"),
+    [Input("filtro-criticos-ativo", "data"),
+     Input("store-produtos-data", "data")],
+    prevent_initial_call=True
+)
+def update_grafico_top20(filtro_ativo, produtos_data):
+    if produtos_data is None:
+        return dash.no_update
+    
+    # Carregamos os dados
+    df_criticos = pd.read_json(io.StringIO(produtos_data), orient='split')
+    
+    # Verificar a coluna de descrição do produto
+    produto_col = 'desc_produto' if 'desc_produto' in df_criticos.columns else 'Produto' if 'Produto' in df_criticos.columns else None
+    
+    if not produto_col:
+        # Se não tiver coluna de produto, retorna um gráfico vazio
+        fig = go.Figure()
+        fig.update_layout(
+            title="Coluna de descrição de produto não encontrada",
+            title_font=dict(size=16, family="Montserrat", color=color['primary'])
+        )
+        return fig
+    
+    # Filtrar os dados com base no estado do filtro
+    if filtro_ativo:
+        df_filtrado = df_criticos[df_criticos['critico'] == True]
+    else:
+        df_filtrado = df_criticos
+    
+    # Ordenar pelo percentual de cobertura
+    df_ordenado = df_filtrado.sort_values('percentual_cobertura')
+    
+    # Selecionar os Top 20
+    top_20 = df_ordenado.head(20)
+    
+    # Criar a coluna de exibição do produto
+    top_20['produto_display'] = top_20[produto_col].apply(lambda x: (x[:30] + '...') if len(str(x)) > 30 else x)
+    
+    # Criar o gráfico
+    fig = px.bar(
+        top_20,
+        y='produto_display',
+        x='percentual_cobertura',
+        orientation='h',
+        color='percentual_cobertura',
+        color_continuous_scale=['darkred', 'orange', color['warning']],
+        range_color=[0, 50 if filtro_ativo else 100],  # Ajusta range de cores com base no filtro
+        labels={'percentual_cobertura': 'Cobertura (%)', 'produto_display': 'Produto'},
+        template='plotly_white'
+    )
+    
+    if 'cd_produto' in top_20.columns:
+        fig.update_traces(
+            hovertemplate='<b>%{y}</b><br>Código: %{customdata[0]}<br>Cobertura: %{x:.1f}%',
+            customdata=top_20[['cd_produto']]
+        )
+    
+    fig.update_layout(
+        title=f"Top 20 Produtos{' Críticos' if filtro_ativo else ''}",
+        title_font=dict(size=16, family="Montserrat", color=color['primary']),
+        yaxis_title="",
+        xaxis_title="Percentual de Cobertura (%)",
+        margin=dict(l=200, r=20, t=30, b=30),
+        height=500,
+        yaxis=dict(autorange="reversed"),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    # Adicionar linha em 30% para referência de criticidade
+    fig.add_shape(
+        type="line",
+        x0=30, y0=-0.5,
+        x1=30, y1=len(top_20) - 0.5,
+        line=dict(color="darkred", width=2, dash="dash"),
+    )
+    
+    # Adicionar valores de percentual nas barras
+    for i, row in enumerate(top_20.itertuples()):
+        fig.add_annotation(
+            x=row.percentual_cobertura,
+            y=row.produto_display,
+            text=f"{row.percentual_cobertura:.1f}%".replace(".", ","),
+            showarrow=False,
+            xshift=15,
+            font=dict(size=12, color="black", family="Montserrat")
+        )
+    
+    return fig
+
+@application.callback(
+    Output("div-metrics-row", "children"),
+    [Input("filtro-criticos-ativo", "data"),
+     Input("store-produtos-data", "data")],
+    prevent_initial_call=True
+)
+def update_metricas(filtro_ativo, produtos_data):
+    if produtos_data is None:
+        return dash.no_update
+    
+    # Carregamos os dados
+    df_criticos = pd.read_json(io.StringIO(produtos_data), orient='split')
+    
+    # Se o filtro estiver ativo, mostrar apenas informações de produtos críticos
+    if filtro_ativo:
+        df_filtrado = df_criticos[df_criticos['critico'] == True]
+        
+        # Contar produtos por cada categoria de criticidade
+        total_produtos = len(df_filtrado)
+        produtos_criticos = len(df_filtrado[df_filtrado['criticidade'] == 'Crítico'])
+        produtos_muito_baixos = len(df_filtrado[df_filtrado['criticidade'] == 'Muito Baixo'])
+        produtos_baixos = len(df_filtrado[df_filtrado['criticidade'] == 'Baixo'])
+        produtos_adequados = len(df_filtrado[df_filtrado['criticidade'] == 'Adequado'])
+        produtos_excesso = len(df_filtrado[df_filtrado['criticidade'] == 'Excesso'])
+        
+        # Criar métricas para a primeira linha de cards - mostrando todas as categorias
+        metrics = [
+            {"title": "Total de Produtos", "value": formatar_numero(total_produtos), "color": color['primary']},
+            {"title": "Crítico (0-30%)", "value": formatar_numero(produtos_criticos), "color": 'darkred'},
+            {"title": "Muito Baixo (30-50%)", "value": formatar_numero(produtos_muito_baixos), "color": 'orange'},
+            {"title": "Baixo (50-80%)", "value": formatar_numero(produtos_baixos), "color": color['warning']},
+            {"title": "Adequado (80-100%)", "value": formatar_numero(produtos_adequados), "color": gradient_colors['green_gradient'][0]},
+            {"title": "Excesso (>100%)", "value": formatar_numero(produtos_excesso), "color": color['secondary']}
+        ]
+        
+    else:
+        # Contar produtos por cada categoria de criticidade
+        total_produtos = len(df_criticos)
+        produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
+        produtos_muito_baixos = len(df_criticos[df_criticos['criticidade'] == 'Muito Baixo'])
+        produtos_baixos = len(df_criticos[df_criticos['criticidade'] == 'Baixo'])
+        produtos_adequados = len(df_criticos[df_criticos['criticidade'] == 'Adequado'])
+        produtos_excesso = len(df_criticos[df_criticos['criticidade'] == 'Excesso'])
+        
+        # Criar métricas para a primeira linha de cards - mostrando todas as categorias
+        metrics = [
+            {"title": "Total de Produtos", "value": formatar_numero(total_produtos), "color": color['primary']},
+            {"title": "Crítico (0-30%)", "value": formatar_numero(produtos_criticos), "color": 'darkred'},
+            {"title": "Muito Baixo (30-50%)", "value": formatar_numero(produtos_muito_baixos), "color": 'orange'},
+            {"title": "Baixo (50-80%)", "value": formatar_numero(produtos_baixos), "color": color['warning']},
+            {"title": "Adequado (80-100%)", "value": formatar_numero(produtos_adequados), "color": gradient_colors['green_gradient'][0]},
+            {"title": "Excesso (>100%)", "value": formatar_numero(produtos_excesso), "color": color['secondary']}
+        ]
+    
+    # Retornar a linha de métricas criada
+    return create_metric_row(metrics)
 
 @application.callback(
     [Output("produtos-criticidade-header", "children"),
      Output("produtos-criticidade-list", "children")],
-    [Input("produtos-criticidade-bar", "clickData")],
-    State("selected-data", "data")
+    [Input("produtos-criticidade-bar", "clickData"),
+     Input("filtro-criticos-ativo", "data")],
+    [State("selected-data", "data")]
 )
-def update_produtos_criticidade_list(clickData_bar, data):
+def update_produtos_criticidade_list(clickData_bar, filtro_ativo, data):
     ctx = dash.callback_context
     
     if not ctx.triggered:
@@ -3838,9 +4119,11 @@ def update_produtos_criticidade_list(clickData_bar, data):
         return "Produtos do Nível de Cobertura Selecionado", "Dados não disponíveis."
     
     df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+
+    if filtro_ativo:
+        df_produtos = df_produtos[df_produtos['critico'] == True]
     
     # Converta as colunas de string para lowercase para facilitar buscas case-insensitive
-    # Isso é útil caso alguém implemente uma busca personalizada além da filtragem nativa
     string_columns = df_produtos.select_dtypes(include=['object']).columns
     for col in string_columns:
         try:
