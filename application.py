@@ -27,7 +27,12 @@ from flask import Flask, redirect, url_for, session, request
 cache = diskcache.Cache("./cache")
 long_callback_manager = DiskcacheLongCallbackManager(cache)
 
+# Otimize as configurações do diskcache
 cache.reset('size', int(1e9))  # Limite de 1GB para o cache
+
+# Adicione configurações adicionais para melhor performance
+cache.set('cull_limit', 0)  # Desabilita culling automático para melhor performance durante operações intensivas
+cache.set('statistics', True)  # Habilita estatísticas para monitoramento
 
 
 # =============================================================================
@@ -316,6 +321,20 @@ def load_data(client, data_type):
     """
     print(f"[CACHE] Verificando cache para {client}_{data_type}")
     print("Carrega dados para um cliente e tipo específicos")
+
+    # Adicionar chave de versão para invalidar cache quando necessário
+    cache_version = "v1.0"  
+    cache_key = f"{client}_{data_type}_{cache_version}"
+
+    # Verificar se já existe em cache com esta chave específica
+    cached_data = app_cache.get(cache_key)
+    if cached_data is not None:
+        print(f"[CACHE] Encontrado no cache: {cache_key}")
+        return cached_data
+    
+    print(f"[CACHE] Cache não encontrado para {cache_key}, carregando dados...")
+    
+    
     # Verificar formato esperado: dados/{cliente}/Dados_{cliente}_{data_type}
     expected_path = os.path.join("dados", client, f"Dados_{client}_{data_type}")
         
@@ -386,8 +405,9 @@ def load_data(client, data_type):
     # Obter contexto específico do cliente
     company_context = get_client_context(client)
     segmentos_context = get_client_segmentos(client)
-    print(f"[CACHE] Dados carregados para {client}_{data_type}")
-    return {
+
+    # Preparar o resultado final
+    result = {
         "df": df,
         "df_RC_Mensal": df_RC_Mensal,
         "df_RC_Trimestral": df_RC_Trimestral,
@@ -404,6 +424,17 @@ def load_data(client, data_type):
         "segmentos_context": segmentos_context,
         "error": False
     }
+    
+    # Salvar no cache antes de retornar
+    try:
+        # Salvar no cache do Flask com um timeout específico (1 hora = 3600 segundos)
+        app_cache.set(cache_key, result, timeout=3600)
+        print(f"[CACHE] Dados salvos em cache com chave: {cache_key}")
+    except Exception as e:
+        print(f"[CACHE] Erro ao salvar no cache: {str(e)}")
+    
+    print(f"[CACHE] Dados carregados para {client}_{data_type}")
+    return result
 
 # =============================================================================
 # Funções auxiliares de formatação de números
@@ -528,7 +559,10 @@ application = dash.Dash(
 # Configure caching for app
 app_cache = Cache(server, config={
     'CACHE_TYPE': 'filesystem',
-    'CACHE_DIR': './flask_cache_dir'
+    'CACHE_DIR': './flask_cache_dir',
+    'CACHE_DEFAULT_TIMEOUT': 3600,  # 1 hora de timeout padrão
+    'CACHE_THRESHOLD': 1000,  # Número máximo de itens no cache
+    'CACHE_OPTIONS': {'mode': 0o755}  # Permissões de diretório
 })
 
 # Adicione isto na seção dos estilos
@@ -1202,10 +1236,54 @@ def login_page():
 # Atualize a rota de logout para ser mais direta:
 @server.route('/logout/')
 def logout():
-    # Limpar a sessão
-    session.clear()
-    # Redirecionar diretamente para a raiz que mostrará o login
-    return redirect('/')  # Redirecionamento mais direto
+    """
+    Limpa o cache do usuário atual e encerra a sessão antes de redirecionar para a página de login
+    """
+    try:
+        # Obter informações do cliente atual para limpar apenas o seu cache
+        cliente_atual = session.get('cliente', None)
+        
+        # Limpar a sessão
+        session.clear()
+        
+        # Se temos informação do cliente, limpar apenas seu cache específico
+        if cliente_atual:
+            print(f"Limpando cache para o cliente: {cliente_atual}")
+            
+            # Limpar apenas os itens de cache específicos deste cliente
+            # Padrão para chaves de cache deste cliente: "{cliente_atual}_*"
+            cache_keys = []
+            
+            # Busca no disco cache
+            try:
+                for key in cache.iterkeys():
+                    key_str = str(key)
+                    if cliente_atual in key_str:
+                        cache.delete(key)
+                        cache_keys.append(key_str)
+                        
+                # Busca no flask cache
+                # Note que isso é mais complicado devido à forma como o flask-cache armazena chaves
+                with app_cache.app.app_context():
+                    for key in list(app_cache.cache._cache.keys()):
+                        key_str = str(key)
+                        if cliente_atual in key_str:
+                            app_cache.delete(key)
+                            cache_keys.append(key_str)
+                
+                print(f"Cache limpo para {cliente_atual}. Chaves afetadas: {len(cache_keys)}")
+            except Exception as e:
+                print(f"Erro ao limpar cache específico: {str(e)}")
+        else:
+            # Se não temos informação do cliente, não limpar o cache
+            # para evitar afetar outros usuários
+            print("Logout sem limpeza de cache - cliente não identificado")
+            
+        # Redirecionar para a página de login
+        return redirect('/')
+    except Exception as e:
+        print(f"Erro durante logout: {str(e)}")
+        return redirect('/')
 
 @server.route('/debug-session/')
 def debug_session():
@@ -4701,31 +4779,34 @@ def render_page_content(pathname, data):
     Input("selected-client", "data"),
     Input("selected-data-type", "data"),
     State("selected-data", "data"),
+    State("last-data-load-time", "data"),
     prevent_initial_call=True
 )
-def load_data_callback(selected_client, selected_data_type, current_data):
+def load_data_callback(selected_client, selected_data_type, current_data, last_load_time):
     # Verificar se os inputs são válidos
     if not selected_client or not selected_data_type:
         return None
     
     # Criar uma chave de cache consistente
     cache_key = f"{selected_client}_{selected_data_type}"
+    current_time = time.time()
     
-    # Se já temos dados em cache para este cliente/tipo, use-os
-    if current_data and 'client_info' in current_data and current_data['client_info'] == cache_key:
-        print(f"Usando dados em cache para {cache_key}")
+    # Se já temos dados em cache para este cliente/tipo, verificar a idade
+    if (current_data and 'client_info' in current_data and 
+            current_data['client_info'] == cache_key and 
+            last_load_time and current_time - last_load_time < 3600):  # Cache de 1 hora
         return current_data
     
     # Senão, carregue os dados
-    print(f"**************** Carregando dados para {selected_client} - {selected_data_type}")
+    print(f"**************** Cache vazio: Carregando dados para {selected_client} - {selected_data_type}")
     data = load_data(selected_client, selected_data_type)
     
     if data.get("error", False):
-        print(f"Erro ao carregar dados: {data.get('message', 'Erro desconhecido')}")
-        return None
+        error_data = {"client_info": cache_key, "error": True, "message": data.get("message")}
+        return error_data
     
     # Crie um objeto com os dados serializados e a informação do cliente
-    cached_data = {
+    result = {
         "client_info": cache_key,
         "df": data["df"].to_json(date_format='iso', orient='split') if data["df"] is not None else None,
         "df_RC_Mensal": data["df_RC_Mensal"].to_json(date_format='iso', orient='split') if data["df_RC_Mensal"] is not None else None,
@@ -4743,7 +4824,14 @@ def load_data_callback(selected_client, selected_data_type, current_data):
     }
     
     print(f"Dados carregados com sucesso para {selected_client} - {selected_data_type}")
-    return cached_data
+    # Adicione seus dados ao objeto de resultado
+    for key, value in data.items():
+        if isinstance(value, pd.DataFrame):
+            result[key] = value.to_json(date_format='iso', orient='split')
+        else:
+            result[key] = value
+    
+    return result
 
 @application.callback(
     Output("selected-data", "data", allow_duplicate=True),
