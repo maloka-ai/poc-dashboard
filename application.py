@@ -310,7 +310,7 @@ def process_upload(contents, filename, destination_folder):
 # =============================================================================
 # Função para carregar os dados conforme o cliente e base escolhidos
 # =============================================================================
-@cache.memoize(expire=3600)  # Cache for 1 hour
+@cache.memoize(expire=900)  # Cache for 15 minutes
 def load_data(client, data_type):
     """
     Carrega dados para um cliente e tipo específicos
@@ -428,7 +428,7 @@ def load_data(client, data_type):
     # Salvar no cache antes de retornar
     try:
         # Salvar no cache do Flask com um timeout específico (1 hora = 3600 segundos)
-        app_cache.set(cache_key, result, timeout=3600)
+        app_cache.set(cache_key, result, timeout=900)
         print(f"[CACHE] Dados salvos em cache com chave: {cache_key}")
     except Exception as e:
         print(f"[CACHE] Erro ao salvar no cache: {str(e)}")
@@ -560,7 +560,7 @@ application = dash.Dash(
 app_cache = Cache(server, config={
     'CACHE_TYPE': 'filesystem',
     'CACHE_DIR': './flask_cache_dir',
-    'CACHE_DEFAULT_TIMEOUT': 3600,  # 1 hora de timeout padrão
+    'CACHE_DEFAULT_TIMEOUT': 900,  # 15 minutos de timeout padrão
     'CACHE_THRESHOLD': 1000,  # Número máximo de itens no cache
     'CACHE_OPTIONS': {'mode': 0o755}  # Permissões de diretório
 })
@@ -1306,7 +1306,7 @@ def update_data_source(selected_data_type, last_load_time, selected_client):
     time_diff = current_time - last_load_time
     
     # Verificar se o contexto da chamada foi por mudança de cliente/data-type
-    if dash.callback_context.triggered_id not in ['client-selection', 'data-type-selection'] and time_diff < 3600:
+    if dash.callback_context.triggered_id not in ['client-selection', 'data-type-selection'] and time_diff < 900:
         # Just update the last updated time
         formatted_time = time.strftime("%d/%m/%Y %H:%M:%S")
         titulo = f"{selected_client} - {selected_data_type}"
@@ -4207,17 +4207,16 @@ def update_produtos_criticidade_list(clickData_bar, filtro_ativo, data):
     ctx = dash.callback_context
     
     if not ctx.triggered:
-        # No clicks yet
         return "Produtos do Nível de Cobertura Selecionado", html.Div([
-            html.P("Selecione um nível de criticidade nos gráficos acima para ver os produtos.", className="text-center text-muted my-4"),
-            html.Div(className="text-center", children=[
-                html.I(className="fas fa-mouse-pointer fa-2x text-muted"),
-                html.P("Clique em uma fatia, barra ou ponto para visualizar detalhes", className="text-muted mt-2")
-            ])
+            html.P("Selecione um nível de cobertura no gráfico para ver os produtos.", 
+                  className="text-center text-muted my-4")
         ])
     
     if data is None or data.get("df_relatorio_produtos") is None:
-        return "Produtos do Nível de Cobertura Selecionado", "Dados não disponíveis."
+        return "Dados Indisponíveis", html.Div([
+            html.P("Não foi possível carregar os dados dos produtos.", 
+                  className="text-center text-muted my-4")
+        ])
     
     df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
 
@@ -4305,10 +4304,32 @@ def update_produtos_criticidade_list(clickData_bar, filtro_ativo, data):
             lambda x: f"{x:.1f}%".replace(".", ",")
         )
     
-    if 'custo1' in filtered_df_display.columns:
-        filtered_df_display['custo1'] = filtered_df_display['custo1'].apply(
-            lambda x: formatar_moeda(x) if not pd.isna(x) else ""
-        )
+    # Formatar colunas monetárias - AQUI ESTÁ O ERRO
+    # Verificar e converter para o formato correto antes de aplicar formatação
+    for custo_col in ['custo1', 'custo2', 'custo3']:
+        if custo_col in filtered_df_display.columns:
+            # Verificar se a coluna já está formatada como string de moeda
+            def format_currency_safely(value):
+                try:
+                    if pd.isna(value) or value == "":
+                        return ""
+                    # Se já for uma string que começa com R$, retornar diretamente
+                    if isinstance(value, str) and value.strip().startswith('R$'):
+                        return value
+                    # Caso contrário, tentar converter para float e formatar
+                    return formatar_moeda(float(value)) if value != 0 else ""
+                except (ValueError, TypeError):
+                    # Em caso de erro, retornar o valor original
+                    return str(value) if not pd.isna(value) else ""
+            
+            filtered_df_display[custo_col] = filtered_df_display[custo_col].apply(format_currency_safely)
+    
+    # Formatar datas
+    for data_col in ['Data1', 'Data2', 'Data3']:
+        if data_col in filtered_df_display.columns:
+            filtered_df_display[data_col] = filtered_df_display[data_col].apply(
+                lambda x: format_iso_date(x) if not pd.isna(x) else ""
+            )
     
     # Criar tabela aprimorada com filtro case-insensitive
     table = dash_table.DataTable(
