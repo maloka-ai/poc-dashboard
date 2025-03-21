@@ -3839,13 +3839,13 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
                     html.Div([
                         html.Span("Fornecedor: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('Fornecedor1', '-')}")
-                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor1') and produto_selecionado.get('Fornecedor1') != '0' and produto_selecionado.get('Fornecedor1') != 0 else None
+                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor1') and produto_selecionado.get('Fornecedor1') != '0' and produto_selecionado.get('Fornecedor1') != 0.0 else None
                 ], className="text-muted")
             ], className="mt-4 pb-3 border-bottom") if (
             produto_selecionado.get('Fornecedor1') != '0' and 
-            produto_selecionado.get('Fornecedor1') != 0 or 
+            produto_selecionado.get('Fornecedor1') != 0.0 or 
             produto_selecionado.get('custo1') != 'R$ 0,00' and 
-            produto_selecionado.get('custo1') != 0) 
+            produto_selecionado.get('custo1') != 0.0) 
             else None,
 
             # Informações de fornecedor 2
@@ -3870,13 +3870,13 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
                     html.Div([
                         html.Span("Fornecedor: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('Fornecedor2', '-')}")
-                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor2') and produto_selecionado.get('Fornecedor2') != '0' and produto_selecionado.get('Fornecedor2') != 0 else None
+                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor2') and produto_selecionado.get('Fornecedor2') != '0' and produto_selecionado.get('Fornecedor2') != 0.0 else None
                 ], className="text-muted")
             ], className="mt-4 pb-3 border-bottom") if (
             produto_selecionado.get('Fornecedor2') != '0' and 
-            produto_selecionado.get('Fornecedor2') != 0 or 
-            produto_selecionado.get('custo2') != '0' and 
-            produto_selecionado.get('custo2') != 0) 
+            produto_selecionado.get('Fornecedor2') != 0.0 or 
+            produto_selecionado.get('custo2') != 'R$ 0,00' and 
+            produto_selecionado.get('custo2') != 0.0) 
             else None,
 
             # Informações de fornecedor 3
@@ -3901,13 +3901,13 @@ def update_produto_consumo_grafico(active_cell, virtual_data, selected_rows, dat
                     html.Div([
                         html.Span("Fornecedor: ", className="font-weight-bold"),
                         html.Span(f"{produto_selecionado.get('Fornecedor3', '-')}")
-                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor3') and produto_selecionado.get('Fornecedor3') != '0' and produto_selecionado.get('Fornecedor3') != 0 else None
+                    ], style={"display": "inline-block"}) if produto_selecionado.get('Fornecedor3') and produto_selecionado.get('Fornecedor3') != '0' and produto_selecionado.get('Fornecedor3') != 0.0 else None
                 ], className="text-muted")
             ], className="mt-4 pb-3 border-bottom") if (
             produto_selecionado.get('Fornecedor3') != '0' and 
-            produto_selecionado.get('Fornecedor3') != 0 or 
-            produto_selecionado.get('custo3') != '0' and 
-            produto_selecionado.get('custo3') != 0) 
+            produto_selecionado.get('Fornecedor3') != 0.0 or 
+            produto_selecionado.get('custo3') != 'R$ 0,00' and 
+            produto_selecionado.get('custo3') != 0.0) 
             else None,
         ])
         
