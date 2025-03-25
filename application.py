@@ -2021,6 +2021,7 @@ def get_recorrencia_mensal_layout(data):
         y='retention_rate', 
         markers=True, 
         color_discrete_sequence=[color['secondary']],
+        labels={'yearmonth': 'Mês/Ano', 'retention_rate': 'Taxa de Recorrência'},  # Renomeia os rótulos no hover
         template='plotly_white'
     )
     
@@ -2045,33 +2046,33 @@ def get_recorrencia_mensal_layout(data):
             )
         )
     
-    # Add target line at 30%
-    fig_mensal.add_shape(
-        type="line",
-        x0=df_RC_Mensal['yearmonth'].iloc[0],
-        y0=30,
-        x1=df_RC_Mensal['yearmonth'].iloc[-1],
-        y1=30,
-        line=dict(
-            color=color['success'],
-            width=2,
-            dash="dot",
-        )
-    )
+    # # Add target line at 30%
+    # fig_mensal.add_shape(
+    #     type="line",
+    #     x0=df_RC_Mensal['yearmonth'].iloc[0],
+    #     y0=30,
+    #     x1=df_RC_Mensal['yearmonth'].iloc[-1],
+    #     y1=30,
+    #     line=dict(
+    #         color=color['success'],
+    #         width=2,
+    #         dash="dot",
+    #     )
+    # )
     
-    fig_mensal.add_annotation(
-        x=df_RC_Mensal['yearmonth'].iloc[-1],
-        y=30,
-        text="Meta (30%)",
-        showarrow=False,
-        yshift=10,
-        xshift=30,
-        font=dict(size=12, color=color['success'])
-    )
+    # fig_mensal.add_annotation(
+    #     x=df_RC_Mensal['yearmonth'].iloc[-1],
+    #     y=30,
+    #     text="Meta (30%)",
+    #     showarrow=False,
+    #     yshift=10,
+    #     xshift=30,
+    #     font=dict(size=12, color=color['success'])
+    # )
     
     fig_mensal.update_layout(
         xaxis_title="Mês", 
-        yaxis_title="Taxa de Retenção (%)", 
+        yaxis_title="Taxa de Recorrência (%)",
         margin=dict(t=50, b=50, l=50, r=50),
         height=500,
         legend=dict(
@@ -2101,8 +2102,8 @@ def get_recorrencia_mensal_layout(data):
     renomear_mensal = {
         "yearmonth": "Mês/Ano",
         "retained_customers": "Clientes Recorrentes",
-        "prev_total_customers": "Total de Clientes",
-        "retention_rate": "Taxa de Retenção (%)",
+        "prev_total_customers": "Clientes não Recorrentes",
+        "retention_rate": "Taxa de Recorrência (%)",
     }
     df_mensal_filtrado = df_RC_Mensal[colunas_mensais]
     
@@ -2112,7 +2113,7 @@ def get_recorrencia_mensal_layout(data):
         x='yearmonth',
         y=['retained_customers', 'prev_total_customers'],
         barmode="group",
-        labels={"value": "Número de Clientes", "variable": "Tipo de Cliente"},
+        labels={"value": "Número de Clientes", "variable": "Tipo de Cliente", "yearmonth": "Mês/Ano", "prev_total_customers": "Clientes não Recorrentes"},
         color_discrete_map={
             'retained_customers': color['accent'],
             'prev_total_customers': color['secondary']
@@ -2152,7 +2153,7 @@ def get_recorrencia_mensal_layout(data):
         if trace.name == 'retained_customers':
             trace.name = "Clientes Recorrentes"
         elif trace.name == 'prev_total_customers':
-            trace.name = "Total de Clientes"
+            trace.name = "Clientes não Recorrentes"
     
     # Layout with cards
     layout = html.Div([
@@ -2253,8 +2254,15 @@ def get_recorrencia_trimestral_layout(data):
         y='recurrence_rate', 
         markers=True, 
         color_discrete_sequence=[color['secondary']],
+        labels={'recurrence_rate': 'Taxa de Recorrência (%)', 'trimestre': 'Trimestre'},  # Renomeia os rótulos no hover
         template='plotly_white'
     )
+
+    # # Customizar ainda mais o hover
+    # fig_trimestral_line.update_traces(
+    #     hovertemplate='<b>%{x}</b><br>Taxa de Recorrência: %{y:.1f}%<extra></extra>',
+    #     name='Taxa de Recorrência'  # Renomeia o nome da série na legenda
+    # )
     
     # Add thicker line and bigger markers
     fig_trimestral_line.update_traces(
@@ -2262,29 +2270,29 @@ def get_recorrencia_trimestral_layout(data):
         marker=dict(size=10, line=dict(width=2, color='white'))
     )
     
-    # Add a target line
-    fig_trimestral_line.add_shape(
-        type="line",
-        x0=df_RC_Trimestral['trimestre'].iloc[0],
-        y0=35,
-        x1=df_RC_Trimestral['trimestre'].iloc[-1],
-        y1=35,
-        line=dict(
-            color=color['success'],
-            width=2,
-            dash="dot",
-        )
-    )
+    # # Add a target line at 35%
+    # fig_trimestral_line.add_shape(
+    #     type="line",
+    #     x0=df_RC_Trimestral['trimestre'].iloc[0],
+    #     y0=35,
+    #     x1=df_RC_Trimestral['trimestre'].iloc[-1],
+    #     y1=35,
+    #     line=dict(
+    #         color=color['success'],
+    #         width=2,
+    #         dash="dot",
+    #     )
+    # )
     
-    fig_trimestral_line.add_annotation(
-        x=df_RC_Trimestral['trimestre'].iloc[-1],
-        y=35,
-        text="Meta (35%)",
-        showarrow=False,
-        yshift=10,
-        xshift=30,
-        font=dict(size=12, color=color['success'])
-    )
+    # fig_trimestral_line.add_annotation(
+    #     x=df_RC_Trimestral['trimestre'].iloc[-1],
+    #     y=35,
+    #     text="Meta (35%)",
+    #     showarrow=False,
+    #     yshift=10,
+    #     xshift=30,
+    #     font=dict(size=12, color=color['success'])
+    # )
     
     fig_trimestral_line.update_layout(
         xaxis_title="Trimestre", 
@@ -3538,8 +3546,13 @@ def get_produtos_layout(data):
         labels={'x': 'Nível de Criticidade', 'y': 'Quantidade de Produtos'},
         template='plotly_white'
     )
-    total_produtos = contagem_criticidade.sum()
-    porcentagens = (contagem_criticidade / total_produtos * 100).round(1)
+
+    porcentagens = contagem_criticidade.copy()
+    for idx in porcentagens.index:
+        if idx == 'Todos':
+            porcentagens[idx] = 100.0  # Forçar 100% para o total
+        else:
+            porcentagens[idx] = (contagem_criticidade[idx] / total_produtos * 100).round(1)
 
     # Adicionar valores nas barras
     for i, v in enumerate(contagem_criticidade.values):
@@ -4002,7 +4015,13 @@ def update_grafico_barras(filtro_ativo, produtos_data):
         contagem_criticidade = pd.concat([contagem_criticidade, total_series])
     
     # Calcular porcentagens para anotações
-    porcentagens = (contagem_criticidade / total_produtos * 100).round(1)
+    porcentagens = contagem_criticidade.copy()
+    for idx in porcentagens.index:
+        if idx == 'Todos':
+            print("cheguei nos 100%")
+            porcentagens[idx] = 100.0  # Forçar 100% para o total
+        else:
+            porcentagens[idx] = (contagem_criticidade[idx] / total_produtos * 100).round(1)
     
     # Criar gráfico de barras
     fig = px.bar(
