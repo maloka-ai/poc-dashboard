@@ -741,7 +741,7 @@ def create_sidebar(client=None, available_data_types=None):
             html.Div(
                 [
                     html.Img(src="assets/maloka_logo.png", style={"width": "60px", "height": "auto"}),
-                    html.H3("MALOKA'AI", style={"color": "white", "margin": "0 0 0 10px", "font-weight": "700", "letter-spacing": "1px"})
+                    html.H4("MALOKA'AI", style={"color": "white", "margin": "0 0 0 10px", "font-weight": "700", "letter-spacing": "1px"})
                 ],
                 style={"display": "flex", "alignItems": "center", "paddingBottom": "1.5rem"}
             ),
@@ -2006,8 +2006,8 @@ def get_recorrencia_mensal_layout(data):
     
     # Create metrics row
     metrics = [
-        {"title": "Taxa de Retenção Atual", "value": formatar_percentual(current_retention), "change": retention_change, "color": color['accent']},
-        {"title": "Média de Retenção", "value": formatar_percentual(avg_retention), "color": color['secondary']},
+        {"title": "Taxa de Recorrência Atual", "value": formatar_percentual(current_retention), "change": retention_change, "color": color['accent']},
+        {"title": "Média de Recorrência", "value": formatar_percentual(avg_retention), "color": color['secondary']},
         {"title": "Maior Taxa", "value": formatar_percentual(max_retention), "color": color['success']},
         {"title": "Menor Taxa", "value": formatar_percentual(min_retention), "color": color['warning']}
     ]
@@ -2102,7 +2102,7 @@ def get_recorrencia_mensal_layout(data):
     renomear_mensal = {
         "yearmonth": "Mês/Ano",
         "retained_customers": "Clientes Recorrentes",
-        "prev_total_customers": "Clientes não Recorrentes",
+        "prev_total_customers": "Novos Clientes",
         "retention_rate": "Taxa de Recorrência (%)",
     }
     df_mensal_filtrado = df_RC_Mensal[colunas_mensais]
@@ -2113,7 +2113,7 @@ def get_recorrencia_mensal_layout(data):
         x='yearmonth',
         y=['retained_customers', 'prev_total_customers'],
         barmode="group",
-        labels={"value": "Número de Clientes", "variable": "Tipo de Cliente", "yearmonth": "Mês/Ano", "prev_total_customers": "Clientes não Recorrentes"},
+        labels={"value": "Número de Clientes", "variable": "Tipo de Cliente", "yearmonth": "Mês/Ano", "prev_total_customers": "Novos Clientes"},
         color_discrete_map={
             'retained_customers': color['accent'],
             'prev_total_customers': color['secondary']
@@ -2153,7 +2153,7 @@ def get_recorrencia_mensal_layout(data):
         if trace.name == 'retained_customers':
             trace.name = "Clientes Recorrentes"
         elif trace.name == 'prev_total_customers':
-            trace.name = "Clientes não Recorrentes"
+            trace.name = "Novos Clientes"
     
     # Layout with cards
     layout = html.Div([
