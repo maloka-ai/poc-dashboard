@@ -985,7 +985,7 @@ def create_sidebar(client=None, available_data_types=None):
         ],
         className="sidebar"
     )
-    
+    print("###### SIDEBAR GERADA ######")
     return sidebar
 
 # =============================================================================
@@ -996,7 +996,8 @@ def create_sidebar(client=None, available_data_types=None):
 @application.callback(
     Output("sidebar-container", "children"),
     Output("selected-client", "data"),
-    Input("url", "search")
+    Input("url", "search"),
+    # prevent_initial_call=False
 )
 def initialize_sidebar(search):
     # Extrair cliente da URL (passado pelo sistema de login)
@@ -1025,6 +1026,7 @@ def initialize_sidebar(search):
     Output("clientes-collapse", "is_open"),
     [Input("clientes-collapse-button", "n_clicks")],
     [State("clientes-collapse", "is_open")],
+    prevent_initial_call=True 
 )
 def toggle_clientes_collapse(n, is_open):
     global collapse_states  # Acessa a variável global
@@ -1038,6 +1040,7 @@ def toggle_clientes_collapse(n, is_open):
     Output("faturamento-collapse", "is_open"),
     [Input("faturamento-collapse-button", "n_clicks")],
     [State("faturamento-collapse", "is_open")],
+    prevent_initial_call=True 
 )
 def toggle_faturamento_collapse(n, is_open):
     global collapse_states  # Acessa a variável global
@@ -1051,6 +1054,7 @@ def toggle_faturamento_collapse(n, is_open):
     Output("estoque-collapse", "is_open"),
     [Input("estoque-collapse-button", "n_clicks")],
     [State("estoque-collapse", "is_open")],
+    prevent_initial_call=True 
 )
 def toggle_estoque_collapse(n, is_open):
     global collapse_states  # Acessa a variável global
@@ -1099,7 +1103,6 @@ login_layout = html.Div([
      State("input-senha", "value")],
     prevent_initial_call=True
 )
-
 def validar_login(n_clicks, email, senha):
     if n_clicks is None:
         return dash.no_update, dash.no_update
