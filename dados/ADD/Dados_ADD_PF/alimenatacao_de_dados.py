@@ -5,6 +5,55 @@ from sqlalchemy import create_engine
 db_url = "postgresql+psycopg2://adduser:addpassword@add.cwlsoqygi6rc.us-east-1.rds.amazonaws.com/add"
 engine = create_engine(db_url)
 
+def Trat_coluna_date(Dataframe, Data_name, formato_data_ingles = True):
+
+    Table = Dataframe.copy()
+    Table[Data_name]  = pd.to_datetime(Table[Data_name], yearfirst = formato_data_ingles)
+    Table["Date_aux"] = pd.to_datetime(Table[Data_name], yearfirst = formato_data_ingles)
+
+    # Criacao das colunas auxiliares de datas
+    Table[str(Data_name) + "_Ano"] = Table["Date_aux"].dt.year.astype(str)
+    Table["Mes"]                   = Table["Date_aux"].dt.month.astype(str).str.zfill(2)
+    Table["Semana"]                = Table["Date_aux"].dt.isocalendar().week.astype(str).str.zfill(2)
+    Table.loc[Table["Mes"].isin(["01","02","03"]), "Tri"] = "1ºTri"
+    Table.loc[Table["Mes"].isin(["04","05","06"]), "Tri"] = "2ºTri"
+    Table.loc[Table["Mes"].isin(["07","08","09"]), "Tri"] = "3ºTri"
+    Table.loc[Table["Mes"].isin(["10","11","12"]), "Tri"] = "4ºTri"
+    Table.loc[Table["Mes"].isin(["01","02","03","04","05","06"]), "Sem"] = "1ºSem"
+    Table.loc[Table["Mes"].isin(["07","08","09","10","11","12"]), "Sem"] = "2ºSem"
+    for data in ["Sem", "Tri", "Mes", "Semana"]:
+        Table[str(Data_name) + "_Ano_" + data] = Table[str(Data_name) + "_Ano"] + "_" + Table[data]
+    # Deletar algumas colunas
+    Table.drop(["Sem", "Tri","Mes","Semana","Date_aux"], axis=1, inplace = True)
+    return Table
+
+#||====================================||
+#           FUNCAO - Arrumar Base
+#||====================================||
+def Funcao_tratamento_base(Dataframe, Dataframe_de_para):
+
+    Table = Dataframe.copy()
+    df_de = Dataframe_de_para.copy()
+    #||====================================||
+    #           Tratamento da base
+    #||====================================||
+
+    # Criar colunas de data
+    Table = Trat_coluna_date(Table, "data_emissao")
+    
+    Table_filtro = Table[((Table["status"] == "Pedido") | 
+                         (Table["status"] == "Pedido/Concluído") | 
+                         (Table["status"] == "Pedido/Pago") | 
+                         (Table["status"] == "Pedido/Entregue") | 
+                         (Table["status"] == "Pedido/Pendente") | 
+                         (Table["status"] == "Pedido/Faturado")) & 
+                         (Table["data_emissao_Ano"] != "2020")]
+
+    # Join tabela + DE_PARA
+    Table_join = Table_filtro.merge(df_de, how = "left", on="id_produto")
+
+    return Table_join
+
 def get_df_preparo_id_vendas():
     # SQL Query
     query_vendas = "SELECT id_venda, data_emissao, id_cliente, status FROM vendas"

@@ -101,18 +101,11 @@ def id_vendas_atipicas(df, df_de_cli, df_de_prod, df_estoque, path, data, export
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-df_trat = get_df_preparo_id_vendas()
-# print("\n\nDF_TRAT: ")
-# print(df_trat.head())
-df_de_clientes = de_para_clientes()
-# print("\n\df_de_clientes: ")
-# print(df_de_clientes.head())
+df = get_df_preparo_id_vendas()
 df_prod = get_produtos()
-# print("\n\df_prod: ")
-# print(df_prod.head())
+df_trat = Funcao_tratamento_base(df, df_prod)
+df_de_clientes = de_para_clientes()
 df_estoque = get_estoque_atualizado()[['id_produto', 'estoque', 'data_estoque_atualizado']]
-# print("\n\df_estoque: ")
-# print(df_estoque.head())
 df_fornecedor = get_fornecedor()
 
 df_r = id_vendas_atipicas(df_trat, df_de_clientes, df_prod, df_estoque, script_dir, 'atual', True)
