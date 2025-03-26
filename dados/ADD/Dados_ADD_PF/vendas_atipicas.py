@@ -33,12 +33,12 @@ def identificar_anomalias(df):
 
     # Definir a data de 7 dias atrás
     hoje = pd.Timestamp.today()
-    uma_semana_atras = hoje - pd.DateOffset(days=7)
+    duas_semanas_atras = hoje - pd.DateOffset(days=15)
     
     # Filtrar outliers que ocorreram na última semana
-    outliers_ultima_semana = outliers[outliers['data_emissao'] >= uma_semana_atras]
+    outliers_duas_semana = outliers[outliers['data_emissao'] >= duas_semanas_atras]
     
-    return outliers_ultima_semana
+    return outliers_duas_semana
 
 def identificar_produtos(df):
     ids = df['id_produto'].unique()
