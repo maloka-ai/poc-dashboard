@@ -38,7 +38,7 @@ def identificar_anomalias(df):
     # Filtrar outliers que ocorreram na última semana
     outliers_duas_semana = outliers[outliers['data_emissao'] >= duas_semanas_atras]
     
-    return duas_semanas_atras
+    return outliers_duas_semana
 
 def identificar_produtos(df):
     ids = df['id_produto'].unique()
