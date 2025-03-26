@@ -996,10 +996,19 @@ def create_sidebar(client=None, available_data_types=None):
 @application.callback(
     Output("sidebar-container", "children"),
     Output("selected-client", "data"),
-    Input("url", "search"),
-    # prevent_initial_call=False
+    Output("sidebar-initialized", "data"),
+    [Input("url", "search"),
+     Input("sidebar-initialized", "data")],
+    prevent_initial_call=False
 )
-def initialize_sidebar(search):
+def initialize_sidebar(search, is_initialized):
+    ctx = dash.callback_context
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+    
+    # Se a sidebar já foi inicializada e o trigger não é a URL após login, não recria a sidebar
+    if is_initialized and (trigger_id != 'url' or ('cliente=' not in search if search else True)):
+        return dash.no_update, dash.no_update, True
+    
     # Extrair cliente da URL (passado pelo sistema de login)
     if search and 'cliente=' in search:
         # Extrair o cliente do parâmetro de consulta (ex: ?cliente=BENY)
@@ -1010,16 +1019,16 @@ def initialize_sidebar(search):
             cliente = session['cliente']
         else:
             # Se não tiver cliente na URL nem na sessão, redirecionar para login
-            return html.Div("Redirecionando para login..."), None
+            return html.Div("Redirecionando para login..."), None, False
     
     # Obter tipos de dados disponíveis para o cliente
     available_data_types = get_available_data_types(cliente)
     
     # Criar sidebar com o cliente específico
     sidebar = create_sidebar(cliente, available_data_types)
-    # print("sidebar gerada:", sidebar)
+    print("Sidebar gerada para", cliente)
     
-    return sidebar, cliente
+    return sidebar, cliente, True
 
 # Callbacks das collapses
 @application.callback(
@@ -1079,6 +1088,7 @@ def update_sidebar_title(selected_client):
 # =============================================================================
 application.layout = html.Div([
     dcc.Location(id='url', refresh=True),  # refresh=True para permitir recarregar após login
+    dcc.Store(id='sidebar-initialized', storage_type='session', data=False),  # Novo: estado para controlar inicialização da sidebar
     html.Div(id='page-content')
 ])
 
