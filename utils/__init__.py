@@ -23,6 +23,20 @@ from utils.helpers import (
     create_metric_row
 )
 
+from utils.chat_helpers import (
+    classificar_pergunta, 
+    selecionar_dataframes,
+    CONTEXTO_PADRAO,
+    SEGMENTOS_PADRAO,
+    DATAFRAME_KEYS,
+)
+
+from utils.sidebar_utils import (
+    create_sidebar,
+    get_available_data_types,
+    get_available_clients,
+    collapse_states
+)
 # Lista de objetos exportados pelo pacote utils
 __all__ = [
     # Formatters
@@ -44,5 +58,18 @@ __all__ = [
     'nav_link_style',
     'create_card',
     'create_metric_tile',
-    'create_metric_row'
+    'create_metric_row',
+
+    # Chat Helpers
+    'classificar_pergunta',
+    'selecionar_dataframes',
+    'CONTEXTO_PADRAO',
+    'SEGMENTOS_PADRAO',
+    'DATAFRAME_KEYS',
+
+    #sidebar utils
+    'create_sidebar',
+    'get_available_data_types',
+    'get_available_clients',
+    'collapse_states'
 ]

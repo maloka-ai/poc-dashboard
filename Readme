@@ -2,44 +2,57 @@ Arquitetura do Projeto
 
 project_root/
 │
-├── app.py                      # Ponto de entrada principal
-├── config.py                   # Configurações globais (cores, estilos, etc.)
+├── application.py                      # Ponto de entrada principal
 │
-├── components/                 # Componentes reutilizáveis
-│   ├── __init__.py
-│   ├── cards.py                # Funções de card e métricas
-│   └── sidebar.py              # Componente de barra lateral
-│
-├── layouts/                    # Layouts de páginas
-│   ├── __init__.py
-│   ├── rfma.py                 # Layout de análise RFMA
-│   ├── segmentacao.py          # Layout de segmentação
-│   ├── predicao.py             # Layout de previsão 
-│   ├── retencao.py             # Layout de retenção
-│   ├── chat.py                 # Layout de chat
-│   ├── recorrencia/            # Layouts de recorrência
+├── layouts/                  # Pasta para todos os layouts
+│   ├── __init__.py           
+│   ├── clientes/             # Layouts relacionados ao relacionamento com clientes
 │   │   ├── __init__.py
-│   │   ├── mensal.py
-│   │   ├── trimestral.py
-│   │   └── anual.py
-│   └── faturamento/            # Layouts de faturamento
+│   │   ├── segmentacao.py    # Layout de segmentação
+│   │   ├── rfma.py           # Layout de RFMA
+│   │   ├── recorrencia_mensal.py
+│   │   ├── recorrencia_trimestral.py
+│   │   ├── recorrencia_anual.py
+│   │   ├── retencao.py
+│   │   └── predicao.py
+│   ├── vendas/               # Layouts relacionados a vendas
+│   │   ├── __init__.py
+│   │   ├── faturamento_anual.py
+│   │   └── vendas_atipicas.py
+│   ├── estoque/              # Layouts relacionados a estoque
+│   │   ├── __init__.py
+│   │   └── produtos.py
+│   └── interacao/            # Layouts relacionados a interação
 │       ├── __init__.py
-│       └── anual.py
+│       └── chat.py
 │
-├── utils/                      # Funções utilitárias
+├── utils/                    # Funções utilitárias
 │   ├── __init__.py
-│   ├── ai_helpers.py           # Formatação de valores
-│   ├── data_loading.py         # Carregamento de dados
-│   └── formatting.py           # Funções de IA
+│   ├── chat_helpers.py       # Formatação de valores
+│   ├── helpers.py            # Carregamento de dados
+│   ├── sidebar_utils.py      # Funções para o sidebar
+│   └── formatters.py         # Funções de IA
 │
-├── callbacks/                  # Callbacks organizados por funcionalidade
+├── callbacks/
 │   ├── __init__.py
-│   ├── chat.py                 # Seleção de cliente/tipo
-│   ├── client_selection.py     # Interações de segmentação
-│   ├── page_navigation.py      # Interações de previsão
-│   ├── predicao.py             # Navegação entre páginas
-│   ├── segmentacao.py          # Controles da sidebar
-│   └── sidebar.py              # Funcionalidade de chat
+│   ├── clientes/
+│   │   ├── __init__.py
+│   │   ├── segmentacao.py
+│   │   ├── rfma.py
+│   │   ├── recorrencia.py
+│   │   ├── retencao.py
+│   │   └── predicao.py
+│   ├── vendas/
+│   │   ├── __init__.py
+│   │   ├── faturamento.py
+│   │   └── vendas_atipicas.py
+│   ├── estoque/
+│   │   ├── __init__.py
+│   │   └── produtos.py
+│   ├── interacao/
+│   │   ├── __init__.py
+│   │   └── chat.py
+│   └── sidebar.py      
 │
 ├── data/                       # Funções para gerenciar dados
 │   └── clients.py              # Gerenciamento de clientes
