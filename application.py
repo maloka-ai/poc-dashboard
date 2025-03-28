@@ -4,7 +4,6 @@ import dash_bootstrap_components as dbc
 import dotenv
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
-import pandas as pd
 import openai
 from flask_caching import Cache
 from flask_session import Session
@@ -13,7 +12,7 @@ from dash_bootstrap_templates import load_figure_template
 from flask import Flask, redirect, session
 
 # Importar funções modularizadas para carregamento de dados
-from data_load import (get_available_data_types, load_data)
+from data_load import (get_available_data_types)
 
 from data_load.cache_config import setup_diskcache, clear_client_cache
 
@@ -22,6 +21,7 @@ from callbacks.sidebar import register_sidebar_callbacks
 from callbacks.clientes import register_callbacks as register_clientes_callbacks
 from callbacks.estoque import register_callbacks as register_estoque_callbacks
 from callbacks.interacao import register_callbacks as register_interacao_callbacks
+from data_load.load_callbacks import register_data_callbacks
 
 # imports dos layouts
 from layouts.clientes import (get_segmentacao_layout, get_rfma_layout, get_recorrencia_mensal_layout, get_recorrencia_trimestral_layout, get_recorrencia_anual_layout, get_retencao_layout, get_predicao_layout)
@@ -58,7 +58,7 @@ server.config.update(
     SESSION_FILE_DIR='./flask_sessions'
 )
 
-# Inicializar extensão de sessão - ADICIONAR AQUI
+# Inicializar extensão de sessão Flask
 sess = Session()
 sess.init_app(server)
 
@@ -75,6 +75,7 @@ register_sidebar_callbacks(application)
 register_clientes_callbacks(application)
 register_estoque_callbacks(application)
 register_interacao_callbacks(application)
+register_data_callbacks(application)
 
 # Configure caching for app
 app_cache = Cache(server, config={
@@ -84,21 +85,6 @@ app_cache = Cache(server, config={
     'CACHE_THRESHOLD': 1000,  # Número máximo de itens no cache
     'CACHE_OPTIONS': {'mode': 0o755}  # Permissões de diretório
 })
-
-sidebar_style = {
-    "position": "fixed",
-    "top": 0,
-    "left": 0,
-    "bottom": 0,
-    "width": "280px",
-    "padding": "2rem 1.5rem",
-    "background": f"linear-gradient(180deg, {color['primary']} 0%, #033B4A 100%)",
-    "overflow-y": "auto",
-    "height": "100vh",
-    "box-shadow": "4px 0px 10px rgba(0, 0, 0, 0.1)",
-    "z-index": "1000",
-    "transition": "all 0.3s"
-}
 
 # =============================================================================
 # Custom components for improved UI
@@ -120,6 +106,10 @@ application.layout = html.Div([
     html.Div(id='page-content')
 ])
 
+# =============================================================================
+# Login Layout
+# =============================================================================
+
 # Definir uma página de login específica com IDs corretos
 login_layout = html.Div([
     html.H2("Login MALOKA'AI", style={"textAlign": "center", "marginTop": "50px", "color": gradient_colors['blue_gradient'][0]}),
@@ -132,6 +122,10 @@ login_layout = html.Div([
         html.Div(id="output-login")  # Este é o ID que o callback vai usar
     ], style={"width": "300px", "margin": "0 auto", "padding": "20px", "border": "1px solid #ddd", "borderRadius": "5px", "backgroundColor": "white"})
 ], style={"height": "100vh", "background": f"linear-gradient(135deg, {gradient_colors['blue_gradient'][0]} 0%, {gradient_colors['blue_gradient'][2]} 100%)", "paddingTop": "10vh"})
+
+# =============================================================================
+# Callback para validar login
+# =============================================================================
 
 @application.callback(
     [Output("output-login", "children"),
@@ -190,56 +184,9 @@ def validar_login(n_clicks, email, senha):
         return dbc.Alert(f"Domínio não reconhecido.", color="danger"), dash.no_update
          
           
-# Callback para mostrar conteúdo baseado na URL/autenticação
-@application.callback(
-    Output('page-content', 'children'),
-    [Input('url', 'pathname')],
-    prevent_initial_call=False
-)
-def display_page(pathname):
-    # print(f"[DEBUG] display_page INICIADO - URL: {pathname} - Cliente na sessão: {'sim' if 'cliente' in session else 'não'}")
-    # print(f"[DEBUG] Trigger foi: {dash.callback_context.triggered}")
-
-    # Verificar cliente na sessão de forma simplificada
-    cliente = session.get('cliente', None)
-    # print(f"[DEBUG] Cliente na sessão: {cliente}")
-    if cliente is None:
-        # Se não estiver autenticado, exibir o layout de login
-        print("Usuário não autenticado, exibindo login_layout")
-        # Retornar a página de login
-        return login_layout
-    
-    # Se estiver autenticado
-    try:
-        cliente = session['cliente']
-        available_data_types = get_available_data_types(cliente)
-        print(f"Usuário autenticado, carregando dashboard para cliente: {cliente}")
-        
-        # Layout do dashboard
-        return html.Div([
-            dcc.Store(id='selected-data', storage_type='session'),
-            dcc.Store(id='selected-client', data=cliente),
-            dcc.Store(id='selected-data-type', data="PF"),
-            dcc.Store(id='last-data-load-time', data=time.time()),
-            dcc.Loading(
-                id="loading-overlay",
-                type="circle",
-                children=html.Div(id="loading-output-overlay"),
-                style={"position": "fixed", "top": "50%", "left": "50%", 
-                    "transform": "translate(-50%, -50%)", "zIndex": "9999"}
-            ),
-            html.Div(id="sidebar-container", children=create_sidebar(cliente, available_data_types)),
-            html.Div(id="page-content-dashboard", children=[])
-        ])
-    except Exception as e:
-        print(f"ERRO no callback display_page: {str(e)}")
-        # Em caso de erro, mostrar mensagem de erro
-        return html.Div([
-            html.H3("Erro ao renderizar a página", style={"color": "red"}),
-            html.Pre(f"Pathname: {pathname}"),
-            html.Pre(f"Erro: {str(e)}"),
-            html.Button("Voltar para o início", id="error-redirect-button")
-        ])
+# =============================================================================
+# Rotas do Flask
+# =============================================================================
 
 # Rota raiz
 @server.route('/')
@@ -313,82 +260,58 @@ def debug_session():
     return f"Informações da sessão: {session_info}"
 
 # =============================================================================
-# Callbacks para gerenciamento de dados
+# Callback para mostrar login ou dashboard
 # =============================================================================
-@application.callback(
-    Output("selected-data", "data"),
-    Input("selected-client", "data"),
-    Input("selected-data-type", "data"),
-    State("selected-data", "data"),
-    State("last-data-load-time", "data"),
-    prevent_initial_call=True
-)
-def load_data_callback(selected_client, selected_data_type, current_data, last_load_time):
-    # Verificar se os inputs são válidos
-    if not selected_client or not selected_data_type:
-        return None
-    
-    # Criar uma chave de cache consistente
-    cache_key = f"{selected_client}_{selected_data_type}"
-    current_time = time.time()
-    
-    # Se já temos dados em cache para este cliente/tipo, verificar a idade
-    if (current_data and 'client_info' in current_data and 
-            current_data['client_info'] == cache_key and 
-            last_load_time and current_time - last_load_time < 3600):  # Cache de 1 hora
-        return current_data
-    
-    # Senão, carregue os dados usando a função modularizada
-    print(f"**************** Cache vazio: Carregando dados para {selected_client} - {selected_data_type}")
-    data = load_data(selected_client, selected_data_type, app_cache)
-    
-    if data.get("error", False):
-        error_data = {"client_info": cache_key, "error": True, "message": data.get("message")}
-        return error_data
-    
-    # Crie um objeto com os dados serializados e a informação do cliente
-    result = {
-        "client_info": cache_key,
-        "df": data["df"].to_json(date_format='iso', orient='split') if data["df"] is not None else None,
-        "df_RC_Mensal": data["df_RC_Mensal"].to_json(date_format='iso', orient='split') if data["df_RC_Mensal"] is not None else None,
-        "df_RC_Trimestral": data["df_RC_Trimestral"].to_json(date_format='iso', orient='split') if data["df_RC_Trimestral"] is not None else None,
-        "df_RC_Anual": data["df_RC_Anual"].to_json(date_format='iso', orient='split') if data["df_RC_Anual"] is not None else None,
-        "df_Previsoes": data["df_Previsoes"].to_json(date_format='iso', orient='split') if data["df_Previsoes"] is not None else None,
-        "df_RT_Anual": data["df_RT_Anual"].to_json(date_format='iso', orient='split') if data["df_RT_Anual"] is not None else None,
-        "df_fat_Anual": data["df_fat_Anual"].to_json(date_format='iso', orient='split') if data["df_fat_Anual"] is not None else None,
-        "df_fat_Anual_Geral": data["df_fat_Anual_Geral"].to_json(date_format='iso', orient='split') if data["df_fat_Anual_Geral"] is not None else None,
-        "df_fat_Mensal": data["df_fat_Mensal"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal"] is not None else None,
-        "df_Vendas_Atipicas": data["df_Vendas_Atipicas"].to_json(date_format='iso', orient='split') if data["df_Vendas_Atipicas"] is not None else None,
-        "df_relatorio_produtos": data["df_relatorio_produtos"].to_json(date_format='iso', orient='split') if "df_relatorio_produtos" in data and data["df_relatorio_produtos"] is not None else None,
-        "company_context": data["company_context"],
-        "segmentos_context": data["segmentos_context"]
-    }
-    
-    print(f"Dados carregados com sucesso para {selected_client} - {selected_data_type}")
-    return result
 
 @application.callback(
-    Output("selected-data", "data", allow_duplicate=True),
-    Input("data-type-selection", "value"),
-    State("selected-client", "data"),
-    State("selected-data", "data"),
-    prevent_initial_call=True
+    Output('page-content', 'children'),
+    [Input('url', 'pathname')],
+    prevent_initial_call=False
 )
-def update_data_type(selected_type, selected_client, current_data):
-    if selected_type is None or selected_client is None:
-        return dash.no_update
+def display_page(pathname):
+    # print(f"[DEBUG] display_page INICIADO - URL: {pathname} - Cliente na sessão: {'sim' if 'cliente' in session else 'não'}")
+    # print(f"[DEBUG] Trigger foi: {dash.callback_context.triggered}")
+
+    # Verificar cliente na sessão de forma simplificada
+    cliente = session.get('cliente', None)
+    # print(f"[DEBUG] Cliente na sessão: {cliente}")
+    if cliente is None:
+        # Se não estiver autenticado, exibir o layout de login
+        print("Usuário não autenticado, exibindo login_layout")
+        # Retornar a página de login
+        return login_layout
     
-    # Crie a chave de cache
-    cache_key = f"{selected_client}_{selected_type}"
-    
-    # Se já temos os dados e são do mesmo tipo, não recarregue
-    if current_data and 'client_info' in current_data and current_data['client_info'] == cache_key:
-        print(f"Usando cache existente para {cache_key}")
-        return dash.no_update
-    
-    # Caso contrário, retorne None para forçar o carregamento dos dados corretos
-    print(f"Cache inválido para {cache_key}. Forçando recarregamento.")
-    return None
+    # Se estiver autenticado
+    try:
+        cliente = session['cliente']
+        available_data_types = get_available_data_types(cliente)
+        print(f"Usuário autenticado, carregando dashboard para cliente: {cliente}")
+        
+        # Layout do dashboard
+        return html.Div([
+            dcc.Store(id='selected-data', storage_type='session'),
+            dcc.Store(id='selected-client', data=cliente),
+            dcc.Store(id='selected-data-type', data="PF"),
+            dcc.Store(id='last-data-load-time', data=time.time()),
+            dcc.Loading(
+                id="loading-overlay",
+                type="circle",
+                children=html.Div(id="loading-output-overlay"),
+                style={"position": "fixed", "top": "50%", "left": "50%", 
+                    "transform": "translate(-50%, -50%)", "zIndex": "9999"}
+            ),
+            html.Div(id="sidebar-container", children=create_sidebar(cliente, available_data_types)),
+            html.Div(id="page-content-dashboard", children=[])
+        ])
+    except Exception as e:
+        print(f"ERRO no callback display_page: {str(e)}")
+        # Em caso de erro, mostrar mensagem de erro
+        return html.Div([
+            html.H3("Erro ao renderizar a página", style={"color": "red"}),
+            html.Pre(f"Pathname: {pathname}"),
+            html.Pre(f"Erro: {str(e)}"),
+            html.Button("Voltar para o início", id="error-redirect-button")
+        ])
 
 # =============================================================================
 # Callback para renderizar o conteúdo conforme a URL
