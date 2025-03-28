@@ -2,7 +2,7 @@ Arquitetura do Projeto
 
 project_root/
 │
-├── application.py                      # Ponto de entrada principal
+├── application.py            # Ponto de entrada principal
 │
 ├── layouts/                  # Pasta para todos os layouts
 │   ├── __init__.py           
@@ -54,8 +54,9 @@ project_root/
 │   │   └── chat.py
 │   └── sidebar.py      
 │
-├── data/                       # Funções para gerenciar dados
-│   └── clients.py              # Gerenciamento de clientes
+├── data_load/                  # Funções para gerenciar dados
+│   ├── client_data.py          # Gerenciamento dos dados do cliente
+|   └── data_loader.py          # Carregamento de dados
 │
 ├── assets/                     # Arquivos estáticos (CSS, imagens)
 ├── contexts/                   # Contextos específicos de clientes

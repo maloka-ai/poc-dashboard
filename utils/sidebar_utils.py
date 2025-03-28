@@ -1,6 +1,8 @@
 # Funções compartilhadas entre application.py e callbacks/sidebar.py
 import time
 import os
+import dash_bootstrap_components as dbc
+from dash import html, dcc
 
 collapse_states = {
     "clientes": False,
@@ -43,10 +45,6 @@ def get_available_clients():
     return clients
 
 def create_sidebar(client=None, available_data_types=None, collapse_states=None, nav_link_style=None, color=None, gradient_colors=None):
-    # Importações necessárias para criar a sidebar
-    import dash_bootstrap_components as dbc
-    from dash import html, dcc
-    
     # Valores padrão
     if collapse_states is None:
         collapse_states = {
@@ -96,6 +94,13 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
     
     sidebar = html.Div(
         [
+            # Armazenar o estado de colapso no armazenamento da sessão
+            dcc.Store(
+                id="collapse-states-store",
+                storage_type="session",
+                data=collapse_states
+            ),
+            # Logo do Maloka'AI
             html.Div(
                 [
                     html.Img(src="assets/maloka_logo.png", style={"width": "60px", "height": "auto"}),
@@ -167,7 +172,7 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                             ),
                             dbc.NavLink(
                                 [html.I(className="fas fa-user-tag me-2"), "Clientes por RFMA"], 
-                                href="/", 
+                                href="/rfma", 
                                 active="exact",
                                 style=nav_link_style,
                                 className="my-1"
@@ -213,7 +218,7 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                         pills=True,
                     ),
                     id="clientes-collapse",
-                    is_open=collapse_states["clientes"],
+                    is_open=collapse_states.get("clientes", False),
                     style={"paddingLeft": "1rem"}
                 ),
             ], style={"marginBottom": "1.5rem"}),
@@ -257,7 +262,7 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                         pills=True,
                     ),
                     id="faturamento-collapse",
-                    is_open=collapse_states["faturamento"],
+                    is_open=collapse_states.get("faturamento", False),
                     style={"paddingLeft": "1rem"}
                 ),
             ], style={"marginBottom": "1.5rem"}),
@@ -294,7 +299,7 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                         pills=True,
                     ),
                     id="estoque-collapse",
-                    is_open=collapse_states["estoque"],
+                    is_open=collapse_states.get("estoque", False),
                     style={"paddingLeft": "1rem"}
                 ),
             ], style={"marginBottom": "1.5rem"}),
