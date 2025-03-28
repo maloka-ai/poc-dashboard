@@ -1,0 +1,7 @@
+from callbacks.clientes import *
+from callbacks.estoque import *
+from callbacks.interacao import *
+from callbacks.sidebar import *
+
+# A lista será populada pelos submódulos
+__all__ = []
