@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # Database connection string
-db_url = "postgresql+psycopg2://adduser:addpassword@add.cwlsoqygi6rc.us-east-1.rds.amazonaws.com/add"
+db_url = "postgresql+psycopg2://adduser:maloka2025@maloka-application-db.cwlsoqygi6rc.us-east-1.rds.amazonaws.com:5432/add"
 engine = create_engine(db_url)
 
 def Trat_coluna_date(Dataframe, Data_name, formato_data_ingles = True):
