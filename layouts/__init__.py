@@ -20,6 +20,7 @@ __all__ = [
     
     # Estoque
     'get_produtos_layout',
+    'get_produtos_inativos_layout',
     
     # Interação
     'get_chat_layout'

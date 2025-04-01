@@ -294,6 +294,13 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                                 style=nav_link_style,
                                 className="my-1"
                             ),
+                            dbc.NavLink(
+                                [html.I(className="fas fa-exclamation-circle me-2"), "Inatividade de Produtos"], 
+                                href="/estoque/produtos-inativos",
+                                active="exact",
+                                style=nav_link_style,
+                                className="my-1"
+                            ),
                         ],
                         vertical=True,
                         pills=True,
@@ -335,15 +342,6 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                     style={"textDecoration": "none"}
                 )
             ]),
-
-            # Time last updated indicator
-            html.Div([
-                html.P("Última atualização:", style={"color": "rgba(255, 255, 255, 0.5)", "fontSize": "0.8rem", "marginBottom": "0.2rem"}),
-                html.P(id="last-updated", children=time.strftime("%d/%m/%Y %H:%M:%S"), style={"color": "white", "fontSize": "0.9rem", "fontWeight": "600"})
-            ], style={
-                "marginTop": "2rem", 
-                "textAlign": "center"
-            })
         ],
         className="sidebar"
     )
