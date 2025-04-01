@@ -388,8 +388,38 @@ def exportar_excel_para_dashboard(df, pasta_destino=None, arquivo_saida="relator
     #     resumo_valores['percentual'] = (resumo_valores['valor_estimado_1m'] / resumo_valores['valor_estimado_1m'].sum() * 100).round(1)
     # else:
     #     resumo_valores = pd.DataFrame(columns=['criticidade', 'valor_estimado_1m', 'percentual'])
-    
-    # Criar um arquivo Excel com várias abas
+
+    # Adicionar coluna de recência (última compra)
+    df_completo['recencia'] = df_completo['Data1']
+    # Substituir valores nulos por '0'
+    df_completo['recencia'] = df_completo['recencia'].fillna('0')
+
+    try:
+        # Recuperar o histórico completo de entradas
+        df_historico_completo = get_historico_entrada()
+        
+        # Filtrar apenas movimentos de aquisição
+        df_historico_compras = df_historico_completo[
+            df_historico_completo["descricao"].str.contains("aquisicao|aquisição", case=False, na=False)
+        ]
+        
+        # Para cada produto, encontrar a data mais antiga (primeira compra)
+        df_primeira_compra = df_historico_compras.groupby('id_produto')['data_movimento'].min().reset_index()
+        df_primeira_compra.rename(columns={'data_movimento': 'antiguidade', 'id_produto': 'cd_produto'}, inplace=True)
+        
+        # Adicionar a informação de antiguidade ao dataframe principal
+        df_completo = df_completo.merge(df_primeira_compra, on='cd_produto', how='left')
+        
+        # Substituir valores nulos por '0'
+        df_completo['antiguidade'] = df_completo['antiguidade'].fillna('0')
+        
+        print("Dados de antiguidade calculados com sucesso.")
+    except Exception as e:
+        print(f"Erro ao calcular antiguidade: {e}")
+        # Se falhar, criar coluna com valores '0'
+        df_completo['antiguidade'] = '0'
+        print("Usando valor padrão '0' para a coluna de antiguidade.")
+
     try:
         with pd.ExcelWriter(caminho_completo, engine='xlsxwriter') as writer:
             # Adicionar cada DataFrame como uma aba
@@ -414,6 +444,7 @@ def exportar_excel_para_dashboard(df, pasta_destino=None, arquivo_saida="relator
     
     print("\nEstrutura do arquivo:")
     print("- Dados_Completos: Todos os dados com métricas calculadas")
+    print(df_completo.columns)
     # print("- Resumo_Criticidade: Contagens por nível de criticidade")
     # print("- Dados_Dispersao: Dados para o gráfico de dispersão")
     # print("- Top20_Criticos: Os 20 produtos mais críticos")
