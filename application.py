@@ -26,7 +26,7 @@ from data_load.load_callbacks import register_data_callbacks
 # imports dos layouts
 from layouts.clientes import (get_segmentacao_layout, get_rfma_layout, get_recorrencia_mensal_layout, get_recorrencia_trimestral_layout, get_recorrencia_anual_layout, get_retencao_layout, get_predicao_layout)
 from layouts.vendas import (get_faturamento_anual_layout, get_vendas_atipicas_layout)
-from layouts.estoque import (get_produtos_layout)
+from layouts.estoque import (get_produtos_layout, get_produtos_inativos_layout)
 from layouts.interacao import (get_chat_layout)
 
 #helpers da sidebar
@@ -372,6 +372,8 @@ def render_page_content(pathname, data):
         return get_vendas_atipicas_layout(data), None
     elif pathname == "/estoque/produtos":
         return get_produtos_layout(data), None
+    elif pathname == "/estoque/produtos-inativos":
+        return get_produtos_inativos_layout(data), None
     elif pathname == "/chat" or pathname == "/app/": 
         return get_chat_layout(data), None
     
