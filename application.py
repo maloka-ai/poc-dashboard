@@ -10,6 +10,9 @@ from flask_session import Session
 import time
 from dash_bootstrap_templates import load_figure_template
 from flask import Flask, redirect, session
+import psycopg2
+from werkzeug.security import check_password_hash
+import bcrypt
 
 # Importar funções modularizadas para carregamento de dados
 from data_load import (get_available_data_types)
@@ -139,51 +142,47 @@ def validar_login(n_clicks, email, senha):
     if n_clicks is None:
         return dash.no_update, dash.no_update
     
-    # Verificação básica de preenchimento
     if not email or not senha:
         return dbc.Alert("Por favor, preencha email e senha.", color="warning"), dash.no_update
-    
-    # Verificar se a senha está correta - com trim
-    SENHA_PADRAO = os.getenv("senhaLogin")
-    if senha.strip() != SENHA_PADRAO:
-        return dbc.Alert("Senha incorreta.", color="danger"), dash.no_update
-    
-    # Extrair domínio do email - método mais robusto
-    email = email.strip().lower()
-    # Mapeamento direto para teste
-    DOMINIOS_VALIDOS = {
-        'bibi': 'BIBI',
-        'beny': 'BENY',
-        'espantalho': 'ESPANTALHO',
-        'add': 'ADD',
-        'teste': 'TESTE'  # Para facilitar testes
-    }
 
-     # Extrair domínio simplificado
-    dominio = None
-    if '@' in email:
-        dominio = email.split('@')[1].split('.')[0].lower()
+    # Buscar usuário no banco de dados
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST"), 
+            port=os.getenv("DB_PORT", 5432),
+            user=os.getenv("DB_USER", "adduser"),
+            password=os.getenv("DB_PASS"),
+            database="security"
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT password_hash, company, is_active FROM security.users WHERE email = %s", (email.strip().lower(),))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        return dbc.Alert(f"Erro na conexão com o banco: {str(e)}", color="danger"), dash.no_update
+
+    if not result:
+        return dbc.Alert("Usuário não encontrado.", color="danger"), dash.no_update
     
-    # Verificar domínio
-    if dominio in DOMINIOS_VALIDOS:
-        empresa = DOMINIOS_VALIDOS[dominio]
-        
-        # Definir na sessão e testar
-        try:
-            print(f"Armazenando '{empresa}' na sessão")
-            session['cliente'] = empresa
-            print(f"Após armazenar: {dict(session)}")
-            
-            # Forçar que a sessão seja salva
-            session.modified = True
-            
-            return dbc.Alert(f"Login bem-sucedido! Redirecionando...", color="success"), "/"
-        except Exception as e:
-            return dbc.Alert(f"Erro ao armazenar na sessão: {str(e)}", color="danger"), dash.no_update
-    else:
-        return dbc.Alert(f"Domínio não reconhecido.", color="danger"), dash.no_update
-         
-          
+    password_hash, company, is_active = result
+    if not is_active:
+        return dbc.Alert("Conta inativa.", color="danger"), dash.no_update
+
+    try:
+        if not bcrypt.checkpw(senha.strip().encode('utf-8'), password_hash.encode('utf-8')):
+            return dbc.Alert("Senha incorreta.", color="danger"), dash.no_update
+    except Exception as e:
+        return dbc.Alert(f"Erro na validação da senha: {str(e)}", color="danger"), dash.no_update
+
+    try:
+        print(f"Armazenando '{company}' na sessão")
+        session['cliente'] = company
+        session.modified = True
+        return dbc.Alert("Login bem-sucedido! Redirecionando...", color="success"), "/"
+    except Exception as e:
+        return dbc.Alert(f"Erro ao armazenar na sessão: {str(e)}", color="danger"), dash.no_update
+
 # =============================================================================
 # Rotas do Flask
 # =============================================================================

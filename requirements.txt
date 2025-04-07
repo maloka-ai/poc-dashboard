@@ -1,4 +1,4 @@
-dash[diskcache]
+dash[diskcache]==2.18.2
 dash-bootstrap-components
 pandas
 numpy
@@ -9,3 +9,7 @@ Flask-Caching
 dash-bootstrap-templates
 flask
 gunicorn
+psycopg2-binary
+python-dotenv
+flask_session
+bcrypt
