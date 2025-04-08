@@ -11,16 +11,17 @@ import warnings
 from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
+dotenv.load_dotenv()
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 try:
     # Conectar ao PostgreSQL
     print("Conectando ao banco de dados PostgreSQL...")
     conn = psycopg2.connect(
-        host= os.getenv("hostAWS"),
+        host= os.getenv("DB_HOST"),
         database="bibicell",
-        user= os.getenv("userADD"),
-        password= os.getenv("addPass")
+        user= os.getenv("DB_USER"),
+        password= os.getenv("DB_PASS")
     )
     
     print("Conexão estabelecida com sucesso!")
@@ -47,7 +48,7 @@ try:
     print(df_vendas.head())
     
     # Exportar para Excel
-    # df_vendas.to_excel("df_vendas.xlsx", index=False)
+    df_vendas.to_excel("df_vendas.xlsx", index=False)
     
     ########################################################
     # consulta da tabela vendas_itens
@@ -71,7 +72,7 @@ try:
     print(df_venda_itens.head())
     
     # Exportar para Excel
-    # df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
+    df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
 
     ########################################################
     # consulta da tabela estoque
@@ -122,7 +123,7 @@ try:
     print(df_produtos.head())
     
     # Exportar para Excel
-    # df_produtos.to_excel("df_produtos.xlsx", index=False)
+    df_produtos.to_excel("df_produtos.xlsx", index=False)
 
     # Fechar conexão
     conn.close()
@@ -132,24 +133,16 @@ except Exception as e:
     print(f"Erro: {e}")
     print("\nVerifique se:")
     print("1. O PostgreSQL está rodando")
-    print("2. O banco de dados 'add' existe")
+    print("2. O banco de dados existe")
     print("3. As credenciais de conexão estão corretas")
 
 ############################################################
 #Pre-processamento dos dados
 ############################################################
-df_vendas['data_emissao'] = pd.to_datetime(df_vendas['data_emissao'])
-
-# Filtrar o DataFrame de vendas para manter apenas registros com status começando com 'Pedido'
-df_vendas_pedido = df_vendas[df_vendas['status'].str.startswith('Pedido')]
 
 # Fazer um merge para obter apenas os itens de venda relacionados aos pedidos
 df_venda_itens_pedido = pd.merge(
     df_venda_itens,
-    df_vendas_pedido,
-    on='id_venda',
-    how='inner'
-).merge(
     df_produtos[['id_produto', 'nome', 'critico']],
     on='id_produto',
     how='left'
