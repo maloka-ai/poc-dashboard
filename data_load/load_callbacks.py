@@ -70,6 +70,7 @@ def register_data_callbacks(app, app_cache=None):
             return error_data
         
         # Crie um objeto com os dados serializados e a informação do cliente
+        print("callback de carregar dados aquiiiiiiiiiii")
         result = {
             "client_info": cache_key,
             "df": data["df"].to_json(date_format='iso', orient='split') if data["df"] is not None else None,
@@ -83,6 +84,7 @@ def register_data_callbacks(app, app_cache=None):
             "df_fat_Mensal": data["df_fat_Mensal"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal"] is not None else None,
             "df_Vendas_Atipicas": data["df_Vendas_Atipicas"].to_json(date_format='iso', orient='split') if data["df_Vendas_Atipicas"] is not None else None,
             "df_relatorio_produtos": data["df_relatorio_produtos"].to_json(date_format='iso', orient='split') if "df_relatorio_produtos" in data and data["df_relatorio_produtos"] is not None else None,
+            "df_previsao_retorno": data["df_previsao_retorno"].to_json(date_format='iso', orient='split') if "df_previsao_retorno" in data and data["df_previsao_retorno"] is not None else None,
             "company_context": data["company_context"],
             "segmentos_context": data["segmentos_context"]
         }
