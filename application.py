@@ -36,7 +36,7 @@ from layouts.interacao import (get_chat_layout)
 from utils.sidebar_utils import (create_sidebar, get_available_data_types)
 
 #helpers de layout
-from utils import (color, gradient_colors, content_style, button_style)
+from utils import (color, gradient_colors, content_style, button_style, login_color)
 
 # =============================================================================
 # Setup caching for improved performance
@@ -106,6 +106,7 @@ loading_component = dcc.Loading(
 application.layout = html.Div([
     dcc.Location(id='url', refresh=True),  # refresh=True para permitir recarregar após login
     dcc.Store(id='sidebar-initialized', storage_type='session', data=False),  # Novo: estado para controlar inicialização da sidebar
+    dcc.Store(id='login-button-state', data={'color': login_color['buttonOff']}),
     html.Div(id='page-content')
 ])
 
@@ -115,17 +116,96 @@ application.layout = html.Div([
 
 # Definir uma página de login específica com IDs corretos
 login_layout = html.Div([
-    html.H2("Login MALOKA'AI", style={"textAlign": "center", "marginTop": "50px", "color": gradient_colors['blue_gradient'][0]}),
-    html.Div([
-        html.Label("Email:"),
-        dcc.Input(id="input-email", type="email", placeholder="Digite seu email", style={"width": "100%", "marginBottom": "10px"}),
-        html.Label("Senha:"),
-        dcc.Input(id="input-senha", type="password", placeholder="Digite sua senha", style={"width": "100%", "marginBottom": "20px"}),
-        dbc.Button("Entrar", id="botao-login", style={"width": "100%"}, className="mb-3"),
-        html.Div(id="output-login")  # Este é o ID que o callback vai usar
-    ], style={"width": "300px", "margin": "0 auto", "padding": "20px", "border": "1px solid #ddd", "borderRadius": "5px", "backgroundColor": "white"})
-], style={"height": "100vh", "background": f"linear-gradient(135deg, {gradient_colors['blue_gradient'][0]} 0%, {gradient_colors['blue_gradient'][2]} 100%)", "paddingTop": "10vh"})
-
+    html.Div([  # Container para logo e título
+        # html.Img(src="assets/maloka_logo.png", style={
+        #     "width": "60px", 
+        #     "height": "auto",
+        #     "display": "block",
+        #     "margin": "0 auto 10px auto"  # Centraliza a logo
+        # }),
+        html.H5("MALOKA'AI", style={
+            "textAlign": "center", 
+            "marginBottom": "5px", 
+            "color": login_color['title']
+        }),
+        html.H6("Converse com seus dados", style={
+            "textAlign": "center", 
+            "marginBottom": "1px",
+            "fontWeight": "bold",
+            "fontSize": "0.9rem",
+            "fontStyle": "italic",
+            "color": login_color['textHighlight'],
+            "opacity": "0.8"
+        }),
+        html.H6("e aumente as suas vendas", style={
+            "textAlign": "center", 
+            "marginBottom": "10px",
+            "fontWeight": "normal",
+            "fontSize": "0.9rem",
+            "fontStyle": "italic",
+            "color": login_color['textHighlight'],
+            "opacity": "0.8"
+        }),
+        html.Div([
+            html.Label("E-mail:", style={"textAlign": "left", "display": "block", "marginBottom": "5px"}),
+            dcc.Input(
+                id="input-email", 
+                type="email", 
+                style={
+                    "width": "100%", 
+                    "marginBottom": "15px",
+                    "display": "block",
+                    "margin": "0 auto 15px auto",
+                    "outline": "none",  
+                    "boxShadow": "none" 
+                }
+            ),
+            html.Label("Senha:", style={"textAlign": "left", "display": "block", "marginBottom": "5px"}),
+            dcc.Input(
+                id="input-senha", 
+                type="password",
+                style={
+                    "width": "100%", 
+                    "marginBottom": "25px",
+                    "display": "block",
+                    "margin": "0 auto 20px auto",
+                    "outline": "none",  
+                    "boxShadow": "none" 
+                }
+            ),
+            html.Div([  # Container para botão (para centralização)
+                dbc.Button(
+                    "Entrar", 
+                    id="botao-login",
+                    style={
+                        "width": "100%", 
+                        "backgroundColor": login_color['buttonOff'],
+                        "outline": "none",  # Remove o contorno de foco
+                        "boxShadow": "none",    # Remove possíveis sombras de foco
+                        "border": "none",       # Remove bordas completamente
+                    },
+                    className="mb-3"
+                            ),
+            ], style={"textAlign": "center"}),
+            html.Div(id="output-login", style={"textAlign": "center"})  # Mensagens de erro/sucesso centralizadas
+        ], style={
+            "width": "250px",  # Um pouco menor para melhor proporção
+            "margin": "0 auto", 
+            "padding": "25px", 
+            "border": "1px solid #ddd", 
+            "borderRadius": "8px", 
+            "backgroundColor": login_color['background'],
+            "boxShadow": "0 2px 10px rgba(0,0,0,0.1)"
+        })
+    ], style={"width": "100%", "textAlign": "center"})  # Container externo para facilitar alinhamento
+], style={
+    "height": "100vh", 
+    "background": login_color['background'], 
+    "display": "flex", 
+    "alignItems": "center", 
+    "justifyContent": "center",
+    "flexDirection": "column"
+})
 # =============================================================================
 # Callback para validar login
 # =============================================================================
@@ -182,6 +262,20 @@ def validar_login(n_clicks, email, senha):
         return dbc.Alert("Login bem-sucedido! Redirecionando...", color="success"), "/"
     except Exception as e:
         return dbc.Alert(f"Erro ao armazenar na sessão: {str(e)}", color="danger"), dash.no_update
+    
+# =============================================================================
+# Callback para atualizar o estilo do botão de login
+# =============================================================================
+@application.callback(
+    Output("botao-login", "style"),
+    [Input("input-email", "value"),
+     Input("input-senha", "value")]
+)
+def atualizar_estilo_botao(email, senha):
+    if email and senha:  # Se ambos os campos estiverem preenchidos
+        return {"width": "100%", "backgroundColor": login_color['buttonOn']}
+    else:  # Se algum campo estiver vazio
+        return {"width": "100%", "backgroundColor": login_color['buttonOff']}
 
 # =============================================================================
 # Rotas do Flask

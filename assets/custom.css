@@ -10,6 +10,24 @@ body {
     height: 8px;
 }
 
+input:focus, button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+#botao-login {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+#botao-login:focus, #botao-login:active, #botao-login:hover {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
 ::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;

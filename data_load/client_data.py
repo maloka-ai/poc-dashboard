@@ -158,7 +158,8 @@ def get_file_paths(client, data_type):
         "fat_anual_geral_path": f"{base_path}/faturamento_anual_geral.xlsx",
         "fat_mensal_path": f"{base_path}/faturamento_mensal.xlsx",
         "vendas_atipicas_path": f"{base_path}/vendas_atipicas_atual.xlsx",
-        "relatorio_produtos_path": f"{base_path}/relatorio_produtos.xlsx"
+        "relatorio_produtos_path": f"{base_path}/relatorio_produtos.xlsx",
+        "previsao_retorno_path": f"{base_path}/previsao_retorno.xlsx",
     }
     
     return file_paths

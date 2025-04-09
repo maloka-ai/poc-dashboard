@@ -10,6 +10,7 @@ from utils.formatters import (
 from utils.helpers import (
     color,
     colors,
+    login_color,
     gradient_colors,
     cores_segmento,
     card_style,
@@ -47,6 +48,7 @@ __all__ = [
     
     # Helpers
     'color',
+    'loging_color',
     'colors',
     'gradient_colors',
     'cores_segmento',
