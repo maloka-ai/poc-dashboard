@@ -103,7 +103,7 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
             # Logo do Maloka'AI
             html.Div(
                 [
-                    html.Img(src="assets/maloka_logo.png", style={"width": "60px", "height": "auto"}),
+                    html.Img(src="assets/logo_maloka.png", style={"width": "60px", "height": "auto"}),
                     html.H4("MALOKA'AI", style={"color": "white", "margin": "0 0 0 10px", "font-weight": "700", "letter-spacing": "1px"})
                 ],
                 style={"display": "flex", "alignItems": "center", "paddingBottom": "1.5rem"}

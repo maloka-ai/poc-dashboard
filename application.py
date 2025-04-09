@@ -117,12 +117,12 @@ application.layout = html.Div([
 # Definir uma página de login específica com IDs corretos
 login_layout = html.Div([
     html.Div([  # Container para logo e título
-        # html.Img(src="assets/maloka_logo.png", style={
-        #     "width": "60px", 
-        #     "height": "auto",
-        #     "display": "block",
-        #     "margin": "0 auto 10px auto"  # Centraliza a logo
-        # }),
+        html.Img(src="assets/logo_maloka.png", style={
+            "width": "60px", 
+            "height": "auto",
+            "display": "block",
+            "margin": "0 auto 10px auto"  # Centraliza a logo
+        }),
         html.H5("MALOKA'AI", style={
             "textAlign": "center", 
             "marginBottom": "5px", 
