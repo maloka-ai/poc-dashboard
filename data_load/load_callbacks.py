@@ -70,7 +70,6 @@ def register_data_callbacks(app, app_cache=None):
             return error_data
         
         # Crie um objeto com os dados serializados e a informação do cliente
-        print("callback de carregar dados aquiiiiiiiiiii")
         result = {
             "client_info": cache_key,
             "df": data["df"].to_json(date_format='iso', orient='split') if data["df"] is not None else None,
