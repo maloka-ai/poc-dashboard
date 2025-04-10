@@ -16,6 +16,15 @@ color = {
     'background': '#f9f9f9'
 }
 
+login_color = {
+    'title': '#185D6F',
+    'background': '#F5F5EE',
+    'buttonOff': '#EFCCB8',
+    'buttonOn': '#C27144',
+    'textNormal': '#969693',
+    'textHighlight': '#4F4F4E',
+}
+
 colors = [color['accent'], color['highlight'], color['neutral'], color['secondary']]
 
 gradient_colors = {

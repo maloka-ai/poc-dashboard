@@ -62,6 +62,32 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         df_fat_Mensal = pd.read_excel(file_paths["fat_mensal_path"]) if os.path.exists(file_paths["fat_mensal_path"]) else None
         df_Vendas_Atipicas = pd.read_excel(file_paths["vendas_atipicas_path"]) if os.path.exists(file_paths["vendas_atipicas_path"]) else None
         df_relatorio_produtos = pd.read_excel(file_paths["relatorio_produtos_path"], sheet_name=0) if os.path.exists(file_paths["relatorio_produtos_path"]) else None
+        # Log adicional para diagnóstico do problema com df_previsao_retorno
+        previsao_retorno_path = file_paths.get("previsao_retorno_path", "caminho não definido")
+        # print(f"Caminho do arquivo de previsão de retorno: {previsao_retorno_path}")
+        # print(f"O arquivo existe? {os.path.exists(previsao_retorno_path) if previsao_retorno_path != 'caminho não definido' else False}")
+        
+        if previsao_retorno_path != "caminho não definido" and os.path.exists(previsao_retorno_path):
+            try:
+                # Tentar ler todas as planilhas para verificar os nomes disponíveis
+                excel_file = pd.ExcelFile(previsao_retorno_path)
+                sheet_names = excel_file.sheet_names
+                # print(f"Planilhas disponíveis no arquivo: {sheet_names}")
+                
+                # Tentar carregar a planilha específica
+                df_previsao_retorno = pd.read_excel(
+                    previsao_retorno_path, 
+                    sheet_name="Resumo_por_Cliente"
+                )
+                # print(f"DataFrame carregado com {len(df_previsao_retorno)} linhas e {len(df_previsao_retorno.columns)} colunas.")
+            except Exception as e:
+                print(f"Erro específico ao carregar df_previsao_retorno: {str(e)}")
+                df_previsao_retorno = None
+        else:
+            df_previsao_retorno = None
+            print("Arquivo de previsão de retorno não encontrado ou caminho não definido.")
+        # if df_previsao_retorno is not None:
+        #     print(f"DataFrame carregado com {len(df_previsao_retorno)} linhas e {len(df_previsao_retorno.columns)} colunas.")
     except Exception as e:
         return {
             "error": True,
@@ -101,6 +127,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         "df_fat_Mensal": df_fat_Mensal,
         "df_Vendas_Atipicas": df_Vendas_Atipicas,
         "df_relatorio_produtos": df_relatorio_produtos,
+        "df_previsao_retorno": df_previsao_retorno,
         "titulo": titulo,
         "company_context": company_context,
         "segmentos_context": segmentos_context,
