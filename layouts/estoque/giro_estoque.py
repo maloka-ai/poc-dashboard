@@ -13,7 +13,7 @@ def get_giro_estoque_layout(data):
     Cria o layout da página de produtos inativos com gráficos e tabelas interativas
     para análise de produtos que não são vendidos há um determinado período.
     """
-    if data.get("df_giro_estoque") is None:
+    if data.get("df_analise_giro") is None:
         return html.Div([
             html.H2("Análise de Produtos Inativos", className="dashboard-title"),
             create_card(
@@ -21,14 +21,14 @@ def get_giro_estoque_layout(data):
                 html.Div([
                     html.P("Não foram encontrados dados de produtos para este cliente.", className="text-center text-muted my-4"),
                     html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
-                    html.P("Verifique se o arquivo relatorio_produtos.xlsx está presente no diretório de dados",  
+                    html.P("Verifique se o arquivo analise_giro_completa.xlsx está presente no diretório de dados",  
                            className="text-muted text-center")
                 ])
             )
         ], style=content_style)
     
     # Carregar os dados do DataFrame
-    df_giro_estoque = pd.read_json(io.StringIO(data["df_giro_estoque"]), orient='split')
+    df_giro_estoque = pd.read_json(io.StringIO(data["df_analise_giro"]), orient='split')
     
     # Supondo que o DataFrame df_giro_estoque já tenha as colunas necessárias:
     # classificacao_giro, cobertura_dias, classe_abc
