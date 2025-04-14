@@ -160,6 +160,7 @@ def get_file_paths(client, data_type):
         "vendas_atipicas_path": f"{base_path}/vendas_atipicas_atual.xlsx",
         "relatorio_produtos_path": f"{base_path}/relatorio_produtos.xlsx",
         "previsao_retorno_path": f"{base_path}/previsao_retorno.xlsx",
+        "analise_giro_path": f"{base_path}/analise_giro_completa.xlsx",
     }
     
     return file_paths
