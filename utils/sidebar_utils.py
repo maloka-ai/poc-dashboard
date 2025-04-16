@@ -288,19 +288,26 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                     dbc.Nav(
                         [
                             dbc.NavLink(
-                                [html.I(className="fas fa-exclamation-circle me-2"), "Recomendação de Compras"], 
+                                [html.I(className="fas fa-exclamation-circle me-2"), "Reposição de Estoque"], 
                                 href="/estoque/produtos",
                                 active="exact",
                                 style=nav_link_style,
                                 className="my-1"
                             ),
                             dbc.NavLink(
-                                [html.I(className="fas fa-exclamation-circle me-2"), "Inatividade de Produtos"], 
+                                [html.I(className="fas fa-exclamation-circle me-2"), "Inatividade e Giro por SKU"],
                                 href="/estoque/produtos-inativos",
                                 active="exact",
                                 style=nav_link_style,
                                 className="my-1"
                             ),
+                            # dbc.NavLink(
+                            #     [html.I(className="fas fa-exclamation-circle me-2"), "Giro de Estoque e Curva ABC"], 
+                            #     href="/estoque/giro-estoque",
+                            #     active="exact",
+                            #     style=nav_link_style,
+                            #     className="my-1"
+                            # ),
                         ],
                         vertical=True,
                         pills=True,

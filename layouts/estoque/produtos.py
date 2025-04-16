@@ -274,6 +274,7 @@ def get_produtos_layout(data):
             )
         ),
 
+        html.H2("Recomendação de Compras", className="dashboard-title"),
         # Terceira linha: detalhe de um produto específico
         create_card(
             html.Div(id="produto-consumo-header", children="Gráfico de Consumo do Produto Selecionado"),

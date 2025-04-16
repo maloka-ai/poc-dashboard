@@ -48,7 +48,7 @@ __all__ = [
     
     # Helpers
     'color',
-    'loging_color',
+    'login_color',
     'colors',
     'gradient_colors',
     'cores_segmento',
