@@ -66,12 +66,12 @@ def get_produtos_inativos_layout(data):
                 html.Div([
                     dcc.Slider(
                         id=dias_slider_id,
-                        min=7,
+                        min=0,
                         max=365,
                         step=7,
                         marks={
-                            0: '0 dias',
-                            7: '7 dias',
+                            0: '0d',
+                            7: '7d',
                             30: '1m',
                             60: '2m',
                             90: '3m',
@@ -85,7 +85,7 @@ def get_produtos_inativos_layout(data):
                             330: '11m',
                             365: '12m'
                         },
-                        value=30,  # Valor padrão (30 dias)
+                        value=0,
                         className="mb-3"
                     ),
                     html.Div([
