@@ -88,10 +88,11 @@ def register_produtos_inativos_callbacks(app):
             {"name": "Código", "id": "cd_produto"},
             {"name": "Produto", "id": "desc_produto"},
             {"name": "Estoque Atual", "id": "estoque_atualizado"},
-            {"name": "Reposição Não-Local (Crítico)", "id": "critico"},
-            {"name": "Última Compra", "id": "data1_formatada"},
             {"name": "Dias Inativo", "id": "dias_inativo_formatado"},
+            {"name": "Última Venda", "id": "recencia_formatada"},
+            {"name": "Última Compra", "id": "data1_formatada"},
             {"name": "Primeira Compra", "id": "antiguidade_formatada"},
+            {"name": "Reposição Não-Local (Crítico)", "id": "critico"},
         ]
 
         # Criamos a tabela com os dados filtrados
@@ -407,13 +408,13 @@ def register_produtos_inativos_callbacks(app):
                             ], className="col-md-3"),
                             
                             # Coluna 2 - Tendência
-                            html.Div([
-                                html.Div("Tendência", className="small text-muted"),
-                                html.Div([
-                                    html.Span(f"{tendencia}", className=f"h6 mb-0 font-weight-bold {cor_tendencia}"),
-                                    html.Span(f" ({variacao_pct:.1f}%)", className="small text-muted ml-1")
-                                ])
-                            ], className="col-md-3"),
+                            # html.Div([
+                            #     html.Div("Tendência", className="small text-muted"),
+                            #     html.Div([
+                            #         html.Span(f"{tendencia}", className=f"h6 mb-0 font-weight-bold {cor_tendencia}"),
+                            #         html.Span(f" ({variacao_pct:.1f}%)", className="small text-muted ml-1")
+                            #     ])
+                            # ], className="col-md-3"),
 
                             # Coluna 3 - Giro de Estoque
                             html.Div([
@@ -430,14 +431,6 @@ def register_produtos_inativos_callbacks(app):
                     ])
                 ], className="mb-4 p-3 bg-light rounded"),
                 
-                # Gráfico de movimentações
-                html.Div([
-                    html.H5("Movimentações de Estoque", className="border-bottom pb-2 mb-3"),
-                    dcc.Graph(
-                        figure=fig_movimentacao,
-                        config={'displayModeBar': False}
-                    )
-                ], className="mb-4"),
             ])
             
         except Exception as e:
