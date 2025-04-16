@@ -41,13 +41,12 @@ def get_giro_estoque_layout(data):
         classificacao_counts, 
         values='count', 
         names='classificacao_giro',
-        title='Distribuição de Produtos por Classificação de Giro',
         color_discrete_sequence=px.colors.sequential.Viridis,
         hover_data=['count']
     )
     
     fig_pie.update_traces(
-        textposition='inside',
+        textposition='outside',
         textinfo='percent+label',
         hovertemplate='<b>%{label}</b><br>Produtos: %{value}<br>Porcentagem: %{percent}'
     )
@@ -65,7 +64,6 @@ def get_giro_estoque_layout(data):
         df_cobertura,
         x='cobertura_dias',
         nbins=30,
-        title='Distribuição de Produtos por Cobertura de Estoque',
         labels={'cobertura_dias': 'Cobertura de Estoque (Dias)'},
         marginal='box'
     )
@@ -93,7 +91,6 @@ def get_giro_estoque_layout(data):
         labels=dict(x='Classificação de Giro', y='Classe ABC', color='Número de Produtos'),
         color_continuous_scale='YlGnBu',
         aspect="auto",
-        title='Relação entre Classe ABC e Classificação de Giro'
     )
     
     fig_heatmap.update_layout(

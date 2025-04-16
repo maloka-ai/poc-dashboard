@@ -99,7 +99,7 @@ try:
     print(df_estoque.head())
     
     # EXPORTAR EXCEL
-    # df_estoque.to_excel("df_estoque.xlsx", index=False)
+    df_estoque.to_excel("df_estoque.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produtos
@@ -532,7 +532,7 @@ def visualizar_giro_estoque_melhorado(analise_giro, top_giro, sem_giro, estoque_
     ax.legend(wedges, labels, title="Classificação", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
     
     plt.tight_layout()
-    plt.savefig(f'distribuicao_giro.png', dpi=300, bbox_inches='tight')
+    # plt.savefig(f'distribuicao_giro.png', dpi=300, bbox_inches='tight')
     plt.close()
     
     ########################################################
@@ -559,7 +559,7 @@ def visualizar_giro_estoque_melhorado(analise_giro, top_giro, sem_giro, estoque_
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(f'distribuicao_cobertura.png', dpi=300)
+    # plt.savefig(f'distribuicao_cobertura.png', dpi=300)
     plt.close()
     
     ########################################################
@@ -578,7 +578,7 @@ def visualizar_giro_estoque_melhorado(analise_giro, top_giro, sem_giro, estoque_
     plt.ylabel('Classe ABC', fontsize=12)
     
     plt.tight_layout()
-    plt.savefig(f'abc_vs_giro.png', dpi=300)
+    # plt.savefig(f'abc_vs_giro.png', dpi=300)
     plt.close()
 
 def recomendar_acoes(analise_giro, top_giro, sem_giro, estoque_negativo, alertas_criticos):

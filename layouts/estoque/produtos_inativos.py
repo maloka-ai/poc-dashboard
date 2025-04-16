@@ -1,7 +1,11 @@
 import io
 import pandas as pd
 import datetime
-from dash import html, dcc
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+from dash import html, dcc, dash_table, callback, Input, Output, State
+from dash.exceptions import PreventUpdate
 
 from utils import create_card, content_style
 
@@ -48,6 +52,7 @@ def get_produtos_inativos_layout(data):
     produtos_table_id = 'table-produtos-inativos'
     tempo_inativo_id = 'tempo-inatividade-display'
     contagem_produtos_id = 'contagem-produtos-inativos'
+    produto_analise_id = 'produto-analise-detalhada'
     
     # Criamos um layout com um slider para definir o tempo de inatividade
     layout = html.Div([
@@ -65,19 +70,20 @@ def get_produtos_inativos_layout(data):
                         max=365,
                         step=7,
                         marks={
+                            0: '0 dias',
                             7: '7 dias',
-                            30: '30 dias',
-                            60: '2 meses',
-                            90: '3 meses',
-                            120: '4 meses',
-                            150: '5 meses',
-                            180: '6 meses',
-                            210: '7 meses',
-                            240: '8 meses',
-                            270: '9 meses',
-                            300: '10 meses',
-                            330: '11 meses',
-                            365: '1 ano'
+                            30: '1m',
+                            60: '2m',
+                            90: '3m',
+                            120: '4m',
+                            150: '5m',
+                            180: '6m',
+                            210: '7m',
+                            240: '8m',
+                            270: '9m',
+                            300: '10m',
+                            330: '11m',
+                            365: '12m'
                         },
                         value=30,  # Valor padrão (30 dias)
                         className="mb-3"
@@ -94,9 +100,18 @@ def get_produtos_inativos_layout(data):
         create_card(
             "Lista de Produtos Inativos",
             html.Div([
-                html.P("Esta tabela apresenta todos os produtos que não foram vendidos pelo período selecionado acima.", 
+                html.P("Esta tabela apresenta todos os produtos que não foram vendidos pelo período selecionado acima. Clique em um produto para ver análise detalhada.", 
                        className="text-muted mb-3"),
                 html.Div(id=produtos_table_id)
+            ])
+        ),
+        
+        # Cartão para análise detalhada do produto
+        create_card(
+            "Análise Detalhada do Produto",
+            html.Div([
+                html.Div(id="produto-selecionado-info", className="mb-3"),
+                html.Div(id=produto_analise_id)
             ])
         ),
         
@@ -115,7 +130,10 @@ def get_produtos_inativos_layout(data):
             ])
         ),
         
-        # Callbacks para atualizar os componentes com base no slider
+        # Armazenamento dos dados para compartilhar entre callbacks
+        dcc.Store(id='produto-selecionado-store'),
+        
+        # Callback para atualizar os componentes com base no slider
         dcc.Loading(
             id="loading-produtos-inativos",
             type="circle",
