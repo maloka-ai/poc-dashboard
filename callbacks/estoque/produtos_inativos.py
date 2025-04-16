@@ -57,7 +57,7 @@ def register_produtos_inativos_callbacks(app):
         
         # Calcular os dias de inatividade
         data_atual = datetime.now()
-        df_produtos['dias_inativo'] = (data_atual - df_produtos['recencia']).dt.days
+        df_produtos['dias_inativo'] = df_produtos['dias_desde_ultima_venda']
         
         # Filtramos os produtos inativos pelo número de dias
         df_filtrado = df_produtos[df_produtos['dias_inativo'] >= dias_selecionados].copy()
@@ -75,8 +75,11 @@ def register_produtos_inativos_callbacks(app):
         texto_tempo = f"Produtos inativos há mais de {periodo_texto}"
         texto_contagem = f"Total de {len(df_filtrado)} produtos encontrados"
         
+        df_filtrado['recencia'] = pd.to_datetime(df_filtrado['recencia'], errors='coerce')
+        df_filtrado['Data1'] = pd.to_datetime(df_filtrado['Data1'], errors='coerce')
         # Formatamos as datas e valores para a tabela
         df_filtrado['recencia_formatada'] = df_filtrado['recencia'].dt.strftime('%d/%m/%Y')
+        df_filtrado['data1_formatada'] = df_filtrado['Data1'].dt.strftime('%d/%m/%Y')
         df_filtrado['antiguidade_formatada'] = df_filtrado['antiguidade'].dt.strftime('%d/%m/%Y')
         df_filtrado['dias_inativo_formatado'] = df_filtrado['dias_inativo'].apply(lambda x: formatar_numero(x, 0))
         
@@ -86,9 +89,9 @@ def register_produtos_inativos_callbacks(app):
             {"name": "Produto", "id": "desc_produto"},
             {"name": "Estoque Atual", "id": "estoque_atualizado"},
             {"name": "Reposição Não-Local (Crítico)", "id": "critico"},
-            {"name": "Última Venda", "id": "recencia_formatada"},
+            {"name": "Última Compra", "id": "data1_formatada"},
             {"name": "Dias Inativo", "id": "dias_inativo_formatado"},
-            {"name": "Antiguidade", "id": "antiguidade_formatada"},
+            {"name": "Primeira Compra", "id": "antiguidade_formatada"},
         ]
 
         # Criamos a tabela com os dados filtrados
@@ -320,9 +323,10 @@ def register_produtos_inativos_callbacks(app):
                 height=250
             )
             
+            giro_estoque = df_evolucao.attrs['giro_estoque']
+            cobertura_estoque = df_evolucao.attrs['cobertura_estoque']
+
             # Calcular estatísticas para resumo
-            estoque_mediano = df_evolucao['estoque'].median()
-            desvio_padrao = df_evolucao['estoque'].std()
             dias_zerados = sum(df_evolucao['estoque'] <= 0)
             pct_dias_zerados = (dias_zerados / len(df_evolucao)) * 100
             
@@ -349,9 +353,6 @@ def register_produtos_inativos_callbacks(app):
                 tendencia = "ESTÁVEL"
                 cor_tendencia = "text-primary"
                 
-            # Simular valores para giro e cobertura
-            giro_estoque = 3.2
-            cobertura_estoque = 45.8
             
             # Criar o conteúdo completo
             return html.Div([
@@ -562,15 +563,62 @@ def obter_dados_estoque_produto(nome_produto):
        
         # Criar DataFrame com evolução diária
         df_evolucao_diaria = pd.DataFrame(estoque_diario)
+        estoque_medio = df_evolucao_diaria['estoque'].mean()
+        estoque_atual = df_evolucao_diaria['estoque'].iloc[-1]
+
+        # Calcular dias com zero estoque
+        dias_zerados = sum(df_evolucao_diaria['estoque'] <= 0)
+        pct_dias_zerados = (dias_zerados / len(df_evolucao_diaria)) * 100
+            
+        # Adicionar média móvel para suavizar flutuações
+        df_evolucao_diaria['media_movel_7d'] = df_evolucao_diaria['estoque'].rolling(window=7, min_periods=1).mean()
+            
+        # Calcular métricas de giro e cobertura de estoque
+        # 1. Calcular total de saídas no período
+        saidas = df_movimentos[df_movimentos['tipo'] == 'S']
+        total_saidas = saidas['quantidade'].sum() if len(saidas) > 0 else 0
+            
+        # 2. Calcular média diária de saídas (demanda média diária)
+        dias_periodo = (data_final - data_inicial).days + 1
+        demanda_media_diaria = total_saidas / dias_periodo if dias_periodo > 0 else 0
+            
+        # 3. Calcular índice de giro de estoque (anualizado)
+        # Giro = (Total de saídas no período / Estoque médio) * (365 / dias no período)
+        if estoque_medio > 0:
+            giro_estoque = (total_saidas / estoque_medio) * (365 / dias_periodo)
+        else:
+            giro_estoque = float('inf') if total_saidas > 0 else 0
+        
+        # 4. Calcular cobertura de estoque (em dias)
+        # Cobertura = Estoque atual / demanda média diária
+        if demanda_media_diaria > 0:
+            cobertura_estoque = estoque_atual / demanda_media_diaria
+        else:
+            cobertura_estoque = float('inf') if estoque_atual > 0 else 0    
         
         # Calcular tendência (primeiros 10% vs últimos 10%)
         n_amostras = len(df_evolucao_diaria)
         n_amostras_10pct = max(1, int(n_amostras * 0.1))
-        
+
         estoque_inicial = df_evolucao_diaria['estoque'].iloc[:n_amostras_10pct].mean()
-        
-        # Adicionar média móvel para suavizar flutuações
-        df_evolucao_diaria['media_movel_7d'] = df_evolucao_diaria['estoque'].rolling(window=7, min_periods=1).mean()
+        estoque_final = df_evolucao_diaria['estoque'].iloc[-n_amostras_10pct:].mean()
+
+        # Adicionar giro e cobertura ao DataFrame como atributos personalizados
+        df_evolucao_diaria.attrs['giro_estoque'] = giro_estoque
+        df_evolucao_diaria.attrs['cobertura_estoque'] = cobertura_estoque
+        df_evolucao_diaria.attrs['estoque_medio'] = estoque_medio
+        df_evolucao_diaria.attrs['dias_zerados'] = dias_zerados
+        df_evolucao_diaria.attrs['pct_dias_zerados'] = pct_dias_zerados
+
+        # Adicionar também outros metadados úteis
+        if estoque_inicial > 0:
+            variacao_pct = ((estoque_final - estoque_inicial) / estoque_inicial) * 100
+        else:
+            variacao_pct = float('inf') if estoque_final > 0 else 0
+            
+        df_evolucao_diaria.attrs['variacao_pct'] = variacao_pct
+        df_evolucao_diaria.attrs['demanda_media_diaria'] = demanda_media_diaria
+
         return df_evolucao_diaria
         
     except Exception as e:

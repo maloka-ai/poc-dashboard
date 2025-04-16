@@ -45,7 +45,7 @@ def get_produtos_inativos_layout(data):
     
     # Calcular os dias de inatividade
     data_atual = datetime.datetime.now()
-    df_produtos['dias_inativo'] = (data_atual - df_produtos['recencia']).dt.days
+    df_produtos['dias_inativo'] = df_produtos['dias_desde_ultima_venda']
     
     # ID único para os componentes
     dias_slider_id = 'dias-inatividade-slider'

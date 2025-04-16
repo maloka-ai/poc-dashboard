@@ -114,3 +114,19 @@ def get_historico_entrada():
     df['data_movimento'] = df['data_movimento'].dt.date
 
     return df
+
+def get_ultima_venda():
+    query = '''
+
+    SELECT
+        id_produto,
+        MAX(data_movimento) AS data_ultima_venda
+        FROM estoquemovimentos
+        WHERE tipo_movimento = 'saída'
+        GROUP BY id_produto;
+    '''
+
+    df = pd.read_sql(query, engine)
+    df['data_ultima_venda'] = df['data_ultima_venda'].dt.date
+    
+    return df

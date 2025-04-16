@@ -389,10 +389,61 @@ def exportar_excel_para_dashboard(df, pasta_destino=None, arquivo_saida="relator
     # else:
     #     resumo_valores = pd.DataFrame(columns=['criticidade', 'valor_estimado_1m', 'percentual'])
 
-    # Adicionar coluna de recência (última compra)
-    df_completo['recencia'] = df_completo['Data1']
-    # Substituir valores nulos por '0'
-    df_completo['recencia'] = df_completo['recencia'].fillna('0')
+     # Adicionar coluna de recência (última venda)
+    try:
+        # Obter os dados da última venda
+        df_ultima_venda = get_ultima_venda()
+        
+        # Se já existe a coluna id_produto, renomeie temporariamente
+        if 'id_produto' in df_completo.columns:
+            df_completo = df_completo.rename(columns={'id_produto': 'id_produto_original'})
+        
+        # Realizar o merge
+        df_completo = df_completo.merge(
+            df_ultima_venda[['id_produto', 'data_ultima_venda']], 
+            left_on='cd_produto', 
+            right_on='id_produto', 
+            how='left'
+        )
+        
+        # Calcular a recência em dias
+        data_hoje = datetime.datetime.now().date()
+        
+        # Garantir que a coluna 'data_ultima_venda' seja do tipo datetime
+        df_completo['data_ultima_venda'] = pd.to_datetime(df_completo['data_ultima_venda'], errors='coerce').dt.date
+        
+        # Calcular a diferença em dias
+        df_completo['dias_desde_ultima_venda'] = df_completo['data_ultima_venda'].apply(
+            lambda x: (data_hoje - x).days if pd.notna(x) and isinstance(x, datetime.date) else None
+        )
+        
+        # Manter a data da última venda como recência para acompanhamento
+        df_completo['recencia'] = df_completo['data_ultima_venda']
+        
+        # Adicionar coluna que indica se o produto não tem vendas recentes (mais de 180 dias)
+        df_completo['sem_venda_recente'] = df_completo['dias_desde_ultima_venda'].apply(
+            lambda x: 'Sim' if pd.isna(x) or x > 180 else 'Não'
+        )
+        
+        # Manter a coluna id_produto_original se existia antes
+        if 'id_produto_original' in df_completo.columns:
+            df_completo = df_completo.drop('id_produto', axis=1, errors='ignore')
+            df_completo = df_completo.rename(columns={'id_produto_original': 'id_produto'})
+        
+        # Substituir valores nulos por valor padrão
+        df_completo['dias_desde_ultima_venda'] = df_completo['dias_desde_ultima_venda'].fillna(-1)  # -1 indica que nunca foi vendido
+        
+        print("Merge com data de última venda realizado com sucesso.")
+        print(f"Cálculo de recência em dias concluído: {sum(~pd.isna(df_completo['recencia']))} produtos com vendas registradas.")
+    except Exception as e:
+        print(f"Erro ao adicionar recência dos produtos: {e}")
+        # Garantir que as colunas existam mesmo em caso de erro
+        if 'recencia' not in df_completo.columns:
+            df_completo['recencia'] = None
+        if 'dias_desde_ultima_venda' not in df_completo.columns:
+            df_completo['dias_desde_ultima_venda'] = -1
+        if 'sem_venda_recente' not in df_completo.columns:
+            df_completo['sem_venda_recente'] = 'Sem dados'
 
     try:
         # Recuperar o histórico completo de entradas
