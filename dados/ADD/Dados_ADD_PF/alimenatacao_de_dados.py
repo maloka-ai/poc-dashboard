@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # Database connection string
-db_url = "postgresql+psycopg2://adduser:maloka2025@maloka-application-db.cwlsoqygi6rc.us-east-1.rds.amazonaws.com:5432/add"
+db_url = "postgresql+psycopg2://adduser:maloka2025@maloka-application-db.cwlsoqygi6rc.us-east-1.rds.amazonaws.com:5432/add_v1"
 engine = create_engine(db_url)
 
 def Trat_coluna_date(Dataframe, Data_name, formato_data_ingles = True):
@@ -39,15 +39,15 @@ def Funcao_tratamento_base(Dataframe, Dataframe_de_para):
     #||====================================||
 
     # Criar colunas de data
-    Table = Trat_coluna_date(Table, "data_emissao")
+    Table = Trat_coluna_date(Table, "data_venda")
     
-    Table_filtro = Table[((Table["status"] == "Pedido") | 
+    Table_filtro = Table[((Table["status"] == "pedido") | 
                          (Table["status"] == "Pedido/Concluído") | 
                          (Table["status"] == "Pedido/Pago") | 
                          (Table["status"] == "Pedido/Entregue") | 
                          (Table["status"] == "Pedido/Pendente") | 
                          (Table["status"] == "Pedido/Faturado")) & 
-                         (Table["data_emissao_Ano"] != "2020")]
+                         (Table["data_venda_Ano"] != "2020")]
 
     # Join tabela + DE_PARA
     Table_join = Table_filtro.merge(df_de, how = "left", on="id_produto")
@@ -56,8 +56,8 @@ def Funcao_tratamento_base(Dataframe, Dataframe_de_para):
 
 def get_df_preparo_id_vendas():
     # SQL Query
-    query_vendas = "SELECT id_venda, data_emissao, id_cliente, status FROM vendas"
-    query_venda_itens = "SELECT id_venda, id_produto, quantidade FROM venda_itens"
+    query_vendas = "SELECT id_venda, data_venda, id_cliente, status FROM vendas"
+    query_venda_itens = "SELECT id_venda, id_produto, quantidade FROM vendasitens"
 
     # Load into DataFrame
     df_vendas = pd.read_sql(query_vendas, engine)
@@ -69,26 +69,28 @@ def get_df_preparo_id_vendas():
     return df
 
 def de_para_clientes():
-    query = "SELECT id_cliente, nome_cliente FROM clientes"
+    query = "SELECT id_cliente, nome FROM clientes"
     df = pd.read_sql(query, engine)
+
+    df.rename(columns={'nome': 'nome_cliente'}, inplace=True)
     return df
 
 def get_produtos():
-    query = "SELECT id_produto, nome, critico FROM produtos"
+    query = "SELECT id_produto, nome, prazo_reposicao_dias, estoque_atual FROM produtos"
     df = pd.read_sql(query, engine)
+
+    # Criando a segunda coluna critico se o valor de prazo_reposicao_dias for >= 40, caso contrário False
+    df['critico'] = df['prazo_reposicao_dias'] >= 40
+
     return df
 
 def get_estoque_atualizado():
     query = "SELECT DISTINCT ON (id_produto) * FROM estoquemovimentos ORDER BY id_produto, data_movimento DESC;"
     df = pd.read_sql(query, engine)
-    df = df.rename(columns={'depois': 'estoque', 'data_movimento': 'data_estoque_atualizado'})
+    df = df.rename(columns={'estoque_depois': 'estoque', 'data_movimento': 'data_estoque_atualizado'})
     df['data_estoque_atualizado'] = df['data_estoque_atualizado'].dt.date
     return df
 
-def get_fornecedor():
-    query = "SELECT id_produto, nome_fornecedor FROM fornecedor"
-    df = pd.read_sql(query, engine)
-    return df
 
 def get_historico_entrada():
     query = '''
@@ -98,14 +100,14 @@ def get_historico_entrada():
         id_movimento,
         id_produto,
         data_movimento,
-        tipo_movimento,
+        tipo,
         quantidade,
-        antes,
-        depois,
+        estoque_antes,
+        estoque_depois,
         descricao
         
         FROM estoquemovimentos
-        WHERE tipo_movimento = 'entrada'
+        WHERE tipo = 'E'
         ORDER BY id_produto, data_movimento DESC;
     
     '''
@@ -122,7 +124,7 @@ def get_ultima_venda():
         id_produto,
         MAX(data_movimento) AS data_ultima_venda
         FROM estoquemovimentos
-        WHERE tipo_movimento = 'saída'
+        WHERE tipo_movimento = 'S'
         GROUP BY id_produto;
     '''
 

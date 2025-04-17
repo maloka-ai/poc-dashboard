@@ -4,20 +4,6 @@ import plotly.graph_objects as go
 from alimenatacao_de_dados import *
 import os
 
-def preparo_id_vendas(df):
-    filtered_df = df[['quantidade', 'data_emissao', 'id_produto', 'id_cliente']]
-
-    # Get today's date and the date one year ago
-    today = pd.Timestamp.now()
-    one_year_ago = today - pd.DateOffset(months=12)
-    
-    # Filter rows where the date is within one year before today
-    filtered_df = filtered_df[(filtered_df['data_emissao'] >= one_year_ago) & (filtered_df['data_emissao'] < today)]
-    
-    # Display result
-    filtered_df = filtered_df.sort_values(by='data_emissao')
-
-    return filtered_df
 
 def identificar_anomalias(df):
     # Calcular média e desvio padrão da coluna 'quantidade'
@@ -36,7 +22,7 @@ def identificar_anomalias(df):
     duas_semanas_atras = hoje - pd.DateOffset(days=15)
     
     # Filtrar outliers que ocorreram na última semana
-    outliers_duas_semana = outliers[outliers['data_emissao'] >= duas_semanas_atras]
+    outliers_duas_semana = outliers[outliers['data_venda'] >= duas_semanas_atras]
     
     return outliers_duas_semana
 
@@ -45,8 +31,8 @@ def identificar_produtos(df):
     anomalias = []
     
     for id in ids:
-        sales = df[df['id_produto'] == id][['data_emissao', 'quantidade', 'id_cliente']]
-        sales = sales.groupby(['data_emissao', 'id_cliente'], as_index=False)['quantidade'].sum()
+        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente']]
+        sales = sales.groupby(['data_venda', 'id_cliente'], as_index=False)['quantidade'].sum()
         # Aplicar a função e identificar anomalias
         out = identificar_anomalias(sales)
     
@@ -54,7 +40,7 @@ def identificar_produtos(df):
             anomalias.append((id, out))
     return anomalias
 
-def id_vendas_atipicas(df, df_de_cli, df_de_prod, df_estoque, path, data, export=False):
+def id_vendas_atipicas(df, df_de_cli, df_de_prod, path, data, export=False):
     
     anomalias = identificar_produtos(df)
     
@@ -62,7 +48,7 @@ def id_vendas_atipicas(df, df_de_cli, df_de_prod, df_estoque, path, data, export
     for id, info_df in anomalias:
         
         produto = df_de_prod[df_de_prod['id_produto'] == id]['nome'].iloc[0]
-        estoque = df_estoque[df_estoque['id_produto'] == id]['estoque'].iloc[0]
+        estoque = df_de_prod[df_de_prod['id_produto'] == id]['estoque_atual'].iloc[0]
         critico = df_de_prod[df_de_prod['id_produto'] == id]['critico'].iloc[0]
 
 
@@ -77,7 +63,7 @@ def id_vendas_atipicas(df, df_de_cli, df_de_prod, df_estoque, path, data, export
             
             id_cliente = row['id_cliente']
             cliente = df_de_cli[df_de_cli['id_cliente'] == id_cliente]['nome_cliente'].iloc[0]
-            emissao = row['data_emissao']
+            emissao = row['data_venda']
             quantidade = row['quantidade']
 
             d1["vendas_atipicas"].append({
@@ -105,13 +91,9 @@ df = get_df_preparo_id_vendas()
 df_prod = get_produtos()
 df_trat = Funcao_tratamento_base(df, df_prod)
 df_de_clientes = de_para_clientes()
-df_estoque = get_estoque_atualizado()[['id_produto', 'estoque', 'data_estoque_atualizado']]
-df_fornecedor = get_fornecedor()
 
-df_r = id_vendas_atipicas(df_trat, df_de_clientes, df_prod, df_estoque, script_dir, 'atual', True)
-df_r = df_r.merge(df_fornecedor, how='left', on='id_produto')
-df_r.rename(columns={"id_produto": 'cd_produto'}, inplace=True)
-df_r.rename(columns={"nome_fornecedor": 'fornecedor'}, inplace=True)
+df_r = id_vendas_atipicas(df_trat, df_de_clientes, df_prod, script_dir, 'atual', True)
+
 
 print(df_r.columns)
 print(f"Arquivo salvo com sucesso! Colunas disponíveis: {', '.join(df_r.columns)}")
