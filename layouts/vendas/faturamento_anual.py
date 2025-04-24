@@ -30,74 +30,224 @@ def get_faturamento_anual_layout(data, selected_client=None):
         df_fat = df_fat.sort_values("Ano")
         
         # Verificar se já temos a coluna de evolução, senão calculá-la
-        if 'Evolucao (%)' not in df_fat.columns:
-            df_fat['Evolucao (%)'] = df_fat['total_item'].pct_change() * 100
+        if 'Evolucao Total (%)' not in df_fat.columns:
+            df_fat['Evolucao Total (%)'] = df_fat['Total'].pct_change() * 100
         
-        df_fat['label'] = df_fat.apply(lambda row: f"{formatar_percentual(row['Evolucao (%)'])}\n{formatar_moeda(row['total_item'])}" 
-                                    if not pd.isna(row['Evolucao (%)']) else f"{formatar_moeda(row['total_item'])}", axis=1)
+        df_fat['label'] = df_fat.apply(lambda row: f"{formatar_percentual(row['Evolucao Total (%)'])}\n{formatar_moeda(row['Total'])}" 
+                                    if not pd.isna(row['Evolucao Total (%)']) else f"{formatar_moeda(row['Total'])}", axis=1)
         
         # Calculate YoY growth for the metrics row
-        last_year_growth = df_fat['Evolucao (%)'].iloc[-1] if len(df_fat) > 1 and not df_fat.empty else 0
-        total_sales = df_fat['total_item'].iloc[-1] if not df_fat.empty else 0
-        avg_growth = df_fat['Evolucao (%)'].mean() if len(df_fat) > 1 else 0
+        total_sales = df_fat['Total'].iloc[-1] if not df_fat.empty else 0
+        
+        # Obter o faturamento do mês atual até o último dia de venda
+        # Precisamos verificar se temos os dados do mês atual no df_mensal
+        # Assumindo que temos acesso ao df_mensal neste ponto
+        current_month_sales = 0
+        try:
+            df_mensal = pd.read_json(io.StringIO(data["df_fat_Mensal"]), orient='split')
+            
+            # Identificar o último ano com dados
+            anos_colunas = [col for col in df_mensal.columns if col != 'Mês' and not pd.isna(col)]
+            if anos_colunas:
+                ultimo_ano = max(anos_colunas)
+                
+                # Encontrar o último mês com valor não nulo para o último ano
+                ultimo_valor = None
+                ultimo_mes = None
+                
+                for index, row in df_mensal.iterrows():
+                    if not pd.isna(row[ultimo_ano]) and row[ultimo_ano] != 0:
+                        ultimo_valor = row[ultimo_ano]
+                        ultimo_mes = row['Mês']
+                
+                if ultimo_valor is not None:
+                    current_month_sales = ultimo_valor
+                    print(f"Último valor encontrado: {current_month_sales} para o mês {ultimo_mes} de {ultimo_ano}")
+                    
+        except Exception as e:
+            print(f"Erro ao obter faturamento do mês atual: {e}")
+            current_month_sales = 0
         
         # Handle NaN values
-        if pd.isna(last_year_growth): last_year_growth = 0
-        if pd.isna(avg_growth): avg_growth = 0
+        if pd.isna(current_month_sales): current_month_sales = 0
         
-        # Create metrics row
+        # Handle NaN values
+        if pd.isna(current_month_sales): current_month_sales = 0
+        
+        # Calcular ticket médio de produtos e serviços se os dados existirem
+        ticket_medio_produtos = None
+        ticket_medio_servicos = None
+        
+        # Verificar se temos dados de produtos e serviços
+        if ('Produtos' in df_fat.columns and 'Serviços' in df_fat.columns and
+            'Qtd Produtos' in df_fat.columns and 'Qtd Serviços' in df_fat.columns):
+            try:
+                # Filtramos para o ano mais recente não vazio
+                df_fat_atual = df_fat.sort_values('Ano', ascending=False)
+                
+                # Encontrar a primeira linha com valores válidos para produtos
+                for i, row in df_fat_atual.iterrows():
+                    if not pd.isna(row['Produtos']) and not pd.isna(row['Qtd Produtos']) and row['Qtd Produtos'] > 0:
+                        ticket_medio_produtos = row['Produtos'] / row['Qtd Produtos']
+                        break
+                        
+                # Encontrar a primeira linha com valores válidos para serviços
+                for i, row in df_fat_atual.iterrows():
+                    if not pd.isna(row['Serviços']) and not pd.isna(row['Qtd Serviços']) and row['Qtd Serviços'] > 0:
+                        ticket_medio_servicos = row['Serviços'] / row['Qtd Serviços']
+                        break
+                        
+            except Exception as e:
+                print(f"Erro ao calcular ticket médio: {e}")
+        
+        # Criar a lista de métricas base
         metrics = [
-            {"title": "Faturamento Total (Último Ano)", "value": formatar_moeda(total_sales), "color": color['accent']},
-            {"title": "Crescimento Anual", "value": formatar_percentual(last_year_growth), "change": last_year_growth, "color": color['secondary']},
-            {"title": "Média de Crescimento", "value": formatar_percentual(avg_growth), "color": color['success']}
+            {"title": "Faturamento Total (Ano Atual)", "value": formatar_moeda(total_sales), "color": color['accent']},
+            {"title": "Faturamento Mês Atual", "value": formatar_moeda(current_month_sales), "color": color['success']}
         ]
+        
+        # Adicionar métricas de ticket médio se disponíveis
+        if ticket_medio_produtos is not None:
+            metrics.append({
+                "title": "Ticket Médio Produtos", 
+                "value": formatar_moeda(ticket_medio_produtos), 
+                "color": color['warning']
+            })
+        
+        if ticket_medio_servicos is not None:
+            metrics.append({
+                "title": "Ticket Médio Serviços", 
+                "value": formatar_moeda(ticket_medio_servicos), 
+                "color": color['neutral']
+            })
         
         metrics_row = create_metric_row(metrics)
         
-        # Enhanced growth chart
-        fig_fat = px.bar(
-            df_fat,
-            x='Ano',
-            y='Evolucao (%)',
-            text='label',
-            color_discrete_sequence=[color['secondary']],
-            template='plotly_white'
-        )
+                # Verificar se temos dados de produtos e serviços para criar gráfico de barras empilhadas
+        has_product_service = 'Produtos' in df_fat.columns and 'Serviços' in df_fat.columns
+
+        if has_product_service:
+            # Gráfico empilhado com Produtos e Serviços
+            fig_fat = go.Figure()
+            
+            # Adicionar barras para serviços
+            fig_fat.add_trace(go.Bar(
+                x=df_fat['Ano'],
+                y=df_fat['Serviços'],
+                name='Serviços',
+                text=df_fat['Serviços'].apply(formatar_moeda),
+                textposition='inside',
+                insidetextanchor='middle',
+                marker_color=color['secondary'],
+                hovertemplate='Serviços: %{text}<extra></extra>'
+            ))
+            
+            # Adicionar barras para produtos
+            fig_fat.add_trace(go.Bar(
+                x=df_fat['Ano'],
+                y=df_fat['Produtos'],
+                name='Produtos',
+                text=df_fat['Produtos'].apply(formatar_moeda),
+                textposition='inside',
+                insidetextanchor='middle',
+                marker_color=color['accent'],
+                hovertemplate='Produtos: %{text}<extra></extra>'
+            ))
+            
+            # Adicionar total e evolução como anotação no topo das barras
+            for i, row in df_fat.iterrows():
+                total = row['Total']
+                evolucao = row['Evolucao Total (%)']
+                
+                # Adicionar anotação para o total
+                fig_fat.add_annotation(
+                    x=row['Ano'],
+                    y=total,
+                    text=formatar_moeda(total),
+                    showarrow=False,
+                    yshift=15,
+                    font=dict(size=12, family="Montserrat", color="black", weight="bold")
+                )
         
-        fig_fat.update_xaxes(
-            tickmode='array', 
-            tickvals=df_fat['Ano'].unique(),
-            title_font=dict(size=14, family="Montserrat"),
-            gridcolor='rgba(0,0,0,0.05)'
-        )
-        
-        fig_fat.update_yaxes(
-            title_font=dict(size=14, family="Montserrat"),
-            gridcolor='rgba(0,0,0,0.05)'
-        )
-        
-        fig_fat.update_layout(
-            xaxis_title="Ano",
-            yaxis_title="Crescimento (%)",
-            margin=dict(t=50, b=50, l=50, r=50),
-            height=500,
-            hovermode="x unified",
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
-        )
-        
-        fig_fat.update_traces(
-            textposition='outside', 
-            textfont=dict(size=12, family="Montserrat"),
-            selector=dict(type='bar')  # Aplicar apenas aos traces de tipo barra
-        )
+                # Adicionar anotação para a evolução percentual acima do total
+                if not pd.isna(evolucao):
+                    fig_fat.add_annotation(
+                        x=row['Ano'],
+                        y=total,
+                        text=formatar_percentual(evolucao),
+                        showarrow=False,
+                        yshift=35,  # Posição acima do valor total
+                        font=dict(
+                            size=12, 
+                            family="Montserrat", 
+                            color=color['success'] if evolucao >= 0 else color['danger']
+                        )
+                    )
+            
+            # Configuração do layout
+            fig_fat.update_layout(
+                barmode='stack',
+                xaxis_title="Ano",
+                yaxis_title="Faturamento (R$)",
+                margin=dict(t=70, b=50, l=50, r=50),  # Aumentei o margin-top para acomodar as anotações
+                height=500,
+                hovermode="x unified",
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            
+        else:
+            # Para o caso quando não temos dados de produtos e serviços
+            fig_fat = px.bar(
+                df_fat,
+                x='Ano',
+                y='Total',  # Usamos Total diretamente
+                color_discrete_sequence=[color['secondary']],
+                template='plotly_white'
+            )
+            
+            # Adicionar anotações para total e evolução
+            for i, row in df_fat.iterrows():
+                total = row['Total']
+                evolucao = row['Evolucao Total (%)'] if 'Evolucao Total (%)' in df_fat.columns else None
+                
+                # Anotação para o valor total
+                fig_fat.add_annotation(
+                    x=row['Ano'],
+                    y=total,
+                    text=formatar_moeda(total),
+                    showarrow=False,
+                    yshift=10,
+                    font=dict(size=12, family="Montserrat", color="black")
+                )
+                
+                # Anotação para a evolução percentual acima do total
+                if evolucao is not None and not pd.isna(evolucao):
+                    fig_fat.add_annotation(
+                        x=row['Ano'],
+                        y=total,
+                        text=formatar_percentual(evolucao),
+                        showarrow=False,
+                        yshift=30,  # Posição acima do valor total
+                        font=dict(
+                            size=12, 
+                            family="Montserrat", 
+                            color=color['success'] if evolucao >= 0 else color['danger']
+                        )
+                    )
+            
+            fig_fat.update_layout(
+                margin=dict(t=70, b=50, l=50, r=50),
+                height=500,
+                hovermode="x unified"
+            )
 
         # ------------------------------------------
         # --- Gráfico 2: Faturamento Anual ---------
@@ -275,7 +425,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         df_mensal_long = df_mensal.melt(id_vars="Mês", var_name="Ano", value_name="Faturamento")
         
         # Enhanced monthly sales chart with custom colors
-        custom_colors = ["orange", "darkred", color['secondary'], color['accent'], gradient_colors['green_gradient'][1], color['warning']]
+        custom_colors = ["orange", "darkred", gradient_colors['blue_gradient'][0], color['accent'], gradient_colors['green_gradient'][1], "red", "purple", gradient_colors['blue_gradient'][2]]
         
         fig_mensal = px.bar(
             df_mensal_long,
