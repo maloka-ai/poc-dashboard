@@ -1,10 +1,10 @@
-from dash import html, dcc
+from dash import html
 import dash_bootstrap_components as dbc
 
-from utils import create_card, content_style, button_style
+from utils import create_card, content_style
 
 def get_chat_layout(data):
-    # Modern chat interface
+    # Modern chat interface styled like ChatGPT
     chat_layout = html.Div(
         [
             html.H2("Assistente de Análises", className="dashboard-title"),
@@ -25,35 +25,42 @@ def get_chat_layout(data):
             ),
             
             # Chat container
-            create_card(
-                "Chat",
+            html.Div([
+                # Chat history
+                html.Div(
+                    id='chat-history',
+                    className="chat-history",
+                    children=[],
+                ),
+                
+                # Input area
                 html.Div([
-                    # Chat history
-                    html.Div(
-                        id='chat-history',
-                        className="chat-history",
-                        children=[]
+                    dbc.Input(
+                        id='user-input',
+                        placeholder="Digite sua pergunta sobre os dados...",
+                        type="text",
+                        className="chat-input",
                     ),
-                    
-                    # Input area
-                    html.Div([
-                        dbc.Input(
-                            id='user-input',
-                            placeholder="Digite sua pergunta sobre os dados...",
-                            type="text",
-                            className="dash-input",
-                            style={"flex": "1"}
-                        ),
-                        dbc.Button(
-                            html.I(className="fas fa-paper-plane"),
-                            id='submit-button',
-                            color="primary",
-                            className="ms-2",
-                            style=button_style
-                        )
-                    ], className="chat-input-container d-flex mt-3")
-                ], className="chat-container")
-            )
+                    dbc.Button(
+                        "↑",  # Caractere Unicode de seta para cima
+                        id='submit-button',
+                        color="warning",
+                        className="ms-2",
+                        style={
+                            "borderRadius": "50%", 
+                            "width": "40px", 
+                            "height": "40px", 
+                            "padding": "0",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "backgroundColor": "#FF8C00",  # Cor laranja personalizada
+                            "fontSize": "30px",  # Aumentar o tamanho do ícone
+                            "fontWeight": "normal",  # Manter o peso da fonte normal
+                        }
+                    )
+                ], className="chat-input-container")
+            ], className="chat-container")
         ],
         style=content_style
     )
