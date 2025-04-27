@@ -42,21 +42,28 @@ def get_chat_layout(data):
                         className="chat-input",
                     ),
                     dbc.Button(
-                        "↑",  # Caractere Unicode de seta para cima
+                        # Substituindo por uma imagem dentro de um contêiner com estilo específico
+                        html.Img(
+                            src="assets/setagrande-cima-branco.png",  
+                            className="setagrande_cima_branco",
+                            style={
+                                "width": "11.5px",
+                                "height": "13px",
+                                "objectFit": "contain"
+                            }
+                        ),
                         id='submit-button',
-                        color="warning",
                         className="ms-2",
                         style={
-                            "borderRadius": "50%", 
-                            "width": "40px", 
-                            "height": "40px", 
-                            "padding": "0",
+                            "width": "40px",
+                            "height": "40px",
+                            "padding": "6.5px 6.5px 5.5px 7px",
+                            "borderRadius": "7.5px",
+                            "backgroundColor": "#df8157",
+                            "border": "none",
                             "display": "flex",
                             "alignItems": "center",
-                            "justifyContent": "center",
-                            "backgroundColor": "#FF8C00",  # Cor laranja personalizada
-                            "fontSize": "30px",  # Aumentar o tamanho do ícone
-                            "fontWeight": "normal",  # Manter o peso da fonte normal
+                            "justifyContent": "center"
                         }
                     )
                 ], className="chat-input-container")
