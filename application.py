@@ -24,6 +24,7 @@ from callbacks.sidebar import register_sidebar_callbacks
 from callbacks.clientes import register_callbacks as register_clientes_callbacks
 from callbacks.estoque import register_callbacks as register_estoque_callbacks
 from callbacks.interacao import register_callbacks as register_interacao_callbacks
+from callbacks.vendas import register_callbacks as register_vendas_callbacks
 from data_load.load_callbacks import register_data_callbacks
 
 # imports dos layouts
@@ -79,6 +80,7 @@ register_clientes_callbacks(application)
 register_estoque_callbacks(application)
 register_interacao_callbacks(application)
 register_data_callbacks(application)
+register_vendas_callbacks(application)
 
 # Configure caching for app
 app_cache = Cache(server, config={

@@ -3,29 +3,50 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import html, dcc
+import traceback
 
 from utils import formatar_moeda, formatar_percentual
 from utils import create_card, create_metric_row, content_style, color, gradient_colors
 
 def get_faturamento_anual_layout(data, selected_client=None):
+    # Dicionário para armazenar os gráficos que foram criados com sucesso
+    graficos_processados = {
+        "metricas": False,
+        "grafico_evolucao_anual": False,
+        "grafico_faturamento_anual": False,
+        "grafico_faturamento_mensal": False,
+        "grafico_faturamento_lojas": False,
+        "grafico_faturamento_diario": False
+    }
+    
+    # Variáveis de saída para os gráficos
+    metrics_row = None
+    fig_fat = None
+    fig_ano = None
+    fig_mensal = None
+    grafico_lojas = None
+    grafico_diario = None
+    titulo_grafico2 = "Faturamento Anual"
+    
+    # Verificação inicial dos dados
+    if data.get("df_fat_Anual") is None:
+        return html.Div([
+            html.H2("Crescimento do Negócio", className="dashboard-title"),
+            create_card(
+                "Dados Indisponíveis",
+                html.Div([
+                    html.P("Não foram encontrados dados de faturamento para este cliente.", className="text-center text-muted my-4"),
+                    html.I(className="fas fa-chart-line fa-4x text-muted d-block text-center mb-3"),
+                    html.P("Verifique se os arquivos necessários estão presentes: faturamento_anual.xlsx, faturamento_anual_geral.xlsx, faturamento_mensal.xlsx", 
+                          className="text-muted text-center")
+                ])
+            )
+        ], style=content_style)
+    
+    # -------------------------------------------------------
+    # --- Gráfico 1: Evolução Percentual Anual das Vendas ---
+    # -------------------------------------------------------
     try:
-        # -------------------------------------------------------
-        # --- Gráfico 1: Evolução Percentual Anual das Vendas ---
-        # -------------------------------------------------------
-        if data.get("df_fat_Anual") is None:
-            return html.Div([
-                html.H2("Crescimento do Negócio", className="dashboard-title"),
-                create_card(
-                    "Dados Indisponíveis",
-                    html.Div([
-                        html.P("Não foram encontrados dados de faturamento para este cliente.", className="text-center text-muted my-4"),
-                        html.I(className="fas fa-chart-line fa-4x text-muted d-block text-center mb-3"),
-                        html.P("Verifique se os arquivos necessários estão presentes: faturamento_anual.xlsx, faturamento_anual_geral.xlsx, faturamento_mensal.xlsx", 
-                               className="text-muted text-center")
-                    ])
-                )
-            ], style=content_style)
-        
         df_fat = pd.read_json(io.StringIO(data["df_fat_Anual"]), orient='split')
         df_fat = df_fat.sort_values("Ano")
         
@@ -39,91 +60,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         # Calculate YoY growth for the metrics row
         total_sales = df_fat['Total'].iloc[-1] if not df_fat.empty else 0
         
-        # Obter o faturamento do mês atual até o último dia de venda
-        # Precisamos verificar se temos os dados do mês atual no df_mensal
-        # Assumindo que temos acesso ao df_mensal neste ponto
-        current_month_sales = 0
-        try:
-            df_mensal = pd.read_json(io.StringIO(data["df_fat_Mensal"]), orient='split')
-            
-            # Identificar o último ano com dados
-            anos_colunas = [col for col in df_mensal.columns if col != 'Mês' and not pd.isna(col)]
-            if anos_colunas:
-                ultimo_ano = max(anos_colunas)
-                
-                # Encontrar o último mês com valor não nulo para o último ano
-                ultimo_valor = None
-                ultimo_mes = None
-                
-                for index, row in df_mensal.iterrows():
-                    if not pd.isna(row[ultimo_ano]) and row[ultimo_ano] != 0:
-                        ultimo_valor = row[ultimo_ano]
-                        ultimo_mes = row['Mês']
-                
-                if ultimo_valor is not None:
-                    current_month_sales = ultimo_valor
-                    print(f"Último valor encontrado: {current_month_sales} para o mês {ultimo_mes} de {ultimo_ano}")
-                    
-        except Exception as e:
-            print(f"Erro ao obter faturamento do mês atual: {e}")
-            current_month_sales = 0
-        
-        # Handle NaN values
-        if pd.isna(current_month_sales): current_month_sales = 0
-        
-        # Handle NaN values
-        if pd.isna(current_month_sales): current_month_sales = 0
-        
-        # Calcular ticket médio de produtos e serviços se os dados existirem
-        ticket_medio_produtos = None
-        ticket_medio_servicos = None
-        
-        # Verificar se temos dados de produtos e serviços
-        if ('Produtos' in df_fat.columns and 'Serviços' in df_fat.columns and
-            'Qtd Produtos' in df_fat.columns and 'Qtd Serviços' in df_fat.columns):
-            try:
-                # Filtramos para o ano mais recente não vazio
-                df_fat_atual = df_fat.sort_values('Ano', ascending=False)
-                
-                # Encontrar a primeira linha com valores válidos para produtos
-                for i, row in df_fat_atual.iterrows():
-                    if not pd.isna(row['Produtos']) and not pd.isna(row['Qtd Produtos']) and row['Qtd Produtos'] > 0:
-                        ticket_medio_produtos = row['Produtos'] / row['Qtd Produtos']
-                        break
-                        
-                # Encontrar a primeira linha com valores válidos para serviços
-                for i, row in df_fat_atual.iterrows():
-                    if not pd.isna(row['Serviços']) and not pd.isna(row['Qtd Serviços']) and row['Qtd Serviços'] > 0:
-                        ticket_medio_servicos = row['Serviços'] / row['Qtd Serviços']
-                        break
-                        
-            except Exception as e:
-                print(f"Erro ao calcular ticket médio: {e}")
-        
-        # Criar a lista de métricas base
-        metrics = [
-            {"title": "Faturamento Total (Ano Atual)", "value": formatar_moeda(total_sales), "color": color['accent']},
-            {"title": "Faturamento Mês Atual", "value": formatar_moeda(current_month_sales), "color": color['success']}
-        ]
-        
-        # Adicionar métricas de ticket médio se disponíveis
-        if ticket_medio_produtos is not None:
-            metrics.append({
-                "title": "Ticket Médio Produtos", 
-                "value": formatar_moeda(ticket_medio_produtos), 
-                "color": color['warning']
-            })
-        
-        if ticket_medio_servicos is not None:
-            metrics.append({
-                "title": "Ticket Médio Serviços", 
-                "value": formatar_moeda(ticket_medio_servicos), 
-                "color": color['neutral']
-            })
-        
-        metrics_row = create_metric_row(metrics)
-        
-                # Verificar se temos dados de produtos e serviços para criar gráfico de barras empilhadas
+        # Verificar se temos dados de produtos e serviços para criar gráfico de barras empilhadas
         has_product_service = 'Produtos' in df_fat.columns and 'Serviços' in df_fat.columns
 
         if has_product_service:
@@ -248,11 +185,105 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 height=500,
                 hovermode="x unified"
             )
-
-        # ------------------------------------------
-        # --- Gráfico 2: Faturamento Anual ---------
-        # ------------------------------------------
-
+        
+        graficos_processados["grafico_evolucao_anual"] = True
+    except Exception as e:
+        print(f"Erro no processamento do Gráfico 1 (Evolução Percentual Anual): {e}")
+        traceback.print_exc()
+        graficos_processados["grafico_evolucao_anual"] = False
+    
+    # MÉTRICAS: Faturamento total, atual, ticket médio
+    try:
+        # Obter o faturamento do mês atual até o último dia de venda
+        current_month_sales = 0
+        try:
+            df_mensal = pd.read_json(io.StringIO(data["df_fat_Mensal"]), orient='split')
+            
+            # Identificar o último ano com dados
+            anos_colunas = [col for col in df_mensal.columns if col != 'Mês' and not pd.isna(col)]
+            if anos_colunas:
+                ultimo_ano = max(anos_colunas)
+                
+                # Encontrar o último mês com valor não nulo para o último ano
+                ultimo_valor = None
+                ultimo_mes = None
+                
+                for index, row in df_mensal.iterrows():
+                    if not pd.isna(row[ultimo_ano]) and row[ultimo_ano] != 0:
+                        ultimo_valor = row[ultimo_ano]
+                        ultimo_mes = row['Mês']
+                
+                if ultimo_valor is not None:
+                    current_month_sales = ultimo_valor
+                    print(f"Último valor encontrado: {current_month_sales} para o mês {ultimo_mes} de {ultimo_ano}")
+                    
+        except Exception as e:
+            print(f"Erro ao obter faturamento do mês atual: {e}")
+            current_month_sales = 0
+        
+        # Handle NaN values
+        if pd.isna(current_month_sales): current_month_sales = 0
+        
+        # Calcular ticket médio de produtos e serviços se os dados existirem
+        ticket_medio_produtos = None
+        ticket_medio_servicos = None
+        
+        # Verificar se temos dados de produtos e serviços
+        if ('Produtos' in df_fat.columns and 'Serviços' in df_fat.columns and
+            'Qtd Produtos' in df_fat.columns and 'Qtd Serviços' in df_fat.columns):
+            try:
+                # Filtramos para o ano mais recente não vazio
+                df_fat_atual = df_fat.sort_values('Ano', ascending=False)
+                
+                # Encontrar a primeira linha com valores válidos para produtos
+                for i, row in df_fat_atual.iterrows():
+                    if not pd.isna(row['Produtos']) and not pd.isna(row['Qtd Produtos']) and row['Qtd Produtos'] > 0:
+                        ticket_medio_produtos = row['Produtos'] / row['Qtd Produtos']
+                        break
+                        
+                # Encontrar a primeira linha com valores válidos para serviços
+                for i, row in df_fat_atual.iterrows():
+                    if not pd.isna(row['Serviços']) and not pd.isna(row['Qtd Serviços']) and row['Qtd Serviços'] > 0:
+                        ticket_medio_servicos = row['Serviços'] / row['Qtd Serviços']
+                        break
+                        
+            except Exception as e:
+                print(f"Erro ao calcular ticket médio: {e}")
+        
+        # Criar a lista de métricas base
+        metrics = [
+            {"title": "Faturamento Total (Ano Atual)", "value": formatar_moeda(total_sales), "color": color['accent'], "value_style": {"fontSize": "20px"}},
+            {"title": "Faturamento Mês Atual", "value": formatar_moeda(current_month_sales), "color": color['success'], "value_style": {"fontSize": "20px"}}
+        ]
+        
+        # Adicionar métricas de ticket médio se disponíveis
+        if ticket_medio_produtos is not None:
+            metrics.append({
+                "title": "Ticket Médio Produtos", 
+                "value": formatar_moeda(ticket_medio_produtos), 
+                "color": color['warning'],
+                "value_style": {"fontSize": "20px"}
+            })
+        
+        if ticket_medio_servicos is not None:
+            metrics.append({
+                "title": "Ticket Médio Serviços", 
+                "value": formatar_moeda(ticket_medio_servicos), 
+                "color": color['neutral'],
+                "value_style": {"fontSize": "20px"}
+            })
+        
+        metrics_row = create_metric_row(metrics)
+        graficos_processados["metricas"] = True
+    except Exception as e:
+        print(f"Erro no processamento das métricas: {e}")
+        traceback.print_exc()
+        graficos_processados["metricas"] = False
+    
+    # ------------------------------------------
+    # --- Gráfico 2: Faturamento Anual ---------
+    # ------------------------------------------
+    try:
         df_ano = pd.read_json(io.StringIO(data["df_fat_Anual_Geral"]), orient='split')
         if df_ano.index.name == 'Ano' or (hasattr(df_ano.index, 'name') and df_ano.index.name is not None):
             # Se o índice for nomeado 'Ano', transforme-o em coluna
@@ -279,6 +310,12 @@ def get_faturamento_anual_layout(data, selected_client=None):
         )
         if is_bibi_data:
             # Para BIBI: gráfico de barras empilhadas Cadastrado vs Sem Cadastro
+            
+            # Preparar os valores formatados para o hover
+            df_ano['Cadastrado_Formatado'] = df_ano['Cadastrado'].apply(formatar_moeda)
+            df_ano['SemCadastro_Formatado'] = df_ano['Sem Cadastro'].apply(formatar_moeda)
+            df_ano['Total_Formatado'] = (df_ano['Cadastrado'] + df_ano['Sem Cadastro']).apply(formatar_moeda)
+            
             fig_ano = px.bar(
                 df_ano,
                 x='Ano',
@@ -289,11 +326,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                     'Cadastrado': '#1f77b4',
                     'Sem Cadastro': '#ff7f0e'
                 },
-                template='plotly_white'
+                template='plotly_white',
+                custom_data=[df_ano['Cadastrado_Formatado'], df_ano['SemCadastro_Formatado'], df_ano['Total_Formatado']]
             )
             
+            # Configurar o hovertemplate para cada trace
+            for i, trace in enumerate(fig_ano.data):
+                if i == 0:  # Cadastrado
+                    trace.hovertemplate = '<b>Ano:</b> %{x}<br><b>Cadastrado:</b> %{customdata[0]}<br><b>Total:</b> %{customdata[2]}<extra></extra>'
+                else:  # Sem Cadastro
+                    trace.hovertemplate = '<b>Ano:</b> %{x}<br><b>Sem Cadastro:</b> %{customdata[1]}<br><b>Total:</b> %{customdata[2]}<extra></extra>'
+            
             # Configurar texto dentro das barras
-            # Update: Usar texttemplate para mostrar valores dentro das barras
             for i, bar in enumerate(fig_ano.data):
                 # Formatar valores para mostrar dentro das barras
                 text_values = []
@@ -339,16 +383,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
                     # Procurar outras colunas numéricas
                     potential_total_columns = [col for col in df_ano.columns if col not in ['Ano', 'index']]
                     if not potential_total_columns:
-                        return html.Div([
-                            html.H2("Crescimento do Negócio", className="dashboard-title"),
-                            create_card(
-                                "Formato de Dados Incompatível",
-                                html.Div([
-                                    html.P("Não foi possível identificar a coluna de faturamento nos dados anuais.", className="text-center text-muted my-4"),
-                                    html.I(className="fas fa-exclamation-triangle fa-4x text-warning d-block text-center mb-3")
-                                ])
-                            )
-                        ], style=content_style)
+                        raise ValueError("Não foi possível identificar a coluna de faturamento nos dados anuais.")
                     
                     # Usar a primeira coluna numérica
                     for col in potential_total_columns:
@@ -356,13 +391,22 @@ def get_faturamento_anual_layout(data, selected_client=None):
                             df_ano['total_item'] = df_ano[col]
                             break
             
+            # Adicionar valores formatados para o hover
+            df_ano['total_formatado'] = df_ano['total_item'].apply(formatar_moeda)
+            
             # Gráfico de barras padrão para outros clientes
             fig_ano = px.bar(
                 df_ano,
                 x='Ano',
                 y='total_item',
                 color_discrete_sequence=[gradient_colors['blue_gradient'][1]],
-                template='plotly_white'
+                template='plotly_white',
+                custom_data=['total_formatado']  # Adicionar o valor formatado aos dados personalizados
+            )
+            
+            # Configurar o hovertemplate para mostrar o valor formatado
+            fig_ano.update_traces(
+                hovertemplate='<b>Ano:</b> %{x}<br><b>Faturamento:</b> %{customdata[0]}<extra></extra>'
             )
             
             # Add value annotations
@@ -408,11 +452,17 @@ def get_faturamento_anual_layout(data, selected_client=None):
             title_font=dict(size=14, family="Montserrat"),
             gridcolor='rgba(0,0,0,0.05)'
         )
-
-        # ----------------------------------------------
-        # --- Gráfico 3: Faturamento Mensal por Ano ----
-        # ----------------------------------------------
-
+        
+        graficos_processados["grafico_faturamento_anual"] = True
+    except Exception as e:
+        print(f"Erro no processamento do Gráfico 2 (Faturamento Anual): {e}")
+        traceback.print_exc()
+        graficos_processados["grafico_faturamento_anual"] = False
+    
+    # ----------------------------------------------
+    # --- Gráfico 3: Faturamento Mensal por Ano ----
+    # ----------------------------------------------
+    try:
         df_mensal = pd.read_json(io.StringIO(data["df_fat_Mensal"]), orient='split')
         if 'Mês' not in df_mensal.columns:
             df_mensal = df_mensal.reset_index(drop=True)
@@ -425,7 +475,9 @@ def get_faturamento_anual_layout(data, selected_client=None):
         df_mensal_long = df_mensal.melt(id_vars="Mês", var_name="Ano", value_name="Faturamento")
         
         # Enhanced monthly sales chart with custom colors
-        custom_colors = ["orange", "darkred", gradient_colors['blue_gradient'][0], color['accent'], gradient_colors['green_gradient'][1], "red", "purple", gradient_colors['blue_gradient'][2]]
+        custom_colors = ["orange", "darkred", gradient_colors['blue_gradient'][0], color['accent'], gradient_colors['green_gradient'][0], "red", gradient_colors['blue_gradient'][2], gradient_colors['green_gradient'][2]]
+        
+        df_mensal_long['Faturamento_Formatado'] = df_mensal_long['Faturamento'].apply(formatar_moeda)
         
         fig_mensal = px.bar(
             df_mensal_long,
@@ -434,7 +486,8 @@ def get_faturamento_anual_layout(data, selected_client=None):
             color="Ano",
             barmode="group",
             color_discrete_sequence=custom_colors,
-            template='plotly_white'
+            template='plotly_white',
+            custom_data=['Ano', 'Faturamento_Formatado']  # Adicionamos o valor formatado aos dados personalizados
         )
         
         # Define os rótulos dos meses e ajusta o range do eixo x para evitar que a primeira barra seja cortada
@@ -471,47 +524,397 @@ def get_faturamento_anual_layout(data, selected_client=None):
             title_font=dict(size=14, family="Montserrat"),
             gridcolor='rgba(0,0,0,0.05)'
         )
+
+        # Agora o hovertemplate usará o valor formatado
+        fig_mensal.update_traces(
+            hovertemplate='<b>Mês:</b> %{x}<br><b>Ano:</b> %{customdata[0]}<br><b>Faturamento:</b> %{customdata[1]}<extra></extra>',
+            textfont=dict(size=10)
+        )
         
-        # --- Layout final: três cards com os gráficos ---
-        layout = html.Div([
-            html.H2("Crescimento do Negócio", className="dashboard-title"),
+        graficos_processados["grafico_faturamento_mensal"] = True
+    except Exception as e:
+        print(f"Erro no processamento do Gráfico 3 (Faturamento Mensal por Ano): {e}")
+        traceback.print_exc()
+        graficos_processados["grafico_faturamento_mensal"] = False
+    
+    # ------------------------------------------------------
+    # --- Gráfico 4: Faturamento Mensal por Ano por loja ---
+    # ------------------------------------------------------
+    try:
+        df_mensal_lojas = pd.read_json(io.StringIO(data["df_fat_Mensal_lojas"]), orient='split')
+        if 'Mês' not in df_mensal_lojas.columns:
+            df_mensal_lojas = df_mensal_lojas.reset_index(drop=True)
+            # Se o número de linhas for 12, atribuimos os meses de 1 a 12; caso contrário, usamos o número de linhas existente
+            if len(df_mensal_lojas) == 12:
+                df_mensal_lojas['Mês'] = list(range(1, 13))
+            else:
+                df_mensal_lojas['Mês'] = list(range(1, len(df_mensal) + 1))
+
+        # Converter valores de faturamento para numérico (caso estejam como string)
+        df_mensal_lojas['total_venda'] = pd.to_numeric(df_mensal_lojas['total_venda'].astype(str).str.replace(',', '.'), errors='coerce')
+
+        # Obter a lista de anos disponíveis para o dropdown
+        anos_disponiveis = sorted(df_mensal_lojas['Ano'].unique())
+        ano_default = anos_disponiveis[-1] if anos_disponiveis else None  # Selecionar o último ano como padrão
+
+        # Dados filtrados para o ano padrão
+        df_filtrado = df_mensal_lojas[df_mensal_lojas['Ano'] == ano_default] if ano_default else pd.DataFrame()
+
+        # Verificar se existem valores duplicados na combinação Mês/Loja
+        if not df_filtrado.empty:
+            duplicated = df_filtrado.duplicated(subset=['Mês', 'id_loja'], keep=False)
+            if duplicated.any():
+                df_filtrado = df_filtrado.groupby(['Mês', 'id_loja'], as_index=False).agg({'total_venda': 'sum'})
+        
+        cores_fixas_lojas = {
+            1: "orange",
+            2: "darkred",
+            3: gradient_colors['blue_gradient'][0],
+            4: gradient_colors['green_gradient'][0],
+            5: color['accent'],
+            6: gradient_colors['blue_gradient'][2],
+            7: gradient_colors['green_gradient'][2],
+        }
+        
+        # Usar cores fixas se a loja estiver no dicionário, ou gerar cores dinâmicas para outras lojas
+        lojas_unicas = df_mensal_lojas['id_loja'].unique()
+        cores_lojas = {}
+        
+        for loja in lojas_unicas:
+            if isinstance(loja, (int, float)) and int(loja) in cores_fixas_lojas:
+                cores_lojas[loja] = cores_fixas_lojas[int(loja)]
+            elif str(loja).isdigit() and int(str(loja)) in cores_fixas_lojas:
+                cores_lojas[loja] = cores_fixas_lojas[int(str(loja))]
+            else:
+                # Usar um índice no conjunto de cores padrão do Plotly para lojas não mapeadas
+                indice_cor = list(lojas_unicas).index(loja) % len(px.colors.qualitative.Bold)
+                cores_lojas[loja] = px.colors.qualitative.Bold[indice_cor]
+        
+        # Criar figura para o gráfico de barras usando o Graph Objects para mais controle
+        fig_lojas = go.Figure()
+        
+        # Adicionar barras para cada loja separadamente (semelhante ao gráfico mensal)
+        for loja in df_filtrado['id_loja'].unique():
+            df_loja = df_filtrado[df_filtrado['id_loja'] == loja]
             
-            # Summary metrics row
-            metrics_row,
+            # Formatar os valores para exibição
+            valores_formatados = df_loja['total_venda'].apply(formatar_moeda)
             
-            # Card for annual growth rate
+            fig_lojas.add_trace(go.Bar(
+                x=df_loja['Mês'],
+                y=df_loja['total_venda'],
+                name=str(loja),
+                marker_color=cores_lojas.get(loja, '#333333'),
+                hovertemplate=f'Loja {loja}: %{valores_formatados}<extra></extra>'
+            ))
+        
+        # Configurar layout do gráfico
+        fig_lojas.update_layout(
+            barmode='group',  # Forçar agrupamento
+            xaxis_title="Mês",
+            yaxis_title="Faturamento (R$)",
+            margin=dict(t=70, b=50, l=50, r=50),
+            height=500,
+            hovermode="x unified",
+            # Melhorando a legenda
+            legend=dict(
+                orientation="h",  # Orientação horizontal
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                title_text="Lojas:",
+                font=dict(size=12),
+                bgcolor='rgba(255,255,255,0.8)',
+                bordercolor='rgba(0,0,0,0.1)',
+                borderwidth=1
+            ),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            bargap=0.15,  # Espaço entre grupos de barras
+            bargroupgap=0.05  # Espaço entre barras do mesmo grupo
+        )
+
+        # Definir rótulos dos meses no eixo x
+        meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+
+        fig_lojas.update_xaxes(
+            range=[0.5, 12.5],
+            tickmode='array',
+            tickvals=list(range(1, 13)),
+            ticktext=meses,
+            title_font=dict(size=14, family="Montserrat"),
+            gridcolor='rgba(0,0,0,0.05)'
+        )
+
+        fig_lojas.update_yaxes(
+            title_font=dict(size=14, family="Montserrat"),
+            gridcolor='rgba(0,0,0,0.05)'
+        )
+
+        # Criar componente do gráfico
+        grafico_lojas = html.Div([
+            html.Div([
+                html.Label("Selecione o Ano:", className="mb-2 font-weight-bold"),
+                dcc.Dropdown(
+                    id='dropdown-ano-lojas',
+                    options=[{'label': str(ano), 'value': ano} for ano in anos_disponiveis],
+                    value=ano_default,
+                    clearable=False,
+                    style={'width': '200px'}
+                ),
+            ], className="mb-4"),
+            dcc.Graph(
+                id='grafico-lojas-mensal',
+                figure=fig_lojas,
+                config={"responsive": True}
+            )
+        ])
+        
+        graficos_processados["grafico_faturamento_lojas"] = True
+    except Exception as e:
+        print(f"Erro no processamento do Gráfico 4 (Faturamento Mensal por Loja): {e}")
+        traceback.print_exc()
+        graficos_processados["grafico_faturamento_lojas"] = False
+    
+    # ----------------------------------------------------------
+    # --- Gráfico 5: Faturamento Diário nos últimos 3 meses ----
+    # ----------------------------------------------------------
+    try:
+        df_diario = pd.read_json(io.StringIO(data["df_fat_Diario"]), orient='split')
+
+        # Converter valores com vírgula para ponto (formato numérico correto)
+        df_diario['total_venda'] = df_diario['total_venda'].astype(str).str.replace(',', '.').astype(float)
+
+        # Obter lista de períodos disponíveis (Mês/Ano) para o dropdown
+        periodos_disponiveis = sorted(df_diario['Período'].unique(), reverse=True)
+        periodo_default = periodos_disponiveis[0] if periodos_disponiveis else None  # Período mais recente como padrão
+
+        # Filtrar dados para o período padrão
+        df_filtrado_diario = df_diario[df_diario['Período'] == periodo_default] if periodo_default else pd.DataFrame()
+        df_filtrado_diario = df_filtrado_diario.sort_values('Dia')  # Garantir que os dias estejam em ordem
+
+        # Criar gráfico de linhas com pontos para visualização diária
+        fig_diario = go.Figure()
+
+        # Preparar texto para hover com formato monetário correto
+        hover_texts = [formatar_moeda(valor) for valor in df_filtrado_diario['total_venda']]
+
+        # Criar customdata com informações adicionais (opcional: mês e ano)
+        if 'Mês' in df_filtrado_diario.columns and 'Ano' in df_filtrado_diario.columns:
+            customdata = pd.DataFrame({
+                'valor_formatado': hover_texts,
+                'mes': df_filtrado_diario['Mês'],
+                'ano': df_filtrado_diario['Ano']
+            })
+            hovertemplate = '<b>Dia:</b> %{x}<br><b>Faturamento:</b> %{text}<br><b>Data:</b> %{customdata[1]}/%{customdata[2]}<extra></extra>'
+        else:
+            customdata = pd.DataFrame({'valor_formatado': hover_texts})
+            hovertemplate = '<b>Dia:</b> %{x}<br><b>Faturamento:</b> %{text}<extra></extra>'
+        
+        # Adicionar linha com pontos
+        fig_diario.add_trace(go.Scatter(
+            x=df_filtrado_diario['Dia'],
+            y=df_filtrado_diario['total_venda'],
+            mode='lines+markers',
+            name='Faturamento Diário',
+            line=dict(color=color['accent'], width=3),
+            marker=dict(size=8, color=color['accent'], line=dict(width=2, color='white')),
+            text=hover_texts,
+            customdata=customdata.values,
+            hovertemplate=hovertemplate
+        ))
+
+        # Adicionar rótulos de valores para cada ponto
+        for dia, valor in zip(df_filtrado_diario['Dia'], df_filtrado_diario['total_venda']):
+            fig_diario.add_annotation(
+                x=dia,
+                y=valor,
+                text=formatar_moeda(valor),
+                showarrow=False,
+                yshift=15,
+                font=dict(size=10, family="Montserrat")
+            )
+
+        # Configuração do layout
+        fig_diario.update_layout(
+            xaxis_title="Dia do Mês",
+            yaxis_title="Faturamento (R$)",
+            margin=dict(t=50, b=50, l=50, r=50),
+            height=500,
+            hovermode="x unified",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+
+        # Configuração dos eixos
+        fig_diario.update_xaxes(
+            tickmode='linear',
+            dtick=1,  # Mostrar todos os dias
+            title_font=dict(size=14, family="Montserrat"),
+            gridcolor='rgba(0,0,0,0.05)'
+        )
+
+        fig_diario.update_yaxes(
+            title_font=dict(size=14, family="Montserrat"),
+            gridcolor='rgba(0,0,0,0.05)'
+        )
+
+        # Criar componente do gráfico com dropdown para seleção de período
+        grafico_diario = html.Div([
+            html.Div([
+                html.Label("Selecione o Período:", className="mb-2 font-weight-bold"),
+                dcc.Dropdown(
+                    id='dropdown-periodo-diario',
+                    options=[{'label': periodo, 'value': periodo} for periodo in periodos_disponiveis],
+                    value=periodo_default,
+                    clearable=False,
+                    style={'width': '200px'}
+                ),
+            ], className="mb-4"),
+            dcc.Graph(
+                id='grafico-faturamento-diario',
+                figure=fig_diario,
+                config={"responsive": True}
+            )
+        ])
+        
+        graficos_processados["grafico_faturamento_diario"] = True
+    except Exception as e:
+        print(f"Erro no processamento do Gráfico 5 (Faturamento Diário por Período): {e}")
+        traceback.print_exc()
+        graficos_processados["grafico_faturamento_diario"] = False
+    
+    # Construir o layout com os gráficos que foram criados com sucesso
+    componentes_layout = [
+        dcc.Store(id='store-faturamento-data', data=data),
+        html.H2("Crescimento do Negócio", className="dashboard-title"),
+    ]
+    
+    # Adicionar métricas se disponíveis
+    if graficos_processados.get("metricas", False):
+        componentes_layout.append(metrics_row)
+    else:
+        componentes_layout.append(
+            create_card(
+                "Métricas de Faturamento", 
+                html.Div([
+                    html.P("Não foi possível calcular as métricas de faturamento devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-exclamation-triangle fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+    
+    # Adicionar cada gráfico se disponível, ou mensagem de erro caso contrário
+    if graficos_processados.get("grafico_evolucao_anual", False):
+        componentes_layout.append(
             create_card(
                 "Evolução Percentual Anual das Vendas",
-                dcc.Graph(figure=fig_fat, config={"responsive": True}),
-            ),
-            
-            # Card for annual sales
+                dcc.Graph(figure=fig_fat, config={"responsive": True})
+            )
+        )
+    else:
+        componentes_layout.append(
+            create_card(
+                "Evolução Percentual Anual das Vendas", 
+                html.Div([
+                    html.P("Não foi possível processar o gráfico de evolução anual devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-chart-line fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+    
+    if graficos_processados.get("grafico_faturamento_anual", False):
+        componentes_layout.append(
             create_card(
                 titulo_grafico2,
-                dcc.Graph(figure=fig_ano, config={"responsive": True}),
-            ),
-            
-            # Card for monthly sales by year
+                dcc.Graph(figure=fig_ano, config={"responsive": True})
+            )
+        )
+    else:
+        componentes_layout.append(
+            create_card(
+                "Faturamento Anual", 
+                html.Div([
+                    html.P("Não foi possível processar o gráfico de faturamento anual devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-chart-bar fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+    
+    if graficos_processados.get("grafico_faturamento_mensal", False):
+        componentes_layout.append(
             create_card(
                 "Faturamento Mensal por Ano",
-                dcc.Graph(figure=fig_mensal, config={"responsive": True}),
-            ),
-        ], style=content_style)
-        
-        return layout
-        
-    except Exception as e:
-        # Em caso de erro, exibir mensagem amigável e informações do erro
+                dcc.Graph(figure=fig_mensal, config={"responsive": True})
+            )
+        )
+    else:
+        componentes_layout.append(
+            create_card(
+                "Faturamento Mensal por Ano", 
+                html.Div([
+                    html.P("Não foi possível processar o gráfico de faturamento mensal devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-calendar-alt fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+    
+    if graficos_processados.get("grafico_faturamento_lojas", False):
+        componentes_layout.append(
+            create_card(
+                "Faturamento Mensal por Loja",
+                grafico_lojas
+            )
+        )
+    else:
+        componentes_layout.append(
+            create_card(
+                "Faturamento Mensal por Loja", 
+                html.Div([
+                    html.P("Não foi possível processar o gráfico de faturamento por loja devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-store fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+    
+    if graficos_processados.get("grafico_faturamento_diario", False):
+        componentes_layout.append(
+            create_card(
+                "Faturamento Diário por Período",
+                grafico_diario
+            )
+        )
+    else:
+        componentes_layout.append(
+            create_card(
+                "Faturamento Diário por Período", 
+                html.Div([
+                    html.P("Não foi possível processar o gráfico de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-calendar-day fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+    
+    # Se nenhum gráfico foi gerado com sucesso, exibir erro
+    if not any(graficos_processados.values()):
         return html.Div([
             html.H2("Crescimento do Negócio", className="dashboard-title"),
-            
             create_card(
                 "Erro ao carregar os dados",
                 html.Div([
-                    html.P("Ocorreu um problema ao carregar os dados de faturamento. Detalhes do erro:"),
-                    html.Pre(str(e), style={"background": "#f8f9fa", "padding": "15px", "borderRadius": "5px", "whiteSpace": "pre-wrap"}),
-                    html.P("Tente recarregar a página ou entre em contato com o suporte técnico.")
+                    html.P("Ocorreu um problema ao processar todos os gráficos. Nenhum gráfico pôde ser gerado."),
+                    html.P("Verifique os logs para mais detalhes ou entre em contato com o suporte técnico.")
                 ])
             )
         ], style=content_style)
-
+    
+    return html.Div(componentes_layout, style=content_style)

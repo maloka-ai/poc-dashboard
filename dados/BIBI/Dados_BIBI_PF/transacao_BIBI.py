@@ -105,6 +105,34 @@ try:
     conn.close()
     print("\nConexão com o banco de dados fechada.")
 
+    ########################################################
+    # consulta da tabela loja
+    ########################################################
+    
+    print("Consultando a tabela loja...")
+    query = "SELECT * FROM maloka_core.loja"
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_lojas = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_lojas)
+    num_colunas = len(df_lojas.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_lojas.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_lojas.head())
+    
+    # Exportar para Excel
+    # df_lojas.to_excel("df_lojas.xlsx", index=False)
+
+    # Fechar conexão
+    conn.close()
+    print("\nConexão com o banco de dados fechada.")
+
 except Exception as e:
     print(f"Erro: {e}")
     print("\nVerifique se:")
@@ -225,7 +253,7 @@ df_pivot.to_excel(os.path.join(diretorio_atual, 'faturamento_mensal.xlsx'), inde
 ########################################################
 
 anos_disponiveis = sorted(df_vendas['Ano'].unique())
-lojas_disponiveis = sorted(df_vendas['id_loja_fisica'].unique())
+lojas_disponiveis = sorted(df_vendas['id_loja'].unique())
 
 print(f"Gerando gráficos de faturamento para os anos: {anos_disponiveis}")
 print(f"Lojas disponíveis: {lojas_disponiveis}")
@@ -236,7 +264,7 @@ df_consolidado = pd.DataFrame()
 # Para cada ano, processamos os dados e os consolidamos
 for ano in anos_disponiveis:
     # Filtrar as vendas para o ano e para as lojas disponíveis
-    df_ano = df_vendas[(df_vendas['Ano'] == ano) & (df_vendas['id_loja_fisica'].isin(lojas_disponiveis))].copy()
+    df_ano = df_vendas[(df_vendas['Ano'] == ano) & (df_vendas['id_loja'].isin(lojas_disponiveis))].copy()
     
     # Verificar se há dados para este ano
     if df_ano.empty:
@@ -244,7 +272,7 @@ for ano in anos_disponiveis:
         continue
     
     # Agrupar por Mês e id_loja, somando o total_venda
-    df_mensal = df_ano.groupby(['Mês', 'id_loja_fisica'])['total_venda'].sum().reset_index()
+    df_mensal = df_ano.groupby(['Mês', 'id_loja'])['total_venda'].sum().reset_index()
     
     # Adicionar coluna de Ano ao DataFrame
     df_mensal['Ano'] = ano
@@ -252,31 +280,105 @@ for ano in anos_disponiveis:
     # Anexar ao DataFrame consolidado
     df_consolidado = pd.concat([df_consolidado, df_mensal], ignore_index=True)
     
-    # Criar uma tabela pivot para o gráfico: índice = Mês e colunas = id_loja
-    df_pivot = df_mensal.pivot(index='Mês', columns='id_loja_fisica', values='total_venda')
+    # # Criar uma tabela pivot para o gráfico: índice = Mês e colunas = id_loja
+    # df_pivot = df_mensal.pivot(index='Mês', columns='id_loja', values='total_venda')
     
-    # Plotar o gráfico de barras agrupadas
-    plt.figure(figsize=(12, 7))
-    ax = df_pivot.plot(kind='bar', ax=plt.gca())
-    plt.title(f'Faturamento Mensal - Ano {ano}')
-    plt.xlabel('Mês')
-    plt.ylabel('Faturamento (R$)')
-    plt.xticks(rotation=0)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.legend(title='Loja')
+    # # Plotar o gráfico de barras agrupadas
+    # plt.figure(figsize=(12, 7))
+    # ax = df_pivot.plot(kind='bar', ax=plt.gca())
+    # plt.title(f'Faturamento Mensal - Ano {ano}')
+    # plt.xlabel('Mês')
+    # plt.ylabel('Faturamento (R$)')
+    # plt.xticks(rotation=0)
+    # plt.grid(axis='y', linestyle='--', alpha=0.7)
+    # plt.legend(title='Loja')
     
-    # Adicionar rótulos em cada barra com o valor correspondente
-    for container in ax.containers:
-        ax.bar_label(container, fmt='R$%.0f', fontsize=8, label_type='edge')
+    # # Adicionar rótulos em cada barra com o valor correspondente
+    # for container in ax.containers:
+    #     ax.bar_label(container, fmt='R$%.0f', fontsize=8, label_type='edge')
     
-    plt.tight_layout()
-    plt.savefig(os.path.join(diretorio_atual, f'faturamento_mensal_{ano}.png'))
-    plt.close()
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(diretorio_atual, f'faturamento_mensal_{ano}.png'))
+    # plt.close()
 
 # Salvar o DataFrame consolidado em um único arquivo Excel
 if not df_consolidado.empty:
     excel_path = os.path.join(diretorio_atual, 'faturamento_mensal_lojas.xlsx')
+    # df_consolidado = df_consolidado.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
     df_consolidado.to_excel(excel_path, index=False)
     print(f"Dados de faturamento consolidados salvos em: {excel_path}")
 else:
     print("Não há dados para gerar o arquivo Excel consolidado.")
+
+
+########################################################
+# Faturamento diário no mês atual e 3 meses anteriores
+########################################################
+
+# Obter a data atual
+data_atual = pd.Timestamp.now()
+mes_atual = data_atual.month
+ano_atual = data_atual.year
+
+# Criar uma lista para armazenar os DataFrames de cada mês
+dfs_mensais = []
+
+# Processar mês atual e 3 meses anteriores
+for i in range(4):
+    # Calcular o mês e ano de referência
+    mes_ref = mes_atual - i
+    ano_ref = ano_atual
+    
+    # Ajustar o ano se necessário (quando o mês for negativo)
+    if mes_ref <= 0:
+        mes_ref += 12
+        ano_ref -= 1
+    
+    # Filtrar os dados para o mês e ano em questão
+    mask = (df_vendas['data_venda'].dt.month == mes_ref) & (df_vendas['data_venda'].dt.year == ano_ref)
+    df_mes = df_vendas[mask].copy()
+    
+    # Se não houver dados, continuar para o próximo mês
+    if df_mes.empty:
+        print(f"Não há dados para {mes_ref}/{ano_ref}")
+        continue
+    
+    # Criar coluna para dia do mês
+    df_mes['Dia'] = df_mes['data_venda'].dt.day
+    
+    # Agrupar por dia e calcular o faturamento diário
+    df_diario = df_mes.groupby('Dia')['total_venda'].sum().reset_index()
+    
+    # Adicionar colunas de mês e ano
+    df_diario['Mês'] = mes_ref
+    df_diario['Ano'] = ano_ref
+    df_diario['Período'] = f"{mes_ref:02d}/{ano_ref}"
+    
+    # Adicionar à lista de DataFrames
+    dfs_mensais.append(df_diario)
+
+# Combinar todos os DataFrames
+if dfs_mensais:
+    df_faturamento_diario = pd.concat(dfs_mensais, ignore_index=True)
+    
+    # Salvar em Excel
+    excel_path = os.path.join(diretorio_atual, 'faturamento_diario.xlsx')
+    df_faturamento_diario.to_excel(excel_path, index=False)
+    print(f"Dados de faturamento diário salvos em: {excel_path}")
+    
+    # Calcular estatísticas por mês
+    df_stats = df_faturamento_diario.groupby('Período')['total_venda'].agg([
+        ('Total', 'sum'),
+        ('Média Diária', 'mean'),
+        ('Máximo', 'max'),
+        ('Dia de Pico', lambda x: df_faturamento_diario.loc[x.idxmax(), 'Dia'])
+    ]).reset_index()
+    
+    # Salvar estatísticas em Excel
+    stats_path = os.path.join(diretorio_atual, 'estatisticas_faturamento_diario.xlsx')
+    df_stats.to_excel(stats_path, index=False)
+    print(f"Estatísticas de faturamento diário salvas em: {stats_path}")
+else:
+    print("Não há dados para gerar análise de faturamento diário.")
+
+
