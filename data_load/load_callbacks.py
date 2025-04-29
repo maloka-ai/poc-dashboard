@@ -83,6 +83,7 @@ def register_data_callbacks(app, app_cache=None):
             "df_fat_Mensal": data["df_fat_Mensal"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal"] is not None else None,
             "df_fat_Mensal_lojas": data["df_fat_Mensal_lojas"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal_lojas"] is not None else None,
             "df_fat_Diario": data["df_fat_Diario"].to_json(date_format='iso', orient='split') if data["df_fat_Diario"] is not None else None,
+            "df_fat_Diario_lojas": data["df_fat_Diario_lojas"].to_json(date_format='iso', orient='split') if data["df_fat_Diario_lojas"] is not None else None,
             "df_Vendas_Atipicas": data["df_Vendas_Atipicas"].to_json(date_format='iso', orient='split') if data["df_Vendas_Atipicas"] is not None else None,
             "df_relatorio_produtos": data["df_relatorio_produtos"].to_json(date_format='iso', orient='split') if "df_relatorio_produtos" in data and data["df_relatorio_produtos"] is not None else None,
             "df_previsao_retorno": data["df_previsao_retorno"].to_json(date_format='iso', orient='split') if "df_previsao_retorno" in data and data["df_previsao_retorno"] is not None else None,

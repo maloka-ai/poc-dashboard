@@ -1,22 +1,33 @@
 import diskcache
-from dash.long_callback import DiskcacheLongCallbackManager
+# from dash.long_callback import DiskcacheLongCallbackManager
 from flask_caching import Cache
 
 def setup_diskcache():
-    """Configura e retorna o gerenciador de cache do diskcache"""
+    """Configura e retorna o cache do diskcache"""
     cache = diskcache.Cache("./cache")
     
     # Otimize as configurações do diskcache
     cache.reset('size', int(1e9))  # Limite de 1GB para o cache
+    cache.set('cull_limit', 0)     # Desabilita culling automático 
+    cache.set('statistics', True)   # Habilita estatísticas
     
-    # Adicione configurações adicionais para melhor performance
-    cache.set('cull_limit', 0)     # Desabilita culling automático para melhor performance
-    cache.set('statistics', True)   # Habilita estatísticas para monitoramento
+    return cache
+
+# def setup_diskcache():
+#     """Configura e retorna o gerenciador de cache do diskcache"""
+#     cache = diskcache.Cache("./cache")
     
-    # Criar o gerenciador de longo callback
-    long_callback_manager = DiskcacheLongCallbackManager(cache)
+#     # Otimize as configurações do diskcache
+#     cache.reset('size', int(1e9))  # Limite de 1GB para o cache
     
-    return cache, long_callback_manager
+#     # Adicione configurações adicionais para melhor performance
+#     cache.set('cull_limit', 0)     # Desabilita culling automático para melhor performance
+#     cache.set('statistics', True)   # Habilita estatísticas para monitoramento
+    
+#     # Criar o gerenciador de longo callback
+#     long_callback_manager = DiskcacheLongCallbackManager(cache)
+    
+#     return cache, long_callback_manager
 
 def setup_flask_cache(server):
     """Configura e retorna o cache do Flask para a aplicação"""

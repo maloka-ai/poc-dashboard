@@ -2,7 +2,7 @@ import io
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import html, dcc
+from dash import html, dcc, dash_table
 import traceback
 
 from utils import formatar_moeda, formatar_percentual
@@ -17,6 +17,10 @@ def get_faturamento_anual_layout(data, selected_client=None):
         "grafico_faturamento_mensal": False,
         "grafico_faturamento_lojas": False,
         "grafico_faturamento_diario": False
+    }
+
+    tabela_processada = {
+        "tabela_faturamento_diario": False,
     }
     
     # Variáveis de saída para os gráficos
@@ -792,6 +796,89 @@ def get_faturamento_anual_layout(data, selected_client=None):
         print(f"Erro no processamento do Gráfico 5 (Faturamento Diário por Período): {e}")
         traceback.print_exc()
         graficos_processados["grafico_faturamento_diario"] = False
+
+    # ----------------------------------------------------------
+    # --- Tabela: Faturamento Diário por Loja no Mês Atual -----
+    # ----------------------------------------------------------
+    try:
+        # Usar diretamente os dados do df_fat_Diario_lojas
+        df_fat_Diario_lojas = pd.read_json(io.StringIO(data["df_fat_Diario_lojas"]), orient='split')
+        
+        # Garantir que todos os valores numéricos estejam formatados corretamente
+        colunas_numericas = [col for col in df_fat_Diario_lojas.columns if col != 'nome']
+        
+        # Criar uma cópia para formatar valores
+        df_formatado = df_fat_Diario_lojas.copy()
+        
+        # Formatar valores monetários para todas as colunas numéricas
+        for col in colunas_numericas:
+            df_formatado[col] = df_formatado[col].apply(lambda x: formatar_moeda(x) if pd.notnull(x) and x != 0 else "-")
+        
+        # Converter todas as colunas para string para garantir compatibilidade com a DataTable
+        df_formatado_dict = df_formatado.reset_index().to_dict('records')
+        
+        # Criar componente da tabela usando Dash DataTable
+        tabela_faturamento = html.Div([
+            html.H4("Mês Atual", className="mb-3"),
+            dash_table.DataTable(
+                id='tabela-faturamento-diario-lojas',
+                columns=[
+                    {"name": "Loja", "id": "nome"},
+                    {"name": "Total", "id": "total_loja", "type": "text"},
+                ] + [
+                    {"name": f"Dia {dia}", "id": str(dia), "type": "text"} 
+                    for dia in range(1, 32) if str(dia) in df_formatado.columns or dia in df_formatado.columns
+                ],
+                data=df_formatado_dict,
+                style_table={
+                    'overflowX': 'auto',
+                    'minWidth': '100%',
+                },
+                style_header={
+                    'backgroundColor': 'rgb(230, 230, 230)',
+                    'fontWeight': 'bold',
+                    'textAlign': 'center',
+                    'border': '1px solid black'
+                },
+                style_cell={
+                    'textAlign': 'right',
+                    'padding': '8px',
+                    'border': '1px solid #ddd'
+                },
+                style_cell_conditional=[
+                    {
+                        'if': {'column_id': 'nome'},
+                        'textAlign': 'left',
+                        'fontWeight': 'bold',
+                        'width': '180px'
+                    },
+                    {
+                        'if': {'column_id': 'total_loja'},
+                        'fontWeight': 'bold',
+                        'backgroundColor': 'rgba(0, 123, 255, 0.1)',
+                        'width': '120px'
+                    }
+                ],
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': 'rgb(248, 248, 248)'
+                    },
+                    {
+                        'if': {'filter_query': '{nome} contains "total"'},
+                        'backgroundColor': 'rgba(0, 123, 255, 0.1)',
+                        'fontWeight': 'bold'
+                    }
+                ]
+            )
+        ], className="mb-5")
+
+        tabela_processada["tabela_faturamento_diario"] = True
+    except Exception as e:
+        print(f"Erro no processamento da Tabela de Faturamento Diário por Loja: {e}")
+        traceback.print_exc()
+        tabela_processada["tabela_faturamento_diario"] = False
+    
     
     # Construir o layout com os gráficos que foram criados com sucesso
     componentes_layout = [
@@ -900,6 +987,24 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 html.Div([
                     html.P("Não foi possível processar o gráfico de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
                     html.I(className="fas fa-calendar-day fa-2x text-warning d-block text-center mb-3")
+                ])
+            )
+        )
+
+    if tabela_processada.get("tabela_faturamento_diario", False):
+        componentes_layout.append(
+                create_card(
+                    "Tabela de Faturamento Diário por Loja",
+                    tabela_faturamento
+                )
+            )
+    else: 
+        componentes_layout.append(
+            create_card(
+                "Tabela de Faturamento Diário por Loja", 
+                html.Div([
+                    html.P("Não foi possível processar a tabela de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
+                    html.I(className="fas fa-table fa-2x text-warning d-block text-center mb-3")
                 ])
             )
         )

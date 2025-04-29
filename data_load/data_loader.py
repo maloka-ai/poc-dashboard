@@ -62,6 +62,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         df_fat_Mensal = pd.read_excel(file_paths["fat_mensal_path"]) if os.path.exists(file_paths["fat_mensal_path"]) else None
         df_fat_Mensal_lojas = pd.read_excel(file_paths["fat_mensal_lojas_path"]) if os.path.exists(file_paths["fat_mensal_lojas_path"]) else None
         df_fat_Diario = pd.read_excel(file_paths["fat_diario_path"]) if os.path.exists(file_paths["fat_diario_path"]) else None
+        df_fat_Diario_lojas = pd.read_excel(file_paths["fat_diario_lojas_path"]) if os.path.exists(file_paths["fat_diario_lojas_path"]) else None
         df_Vendas_Atipicas = pd.read_excel(file_paths["vendas_atipicas_path"]) if os.path.exists(file_paths["vendas_atipicas_path"]) else None
         df_relatorio_produtos = pd.read_excel(file_paths["relatorio_produtos_path"], sheet_name=0) if os.path.exists(file_paths["relatorio_produtos_path"]) else None
         df_analise_giro = pd.read_excel(file_paths["analise_giro_path"], sheet_name=0) if os.path.exists(file_paths["analise_giro_path"]) else None
@@ -130,6 +131,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         "df_fat_Mensal": df_fat_Mensal,
         "df_fat_Mensal_lojas": df_fat_Mensal_lojas,
         "df_fat_Diario": df_fat_Diario,
+        "df_fat_Diario_lojas": df_fat_Diario_lojas,
         "df_Vendas_Atipicas": df_Vendas_Atipicas,
         "df_relatorio_produtos": df_relatorio_produtos,
         "df_previsao_retorno": df_previsao_retorno,
