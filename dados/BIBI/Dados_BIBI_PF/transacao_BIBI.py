@@ -101,10 +101,6 @@ try:
     # Exportar para Excel
     # df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
 
-    # Fechar conexão
-    conn.close()
-    print("\nConexão com o banco de dados fechada.")
-
     ########################################################
     # consulta da tabela loja
     ########################################################
@@ -304,7 +300,7 @@ for ano in anos_disponiveis:
 # Salvar o DataFrame consolidado em um único arquivo Excel
 if not df_consolidado.empty:
     excel_path = os.path.join(diretorio_atual, 'faturamento_mensal_lojas.xlsx')
-    # df_consolidado = df_consolidado.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
+    df_consolidado = df_consolidado.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
     df_consolidado.to_excel(excel_path, index=False)
     print(f"Dados de faturamento consolidados salvos em: {excel_path}")
 else:
@@ -365,20 +361,72 @@ if dfs_mensais:
     excel_path = os.path.join(diretorio_atual, 'faturamento_diario.xlsx')
     df_faturamento_diario.to_excel(excel_path, index=False)
     print(f"Dados de faturamento diário salvos em: {excel_path}")
-    
-    # Calcular estatísticas por mês
-    df_stats = df_faturamento_diario.groupby('Período')['total_venda'].agg([
-        ('Total', 'sum'),
-        ('Média Diária', 'mean'),
-        ('Máximo', 'max'),
-        ('Dia de Pico', lambda x: df_faturamento_diario.loc[x.idxmax(), 'Dia'])
-    ]).reset_index()
-    
-    # Salvar estatísticas em Excel
-    stats_path = os.path.join(diretorio_atual, 'estatisticas_faturamento_diario.xlsx')
-    df_stats.to_excel(stats_path, index=False)
-    print(f"Estatísticas de faturamento diário salvas em: {stats_path}")
 else:
     print("Não há dados para gerar análise de faturamento diário.")
 
 
+########################################################
+# Faturamento diário no mês atual por loja
+########################################################
+
+# Obter a data atual
+data_atual = pd.Timestamp.now()
+mes_atual = data_atual.month
+ano_atual = data_atual.year
+
+# Filtrar vendas apenas para o mês atual
+mask_mes_atual = (df_vendas['data_venda'].dt.month == mes_atual) & (df_vendas['data_venda'].dt.year == ano_atual)
+df_mes_atual = df_vendas[mask_mes_atual].copy()
+
+if not df_mes_atual.empty:
+    # Criar coluna para dia do mês
+    df_mes_atual['Dia'] = df_mes_atual['data_venda'].dt.day
+    
+    # Agrupar por dia e loja, calculando o faturamento diário
+    df_diario_loja = df_mes_atual.groupby(['id_loja', 'Dia'])['total_venda'].sum().reset_index()
+    
+    # Mesclar com informações das lojas para obter os nomes
+    df_diario_loja = df_diario_loja.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
+    
+    # Criar uma lista com todos os dias do mês (1 a 31)
+    todos_dias = list(range(1, 32))
+    
+    # Criar uma versão pivotada com lojas nas linhas e dias nas colunas
+    df_pivot_lojas = df_diario_loja.pivot(index='nome', columns='Dia', values='total_venda')
+    
+    # Garantir que todos os dias de 1 a 31 estejam presentes
+    for dia in todos_dias:
+        if dia not in df_pivot_lojas.columns:
+            df_pivot_lojas[dia] = 0
+    
+    # Ordenar as colunas para que os dias apareçam em ordem crescente
+    df_pivot_lojas = df_pivot_lojas[sorted(df_pivot_lojas.columns)]
+    
+    # Preencher valores NaN com zero
+    df_pivot_lojas = df_pivot_lojas.fillna(0)
+    
+    # Adicionar uma coluna com o total por loja
+    df_pivot_lojas['total_loja'] = df_pivot_lojas.sum(axis=1)
+    
+    # Ordenar o DataFrame pelo total de vendas (do maior para o menor)
+    df_pivot_lojas = df_pivot_lojas.sort_values('total_loja', ascending=False)
+    
+    # Adicionar uma linha com o total diário (de todas as lojas juntas)
+    totais_diarios = df_diario_loja.groupby('Dia')['total_venda'].sum()
+    df_pivot_lojas.loc['total'] = pd.Series({dia: totais_diarios.get(dia, 0) for dia in df_pivot_lojas.columns})
+    
+    # Calcular o total geral (soma de todas as vendas) e adicionar na célula da última coluna da linha 'total'
+    total_geral = df_diario_loja['total_venda'].sum()
+    df_pivot_lojas.loc['total', 'total_loja'] = total_geral
+
+    # Arredondar os valores para 2 casas decimais para melhor visualização
+    df_pivot_lojas = df_pivot_lojas.round(2)
+    
+    # Salvar em Excel
+    excel_path = os.path.join(diretorio_atual, f'faturamento_diario_lojas.xlsx')
+    df_pivot_lojas.to_excel(excel_path)
+    print(df_pivot_lojas.head())
+    print(f"Dados de faturamento diário por loja salvos em: {excel_path}")
+    
+else:
+    print(f"Não há dados de vendas para o mês atual ({mes_atual}/{ano_atual})")

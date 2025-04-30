@@ -42,7 +42,8 @@ from utils import (color, gradient_colors, content_style, button_style, login_co
 # =============================================================================
 # Setup caching for improved performance
 # =============================================================================
-cache, long_callback_manager = setup_diskcache()
+cache = setup_diskcache()
+# cache, long_callback_manager = setup_diskcache()
 dotenv.load_dotenv()
 openai.api_key = os.getenv("chatKey")
 
@@ -70,7 +71,7 @@ application = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP, 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap'],
     suppress_callback_exceptions=True,
-    long_callback_manager=long_callback_manager,
+    # long_callback_manager=long_callback_manager if long_callback_manager else None,
     server=server,  # Associar ao servidor Flask
     url_base_pathname='/app/'
 )

@@ -13,10 +13,11 @@ def register_faturamento_anual_callbacks(app):
     """
     @app.callback(
         Output('grafico-lojas-mensal', 'figure'),
-        [Input('dropdown-ano-lojas', 'value')],
+        [Input('dropdown-ano-lojas', 'value'),
+        Input('dropdown-loja-mensal', 'value')],
         [State('store-faturamento-data', 'data')]
     )
-    def update_grafico_lojas(ano_selecionado, data):
+    def update_grafico_lojas(ano_selecionado, lojas_selecionadas, data):
         if not data or not ano_selecionado:
             # Retorna figura vazia se não houver dados
             return {}
@@ -37,14 +38,23 @@ def register_faturamento_anual_callbacks(app):
                     df_filtrado = df_filtrado.groupby(['Mês', 'id_loja'], as_index=False).agg({'total_venda': 'sum'})
             
 
-            # Definir cores personalizadas para cada loja
-            lojas_unicas = df_mensal_lojas['id_loja'].unique()
-            cores_lojas = {
-                loja: cor for loja, cor in zip(
-                    lojas_unicas,
-                    px.colors.qualitative.Bold + px.colors.qualitative.Prism + px.colors.qualitative.Set1
-                )
-            }
+            # Aplicar filtro por loja APENAS se houver lojas selecionadas
+            # Se lojas_selecionadas estiver vazio, mostrar todas as lojas
+            if lojas_selecionadas and len(lojas_selecionadas) > 0 and not df_filtrado.empty:
+                df_filtrado = df_filtrado[df_filtrado['id_loja'].isin(lojas_selecionadas)]
+                
+                # Se após o filtro não houver dados, retorne um gráfico vazio
+                if df_filtrado.empty:
+                    fig = go.Figure()
+                    fig.add_annotation(
+                        text="Não há dados para as lojas selecionadas neste ano",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False,
+                        font=dict(size=16)
+                    )
+                    fig.update_layout(height=500)
+                    return fig
+            
             cores_fixas_lojas = {
                 1: "orange",
                 2: "darkred",
@@ -76,18 +86,36 @@ def register_faturamento_anual_callbacks(app):
             for loja in df_filtrado['id_loja'].unique():
                 df_loja = df_filtrado[df_filtrado['id_loja'] == loja]
                 
+                # Verificar se a coluna 'nome' existe e usar o nome da loja
+                if 'nome' in df_loja.columns and not df_loja.empty:
+                    nome_loja = df_loja['nome'].iloc[0]
+                else:
+                    nome_loja = f"Loja {loja}"
+                
                 # Mantém os valores formatados para o hover, mas não mostra nas barras
                 valores_formatados = [formatar_moeda(valor) for valor in df_loja['total_venda']]
                 
                 fig.add_trace(go.Bar(
                     x=df_loja['Mês'],
                     y=df_loja['total_venda'],
-                    name=f"Loja {loja}",
+                    name=nome_loja,
                     marker_color=cores_lojas.get(loja, '#333333'),
                     textposition='none',  # Oculta o texto nas barras
                     customdata=valores_formatados,  # Mantém os dados formatados para o hover
                     hovertemplate='<b>Loja:</b> %{fullData.name}<br><b>Mês:</b> %{x}<br><b>Faturamento:</b> %{customdata}<extra></extra>'
                 ))
+
+            # Título dinâmico baseado na seleção
+            if not lojas_selecionadas or len(lojas_selecionadas) == 0:
+                titulo = f"Faturamento Mensal por Loja ({ano_selecionado})"
+            elif len(lojas_selecionadas) > 1:
+                titulo = f"Faturamento Mensal: {len(lojas_selecionadas)} Lojas Selecionadas ({ano_selecionado})"
+            else:
+                nome_loja_selecionada = df_filtrado['nome'].iloc[0] if not df_filtrado.empty else "Loja"
+                titulo = f"Faturamento Mensal: {nome_loja_selecionada} ({ano_selecionado})"
+            
+            # Atualizar o título no layout
+            fig.update_layout(title=titulo)
             
             # Configurar layout do gráfico
             fig.update_layout(
