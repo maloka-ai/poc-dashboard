@@ -361,19 +361,6 @@ if dfs_mensais:
     excel_path = os.path.join(diretorio_atual, 'faturamento_diario.xlsx')
     df_faturamento_diario.to_excel(excel_path, index=False)
     print(f"Dados de faturamento diário salvos em: {excel_path}")
-    
-    # Calcular estatísticas por mês
-    df_stats = df_faturamento_diario.groupby('Período')['total_venda'].agg([
-        ('Total', 'sum'),
-        ('Média Diária', 'mean'),
-        ('Máximo', 'max'),
-        ('Dia de Pico', lambda x: df_faturamento_diario.loc[x.idxmax(), 'Dia'])
-    ]).reset_index()
-    
-    # Salvar estatísticas em Excel
-    stats_path = os.path.join(diretorio_atual, 'estatisticas_faturamento_diario.xlsx')
-    df_stats.to_excel(stats_path, index=False)
-    print(f"Estatísticas de faturamento diário salvas em: {stats_path}")
 else:
     print("Não há dados para gerar análise de faturamento diário.")
 

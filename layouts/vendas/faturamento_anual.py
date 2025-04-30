@@ -601,15 +601,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
         for loja in df_filtrado['id_loja'].unique():
             df_loja = df_filtrado[df_filtrado['id_loja'] == loja]
             
+            # Aqui assumimos que existe uma coluna 'nome' no df_filtrado
+            nome_loja = df_loja['nome'].iloc[0] if 'nome' in df_loja.columns and not df_loja.empty else f"Loja {loja}"
+            
             # Formatar os valores para exibição
             valores_formatados = df_loja['total_venda'].apply(formatar_moeda)
             
             fig_lojas.add_trace(go.Bar(
                 x=df_loja['Mês'],
                 y=df_loja['total_venda'],
-                name=str(loja),
+                name=nome_loja,
                 marker_color=cores_lojas.get(loja, '#333333'),
-                hovertemplate=f'Loja {loja}: %{valores_formatados}<extra></extra>'
+                hovertemplate=f'Loja {nome_loja}: %{valores_formatados}<extra></extra>'
             ))
         
         # Configurar layout do gráfico
@@ -660,21 +663,38 @@ def get_faturamento_anual_layout(data, selected_client=None):
         # Criar componente do gráfico
         grafico_lojas = html.Div([
             html.Div([
-                html.Label("Selecione o Ano:", className="mb-2 font-weight-bold"),
-                dcc.Dropdown(
-                    id='dropdown-ano-lojas',
-                    options=[{'label': str(ano), 'value': ano} for ano in anos_disponiveis],
-                    value=ano_default,
-                    clearable=False,
-                    style={'width': '200px'}
-                ),
-            ], className="mb-4"),
+                html.Div([
+                    html.Label("Selecione o Ano:", className="mb-2 font-weight-bold"),
+                    dcc.Dropdown(
+                        id='dropdown-ano-lojas',
+                        options=[{'label': str(ano), 'value': ano} for ano in anos_disponiveis],
+                        value=ano_default,
+                        clearable=False,
+                        style={'width': '150px'}
+                    ),
+                ], className="col-md-3"),
+                html.Div([
+                    html.Label("Selecione as Lojas:", className="mb-2 font-weight-bold"),
+                    dcc.Dropdown(
+                        id='dropdown-loja-mensal',
+                        options=[
+                            {'label': row['nome'], 'value': row['id_loja']} 
+                            for _, row in df_mensal_lojas.drop_duplicates(['id_loja', 'nome']).iterrows()
+                            if 'nome' in df_mensal_lojas.columns and 'id_loja' in df_mensal_lojas.columns
+                        ],
+                        value=[],
+                        multi=True,  # Habilita a seleção múltipla
+                        placeholder="Selecione lojas para filtrar",
+                        style={'width': '100%'}
+                    ),
+                ], className="col-md-6"),
+            ], className="row mb-4"),
             dcc.Graph(
                 id='grafico-lojas-mensal',
                 figure=fig_lojas,
                 config={"responsive": True}
             )
-        ])
+        ], className="mb-5")
         
         graficos_processados["grafico_faturamento_lojas"] = True
     except Exception as e:
@@ -819,7 +839,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         
         # Criar componente da tabela usando Dash DataTable
         tabela_faturamento = html.Div([
-            html.H4("Mês Atual", className="mb-3"),
+            html.H5("Mês Atual", className="mb-3"),
             dash_table.DataTable(
                 id='tabela-faturamento-diario-lojas',
                 columns=[
@@ -908,16 +928,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 dcc.Graph(figure=fig_fat, config={"responsive": True})
             )
         )
-    else:
-        componentes_layout.append(
-            create_card(
-                "Evolução Percentual Anual das Vendas", 
-                html.Div([
-                    html.P("Não foi possível processar o gráfico de evolução anual devido a um erro nos dados.", className="text-danger p-3"),
-                    html.I(className="fas fa-chart-line fa-2x text-warning d-block text-center mb-3")
-                ])
-            )
-        )
+
+    ###--DEBUG--###
+    # else:
+    #     componentes_layout.append(
+    #         create_card(
+    #             "Evolução Percentual Anual das Vendas", 
+    #             html.Div([
+    #                 html.P("Não foi possível processar o gráfico de evolução anual devido a um erro nos dados.", className="text-danger p-3"),
+    #                 html.I(className="fas fa-chart-line fa-2x text-warning d-block text-center mb-3")
+    #             ])
+    #         )
+    #     )
     
     if graficos_processados.get("grafico_faturamento_anual", False):
         componentes_layout.append(
@@ -926,16 +948,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 dcc.Graph(figure=fig_ano, config={"responsive": True})
             )
         )
-    else:
-        componentes_layout.append(
-            create_card(
-                "Faturamento Anual", 
-                html.Div([
-                    html.P("Não foi possível processar o gráfico de faturamento anual devido a um erro nos dados.", className="text-danger p-3"),
-                    html.I(className="fas fa-chart-bar fa-2x text-warning d-block text-center mb-3")
-                ])
-            )
-        )
+    
+    ###--DEBUG--###
+    # else:
+    #     componentes_layout.append(
+    #         create_card(
+    #             "Faturamento Anual", 
+    #             html.Div([
+    #                 html.P("Não foi possível processar o gráfico de faturamento anual devido a um erro nos dados.", className="text-danger p-3"),
+    #                 html.I(className="fas fa-chart-bar fa-2x text-warning d-block text-center mb-3")
+    #             ])
+    #         )
+    #     )
     
     if graficos_processados.get("grafico_faturamento_mensal", False):
         componentes_layout.append(
@@ -944,16 +968,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 dcc.Graph(figure=fig_mensal, config={"responsive": True})
             )
         )
-    else:
-        componentes_layout.append(
-            create_card(
-                "Faturamento Mensal por Ano", 
-                html.Div([
-                    html.P("Não foi possível processar o gráfico de faturamento mensal devido a um erro nos dados.", className="text-danger p-3"),
-                    html.I(className="fas fa-calendar-alt fa-2x text-warning d-block text-center mb-3")
-                ])
-            )
-        )
+
+    ###--DEBUG--###
+    # else:
+    #     componentes_layout.append(
+    #         create_card(
+    #             "Faturamento Mensal por Ano", 
+    #             html.Div([
+    #                 html.P("Não foi possível processar o gráfico de faturamento mensal devido a um erro nos dados.", className="text-danger p-3"),
+    #                 html.I(className="fas fa-calendar-alt fa-2x text-warning d-block text-center mb-3")
+    #             ])
+    #         )
+    #     )
     
     if graficos_processados.get("grafico_faturamento_lojas", False):
         componentes_layout.append(
@@ -962,16 +988,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 grafico_lojas
             )
         )
-    else:
-        componentes_layout.append(
-            create_card(
-                "Faturamento Mensal por Loja", 
-                html.Div([
-                    html.P("Não foi possível processar o gráfico de faturamento por loja devido a um erro nos dados.", className="text-danger p-3"),
-                    html.I(className="fas fa-store fa-2x text-warning d-block text-center mb-3")
-                ])
-            )
-        )
+    
+    ###--DEBUG--###
+    # else:
+    #     componentes_layout.append(
+    #         create_card(
+    #             "Faturamento Mensal por Loja", 
+    #             html.Div([
+    #                 html.P("Não foi possível processar o gráfico de faturamento por loja devido a um erro nos dados.", className="text-danger p-3"),
+    #                 html.I(className="fas fa-store fa-2x text-warning d-block text-center mb-3")
+    #             ])
+    #         )
+    #     )
     
     if graficos_processados.get("grafico_faturamento_diario", False):
         componentes_layout.append(
@@ -980,16 +1008,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 grafico_diario
             )
         )
-    else:
-        componentes_layout.append(
-            create_card(
-                "Faturamento Diário por Período", 
-                html.Div([
-                    html.P("Não foi possível processar o gráfico de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
-                    html.I(className="fas fa-calendar-day fa-2x text-warning d-block text-center mb-3")
-                ])
-            )
-        )
+
+    ###--DEBUG--###
+    # else:
+    #     componentes_layout.append(
+    #         create_card(
+    #             "Faturamento Diário por Período", 
+    #             html.Div([
+    #                 html.P("Não foi possível processar o gráfico de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
+    #                 html.I(className="fas fa-calendar-day fa-2x text-warning d-block text-center mb-3")
+    #             ])
+    #         )
+    #     )
 
     if tabela_processada.get("tabela_faturamento_diario", False):
         componentes_layout.append(
@@ -998,16 +1028,18 @@ def get_faturamento_anual_layout(data, selected_client=None):
                     tabela_faturamento
                 )
             )
-    else: 
-        componentes_layout.append(
-            create_card(
-                "Tabela de Faturamento Diário por Loja", 
-                html.Div([
-                    html.P("Não foi possível processar a tabela de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
-                    html.I(className="fas fa-table fa-2x text-warning d-block text-center mb-3")
-                ])
-            )
-        )
+        
+    ###--DEBUG--###
+    # else: 
+    #     componentes_layout.append(
+    #         create_card(
+    #             "Tabela de Faturamento Diário por Loja", 
+    #             html.Div([
+    #                 html.P("Não foi possível processar a tabela de faturamento diário devido a um erro nos dados.", className="text-danger p-3"),
+    #                 html.I(className="fas fa-table fa-2x text-warning d-block text-center mb-3")
+    #             ])
+    #         )
+    #     )
     
     # Se nenhum gráfico foi gerado com sucesso, exibir erro
     if not any(graficos_processados.values()):
