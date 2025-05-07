@@ -15,13 +15,12 @@ dotenv.load_dotenv()
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 
-# Configuração da conexão
 try:
     # Conectar ao PostgreSQL
     print("Conectando ao banco de dados PostgreSQL...")
     conn = psycopg2.connect(
         host= os.getenv("DB_HOST"),
-        database="bibicell",
+        database="add_v1",
         user= os.getenv("DB_USER"),
         password= os.getenv("DB_PASS"),
         port= os.getenv("DB_PORT")
@@ -34,7 +33,7 @@ try:
     ########################################################
     
     print("Consultando a tabela vendas...")
-    query = "SELECT * FROM maloka_core.venda"
+    query = "SELECT * FROM vendas"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_vendas = pd.read_sql_query(query, conn)
@@ -51,20 +50,21 @@ try:
     print(df_vendas.head())
     
     # Exportar para Excel
-    # df_vendas.to_excel("df_vendas.xlsx", index=False)
+    #df_vendas.to_excel("df_vendas.xlsx", index=False)
 
     ########################################################
     # consulta da tabela clientes
     ########################################################
-
-    print("Consultando a tabela cliente...")
-    query = "SELECT * FROM maloka_core.cliente"
+    
+    # Consultar a tabela clientes
+    print("Consultando a tabela clientes...")
+    query = "SELECT * FROM clientes"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_clientes = pd.read_sql_query(query, conn)
     
     # Informações sobre os dados
-    num_registros = len(df_vendas)
+    num_registros = len(df_clientes)
     num_colunas = len(df_clientes.columns)
     
     print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
@@ -73,15 +73,20 @@ try:
     # Exibir uma amostra dos dados
     print("\nPrimeiros 5 registros para verificação:")
     print(df_clientes.head())
-
-    # df_clientes.to_excel("df_clientes.xlsx", index=False)
     
+    # Exportar para Excel
+    #df_clientes.to_excel("df_clientes.xlsx", index=False)
+
+    # Fechar conexão
+    conn.close()
+    print("\nConexão com o banco de dados fechada.")
+
     ########################################################
     # consulta da tabela cliente pessoa física
     ########################################################
 
     print("Consultando a tabela cliente...")
-    query = "SELECT * FROM maloka_core.cliente_pessoa_fisica"
+    query = "SELECT * FROM clientespessoafisica"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_clientes_PF = pd.read_sql_query(query, conn)
@@ -107,18 +112,10 @@ except Exception as e:
     print(f"Erro: {e}")
     print("\nVerifique se:")
     print("1. O PostgreSQL está rodando")
-    print("2. O banco de dados existe")
+    print("2. O banco de dados 'add' existe")
     print("3. As credenciais de conexão estão corretas")
 
-##########################################################
-# Filtrar apenas os clientes PF
-##########################################################
-
-df_vendas = df_vendas.merge(df_clientes[['id_cliente', 'tipo']], on='id_cliente', how='left')
-df_vendas = df_vendas[df_vendas['tipo'] == 'F']
-
-unique_clientes = df_vendas['id_cliente'].nunique()
-print(f"Número de Clientes PF: {unique_clientes}")
+df_vendas['data_venda'] = pd.to_datetime(df_vendas['data_venda'])
 
 ##########################################################
 # Calcular as métricas RFMA
@@ -239,7 +236,6 @@ print("\nExemplo dos primeiros registros com decis:")
 print(rfma[['Recency', 'R_decil', 'Frequency', 'F_decil', 
             'Monetary', 'M_decil', 'Age', 'A_decil']].head())
 
-
 ################################################################
 # RFMA - Segmentação baseada em Regras
 ################################################################
@@ -259,26 +255,26 @@ def segment_customers(df):
     
     # Definir condições de forma mutuamente exclusiva
 
-    cond_novos = (df_seg['Recency'] <= 30) & (df_seg['Age'] <= 30) # compraram no mês anterior
-    
+    cond_novos = (df_seg['Recency'] <= 30) & (df_seg['Age'] <= 30) # primeira compra no último mês
+
     cond_campeoes = (df_seg['Recency'] <= 180) & \
-                    (df_seg['Frequency'] >= 3) & (df_seg['M_decil'] == 10) # clientes que compraram nos últimos 6 meses e possuem valor monetário muito acima da média
+                    (df_seg['Frequency'] >= 34) & (df_seg['M_decil'] == 10) # clientes que compraram nos últimos 6 meses, possuem frequência de 37 ou mais e possuem valor monetário acima da média
                     
-    cond_fieis_baixo_valor = (df_seg['Recency'] <= 365) & (df_seg['Age'] >= 730) & \
-                 (df_seg['Frequency'] >= 3) & (df_seg['M_decil'] <= 7) # clientes há mais de 2 anos que compraram no último ano e possuem valor monetário menor ou igual a média
+    cond_fieis_baixo_valor = (df_seg['Recency'] <= 180) & (df_seg['Age'] >= 730) & \
+                 (df_seg['Frequency'] >= 4) & (df_seg['M_decil'] <= 8) # clientes há mais de 2 anos que compraram nos últimos 6 meses e possuem valor monetário menor ou igual a média
     
-    cond_fieis_alto_valor = (df_seg['Recency'] <= 365) & (df_seg['Age'] >= 730) & \
-                 (df_seg['Frequency'] >= 3) & (df_seg['M_decil'] > 7) # clientes há mais de 2 anos que compraram no último ano e possuem valor monetário abaixo da média
+    cond_fieis_alto_valor = (df_seg['Recency'] <= 180) & (df_seg['Age'] >= 730) & \
+                 (df_seg['Frequency'] >= 4) & (df_seg['M_decil'] > 8) # clientes há mais de 2 anos que compraram nos últimos 6 meses e possuem valor monetário acima da média
                  
-    cond_recentes_alto = (df_seg['Recency'] <= 365) & \
-                         (df_seg['Frequency'] >= 1) & (df_seg['M_decil'] >= 6) # clientes que compraram nos últimos 6 meses, com idade de 1 ano e possui valor monetário acima da média
+    cond_recentes_alto = (df_seg['Recency'] <= 180) & \
+                         (df_seg['Frequency'] >= 1) & (df_seg['M_decil'] > 6) # clientes que compraram nos últimos 6 meses e possui valor monetário acima da média
                          
-    cond_recentes_baixo = (df_seg['Recency'] <= 365) & \
-                          (df_seg['Frequency'] >= 1) & (df_seg['M_decil'] < 6) # clientes que compraram nos últimos 6 meses, com idade de 1 ano e possui valor monetário menor ou igual da média
+    cond_recentes_baixo = (df_seg['Recency'] <= 180) & \
+                          (df_seg['Frequency'] >= 1) & (df_seg['M_decil'] <= 6) # clientes que compraram nos últimos 6 meses e possui valor monetário abaixo da média
     
     # Clientes menos ativos
-    cond_sumidos = (df_seg['Recency'] >= 365) & (df_seg['Recency'] < 730) # última compra entre 1 a 2 anos
-    cond_inativos = (df_seg['Recency'] >= 730) # sem comprar faz 2 anos
+    cond_sumidos = (df_seg['Recency'] > 180) & (df_seg['Recency'] <= 730) # última compra entre 6 meses e 2 anos
+    cond_inativos = (df_seg['Recency'] > 730) # sem comprar faz 2 anos
     
     # Lista de condições e respectivos rótulos
     conditions = [
@@ -308,9 +304,9 @@ def segment_customers(df):
     
     # Definir cores para cada segmento
     cores_segmento = {
-        'Novos': '#2ecc71',              # Verde
-        'Campeões': '#9b59b6',           # Roxo
-        'Fiéis Baixo Valor': '#e74c3c',  # Vermelho
+        'Novos': '#2ecc71',               # Verde
+        'Campeões': '#9b59b6',            # Roxo
+        'Fiéis Baixo Valor': '#e74c3c',   # Vermelho
         'Fiéis Alto Valor' : '#e7443c',  
         'Recentes Alto Valor': '#f1c40f', # Amarelo
         'Recentes Baixo Valor': '#3498db',# Azul
@@ -353,14 +349,15 @@ print("=" * 120)
 print(analise)
 
 ################################################################
-# Preparando dados para Dashboard da BIBI
+# Preparando dados para Dashboard da ADD
 ################################################################
 
-rfma_segmentado = rfma_segmentado.merge(df_clientes_PF[['id_cliente', 'cpf']], on='id_cliente', how='left')
 rfma_segmentado = rfma_segmentado.merge(df_clientes[['id_cliente', 'nome', 'email', 'telefone']], on='id_cliente', how='left')
 print(rfma_segmentado.columns)
 #Arquivo usado para o dash de segmentação
-rfma_segmentado.to_csv(os.path.join(diretorio_atual, f"analytics_cliente_BIBI_PF.csv"), index=False)
+rfma_segmentado.to_csv(os.path.join(diretorio_atual, f"analytics_cliente_ADD.csv"), index=False)
+
+print("Merge concluído. Arquivo salvo como 'analytics_cliente_ADD.csv'.")
 
 ################################################################
 # Previsão de compra para 30 dias
