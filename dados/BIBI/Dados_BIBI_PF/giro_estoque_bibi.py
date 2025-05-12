@@ -1,18 +1,14 @@
-from matplotlib.ticker import FuncFormatter
 import pandas as pd
 import psycopg2
 import dotenv
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
-from sklearn.metrics import silhouette_score
 import warnings
 from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
-dotenv.load_dotenv()
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+dotenv.load_dotenv()
 
 try:
     # Conectar ao PostgreSQL
@@ -21,7 +17,8 @@ try:
         host= os.getenv("DB_HOST"),
         database="bibicell",
         user= os.getenv("DB_USER"),
-        password= os.getenv("DB_PASS")
+        password= os.getenv("DB_PASS"),
+        port= os.getenv("DB_PORT"),
     )
     
     print("Conexão estabelecida com sucesso!")
@@ -31,7 +28,7 @@ try:
     ########################################################
     
     print("Consultando a tabela VENDAS...")
-    query = "SELECT * FROM vendas"
+    query = "SELECT * FROM maloka_core.venda"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_vendas = pd.read_sql_query(query, conn)
@@ -47,15 +44,15 @@ try:
     print("\nPrimeiros 5 registros para verificação:")
     print(df_vendas.head())
     
-    # Exportar para Excel
-    df_vendas.to_excel("df_vendas.xlsx", index=False)
+    # EXPORTAR EXCEL
+    # df_vendas.to_excel("df_vendas.xlsx", index=False)
     
     ########################################################
     # consulta da tabela vendas_itens
     ########################################################
     
     print("Consultando a tabela VENDA_ITENS...")
-    query = "SELECT * FROM venda_itens"
+    query = "SELECT * FROM maloka_core.venda_item"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_venda_itens = pd.read_sql_query(query, conn)
@@ -71,8 +68,33 @@ try:
     print("\nPrimeiros 5 registros para verificação:")
     print(df_venda_itens.head())
     
-    # Exportar para Excel
-    df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
+    # EXPORTAR EXCEL
+    # df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela estoque_movimentos
+    ########################################################
+    
+    # Consultar a tabela estoque_movimentos
+    print("Consultando a tabela ESTOQUE_MOVIMENTOS...")
+    query = "SELECT * FROM maloka_core.estoque_movimento"
+
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_estoque_movi = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_estoque_movi)
+    num_colunas = len(df_estoque_movi.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_estoque_movi.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_estoque_movi.head())
+    
+    # EXPORTAR EXCEL
+    # df_estoque_movi.to_excel("df_estoque_movimentos.xlsx", index=False)
 
     ########################################################
     # consulta da tabela estoque
@@ -80,9 +102,8 @@ try:
     
     # Consultar a tabela estoque
     print("Consultando a tabela ESTOQUE...")
-    query = "SELECT * FROM estoquemovimentos"
-    # query = "SELECT DISTINCT ON (id_produto) * FROM estoquemovimentos ORDER BY id_produto, data_movimento DESC;"
-    
+    query = "SELECT * FROM maloka_core.historico_estoque"
+
     # Carregar os dados diretamente em um DataFrame do pandas
     df_estoque = pd.read_sql_query(query, conn)
     
@@ -97,7 +118,7 @@ try:
     print("\nPrimeiros 5 registros para verificação:")
     print(df_estoque.head())
     
-    # Exportar para Excel
+    # EXPORTAR EXCEL
     df_estoque.to_excel("df_estoque.xlsx", index=False)
 
     ########################################################
@@ -106,7 +127,7 @@ try:
     
     # Consultar a tabela produtos
     print("Consultando a tabela PRODUTOS...")
-    query = "SELECT * FROM produtos"
+    query = "SELECT * FROM maloka_core.produto"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_produtos = pd.read_sql_query(query, conn)
@@ -122,7 +143,7 @@ try:
     print("\nPrimeiros 5 registros para verificação:")
     print(df_produtos.head())
     
-    # Exportar para Excel
+    # EXPORTAR EXCEL
     df_produtos.to_excel("df_produtos.xlsx", index=False)
 
     # Fechar conexão
@@ -139,23 +160,27 @@ except Exception as e:
 ############################################################
 #Pre-processamento dos dados
 ############################################################
+df_vendas['data_venda'] = pd.to_datetime(df_vendas['data_venda'])
 
 # Fazer um merge para obter apenas os itens de venda relacionados aos pedidos
 df_venda_itens_pedido = pd.merge(
     df_venda_itens,
-    df_produtos[['id_produto', 'nome', 'critico']],
+    df_vendas,
+    on='id_venda',
+    how='inner'
+).merge(
+    df_produtos[['id_produto', 'nome']],
     on='id_produto',
     how='left'
 )
 print("Merge realizado com sucesso! VENDA_ITENS_PEDIDO")
 print(df_venda_itens_pedido.columns)
 print(df_venda_itens_pedido.head())
+
 # df_venda_itens_pedido.to_excel("df_venda_itens_pedido.xlsx", index=False)
-df_venda_itens_pedido['data_emissao'] = pd.to_datetime(df_venda_itens_pedido['data_emissao'])
-df_venda_itens_pedido['data_faturamento'] = pd.to_datetime(df_venda_itens_pedido['data_faturamento'])
+df_venda_itens_pedido['data_venda'] = pd.to_datetime(df_venda_itens_pedido['data_venda'])
 
-
-def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produtos, periodo='anual', dias_personalizados=None):
+def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque_movi, df_produtos, periodo='anual', dias_personalizados=None):
     """
     Realiza análise completa de giro de estoque com base nos dados disponíveis
     
@@ -172,8 +197,8 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
     print(f"Iniciando análise completa de giro de estoque para o período {periodo}...")
     
     # Converter datas
-    df_estoque['data_movimento'] = pd.to_datetime(df_estoque['data_movimento'])
-    df_venda_itens_pedido['data_emissao'] = pd.to_datetime(df_venda_itens_pedido['data_emissao'])
+    df_estoque_movi['data_movimento'] = pd.to_datetime(df_estoque_movi['data_movimento'])
+    df_venda_itens_pedido['data_venda'] = pd.to_datetime(df_venda_itens_pedido['data_venda'])
     
     # Definir período de análise
     data_atual = datetime.now()
@@ -194,31 +219,64 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
         data_inicio = data_atual - timedelta(days=365)  # Default para anual
     
     # Filtrar dados pelo período
-    df_estoque_periodo = df_estoque[df_estoque['data_movimento'] >= data_inicio].copy()
-    df_vendas_periodo = df_venda_itens_pedido[df_venda_itens_pedido['data_emissao'] >= data_inicio].copy()
+    df_estoque_periodo = df_estoque_movi[df_estoque_movi['data_movimento'] >= data_inicio].copy()
+    df_vendas_periodo = df_venda_itens_pedido[df_venda_itens_pedido['data_venda'] >= data_inicio].copy()
     
+    print("\n=== PRÉ-ANÁLISE DE GIRO DE ESTOQUE ===")
     print(f"Período de análise: {data_inicio.strftime('%d/%m/%Y')} até {data_atual.strftime('%d/%m/%Y')}")
     print(f"Total de movimentos de estoque no período: {len(df_estoque_periodo)}")
     print(f"Total de itens vendidos no período: {len(df_vendas_periodo)}")
     
     # 1. Calcular estoque atual por produto (último registro)
-    estoque_atual = df_estoque.sort_values(['id_produto', 'data_movimento'], ascending=[True, False])
-    estoque_atual = estoque_atual.drop_duplicates('id_produto', keep='first')[['id_produto', 'depois']]
-    estoque_atual.rename(columns={'depois': 'estoque_atual'}, inplace=True)
+    estoque_atual = df_estoque_movi.sort_values(['id_produto', 'data_movimento'], ascending=[True, False])
+    estoque_atual = estoque_atual.drop_duplicates('id_produto', keep='first')[['id_produto', 'estoque_depois']]
+    estoque_atual.rename(columns={'estoque_depois': 'estoque_atual'}, inplace=True)
     
     # 2. Calcular estoque médio por produto no período
-    # Obter primeiro e último movimento de cada produto no período
-    primeiro_movimento = df_estoque_periodo.sort_values(['id_produto', 'data_movimento'])
-    primeiro_movimento = primeiro_movimento.drop_duplicates('id_produto', keep='first')[['id_produto', 'antes']]
-    primeiro_movimento.rename(columns={'antes': 'estoque_inicial'}, inplace=True)
-    
-    ultimo_movimento = df_estoque_periodo.sort_values(['id_produto', 'data_movimento'], ascending=[True, False])
-    ultimo_movimento = ultimo_movimento.drop_duplicates('id_produto', keep='first')[['id_produto', 'depois']]
-    ultimo_movimento.rename(columns={'depois': 'estoque_final'}, inplace=True)
-    
-    # Mesclar para calcular estoque médio
-    estoque_medio = pd.merge(primeiro_movimento, ultimo_movimento, on='id_produto', how='outer')
-    estoque_medio['estoque_medio'] = (estoque_medio['estoque_inicial'].fillna(0) + estoque_medio['estoque_final'].fillna(0)) / 2
+    print("Calculando estoque médio diário...")
+
+    # a. Determinar o estoque inicial para o período de análise
+    # Pegar o último movimento ANTES do início do período para cada produto
+    estoque_antes_periodo = df_estoque_movi[df_estoque_movi['data_movimento'] < data_inicio].sort_values('data_movimento')
+    estoque_inicial_periodo = estoque_antes_periodo.drop_duplicates('id_produto', keep='last')[['id_produto', 'estoque_depois']]
+    estoque_inicial_periodo = estoque_inicial_periodo.rename(columns={'estoque_depois': 'saldo_diario'})
+
+    # b. Selecionar movimentos DENTRO do período
+    movimentos_no_periodo = df_estoque_periodo[['id_produto', 'data_movimento', 'estoque_depois']].copy()
+    movimentos_no_periodo = movimentos_no_periodo.rename(columns={'data_movimento': 'data', 'estoque_depois': 'saldo_diario'})
+
+    # c. Criar scaffold (todas as combinações de produto x dia no período)
+    todos_produtos = df_estoque_movi['id_produto'].unique() # Usar todos os produtos com qualquer histórico
+    datas_periodo = pd.date_range(start=data_inicio, end=data_atual, freq='D')
+    idx = pd.MultiIndex.from_product([todos_produtos, datas_periodo], names=['id_produto', 'data'])
+    df_scaffold = pd.DataFrame(index=idx).reset_index()
+
+    # d. Mapear o estoque inicial para o scaffold (para preencher dias antes do primeiro movimento no período)
+    df_scaffold = pd.merge(df_scaffold, estoque_inicial_periodo.rename(columns={'saldo_diario': 'saldo_inicial'}), on='id_produto', how='left')
+
+    # e. Mapear os movimentos do período para o scaffold (sobrescreverá o saldo inicial nos dias de movimento)
+    # Usamos merge para trazer o saldo do dia, se houver movimento.
+    df_scaffold = pd.merge(df_scaffold, movimentos_no_periodo, on=['id_produto', 'data'], how='left')
+
+    # f. Determinar o saldo diário final
+    # Se houve movimento no dia ('saldo_diario' não é NaN), use-o. Caso contrário, use o 'saldo_inicial'.
+    df_scaffold['saldo_calculado'] = df_scaffold['saldo_diario'].combine_first(df_scaffold['saldo_inicial'])
+
+    # g. Propagar o último saldo conhecido para frente (forward fill) dentro de cada grupo de produto
+    df_scaffold = df_scaffold.sort_values(['id_produto', 'data'])
+    # Crucial: O fillna(0) antes do ffill garante que produtos que surgiram DO NADA antes do período comecem com 0.
+    # O ffill propaga o último saldo conhecido.
+    # O fillna(0) DEPOIS do ffill trata produtos que podem ter sido criados DENTRO do período (começando com NaN).
+    df_scaffold['saldo_calculado'] = df_scaffold.groupby('id_produto')['saldo_calculado'].fillna(0).ffill().fillna(0)
+
+    # h. Calcular a média do saldo diário por produto
+    estoque_medio_df = df_scaffold.groupby('id_produto')['saldo_calculado'].mean().reset_index()
+    estoque_medio_df.rename(columns={'saldo_calculado': 'estoque_medio'}, inplace=True)
+
+    # Limpeza de memória (opcional, mas bom para DataFrames grandes)
+    del estoque_antes_periodo, estoque_inicial_periodo, movimentos_no_periodo
+    del df_scaffold
+    print("Cálculo do estoque médio diário concluído.")
     
     # 3. Calcular quantidade total vendida por produto no período
     # Somando diretamente da tabela de vendas itens
@@ -227,22 +285,26 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
     
     # 4. Calcular valor total vendido por produto
     valor_vendido = df_vendas_periodo.groupby('id_produto').apply(
-        lambda x: (x['quantidade'] * x['valor_unitario']).sum()
+        lambda x: (x['quantidade'] * x['preco_bruto']).sum()
     ).reset_index(name='valor_vendido')
     
     # 5. Calcular movimento de saída pelo estoque (como alternativa/confirmação)
-    saidas_estoque = df_estoque_periodo[df_estoque_periodo['tipo_movimento'] == 'saída'].groupby('id_produto')['quantidade'].sum().reset_index()
+    saidas_estoque = df_estoque_periodo[df_estoque_periodo['tipo'] == 'S'].groupby('id_produto')['quantidade'].sum().reset_index()
     saidas_estoque.rename(columns={'quantidade': 'saidas_estoque'}, inplace=True)
     
     # 6. Integrar dados do DataFrame de produtos
-    produtos_info = df_produtos[['id_produto', 'nome', 'critico']].copy()
+    produtos_info = df_produtos[['id_produto', 'nome']].copy()
     
     # 7. Mesclar todos os dados coletados
-    analise_base = estoque_atual.merge(estoque_medio, on='id_produto', how='outer')
+    analise_base = estoque_atual.merge(estoque_medio_df, on='id_produto', how='outer')
     analise_base = analise_base.merge(vendas_por_produto, on='id_produto', how='outer')
     analise_base = analise_base.merge(valor_vendido, on='id_produto', how='outer')
     analise_base = analise_base.merge(saidas_estoque, on='id_produto', how='outer')
     analise_base = analise_base.merge(produtos_info, on='id_produto', how='left')
+
+    # Preencher NaNs no estoque_medio para produtos sem histórico de estoque no período, se necessário
+    # Se um produto existe mas nunca teve estoque, a média será NaN. Podemos definir como 0.
+    analise_base['estoque_medio'] = analise_base['estoque_medio'].fillna(0)
     
     # 8. Calcular métricas de giro de estoque
     analise_base['quantidade_vendida'] = analise_base['quantidade_vendida'].fillna(0)
@@ -250,7 +312,19 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
     analise_base['saidas_estoque'] = analise_base['saidas_estoque'].fillna(0)
     
     # Calcular giro com base na quantidade vendida e estoque médio
-    analise_base['giro_quantidade'] = analise_base['quantidade_vendida'] / analise_base['estoque_medio'].where(analise_base['estoque_medio'] > 0, np.nan)
+    # Se estoque_atual < 0, giro = 0
+    # Se quantidade_vendida = 0, giro = np.nan
+    # Caso contrário, giro = quantidade_vendida / estoque_medio (apenas quando estoque_medio > 0)
+
+    analise_base['giro_quantidade'] = np.where(
+        analise_base['estoque_atual'] < 0, 
+        0,
+        np.where(
+            analise_base['quantidade_vendida'] == 0,
+            np.nan,
+            analise_base['quantidade_vendida'] / analise_base['estoque_medio'].where(analise_base['estoque_medio'] > 0, np.nan)
+        )
+    )
     
     # Ajustar o fator de anualização com base no período
     if periodo == 'mensal':
@@ -275,7 +349,7 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
     analise_base['media_diaria_vendas'] = analise_base['quantidade_vendida'] / dias_periodo
     
     # Calcular cobertura de estoque em dias
-    analise_base['cobertura_dias'] = analise_base['estoque_atual'] / analise_base['media_diaria_vendas'].where(analise_base['media_diaria_vendas'] > 0, np.nan)
+    analise_base['cobertura_dias'] = analise_base['estoque_atual'] / analise_base['media_diaria_vendas'].where((analise_base['estoque_atual'] > 0) & (analise_base['media_diaria_vendas'] > 0), 0)
     
     # 10. Classificar produtos por giro
     def classificar_giro(giro):
@@ -289,31 +363,105 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
             return "Giro médio"
         elif giro > 1:
             return "Giro baixo"
+        elif giro > 0:
+            return "Giro baixo"
         else:
-            return "Giro muito baixo"
+            return "Dados inconsistentes"
     
     analise_base['classificacao_giro'] = analise_base['giro_quantidade_anualizado'].apply(classificar_giro)
     
-    # 11. Classificação ABC por valor
-    analise_base = analise_base.sort_values('valor_vendido', ascending=False).reset_index(drop=True)
-    analise_base['valor_acumulado'] = analise_base['valor_vendido'].cumsum()
-    analise_base['percentual_acumulado'] = analise_base['valor_acumulado'] / analise_base['valor_vendido'].sum() * 100
+    # Adicionando resultado do giro
+    def resultado_giro(row):
+        if pd.isna(row['giro_quantidade_anualizado']):
+            return "Sem giro"
+        elif row['giro_quantidade_anualizado'] > 12:
+            return "Excelente (>12x/ano)"
+        elif row['giro_quantidade_anualizado'] > 6:
+            return f"Muito bom ({row['giro_quantidade_anualizado']:.1f}x/ano)"
+        elif row['giro_quantidade_anualizado'] > 4:
+            return f"Bom ({row['giro_quantidade_anualizado']:.1f}x/ano)"
+        elif row['giro_quantidade_anualizado'] > 2:
+            return f"Médio ({row['giro_quantidade_anualizado']:.1f}x/ano)"
+        elif row['giro_quantidade_anualizado'] > 1:
+            return f"Baixo ({row['giro_quantidade_anualizado']:.1f}x/ano)"
+        elif row['giro_quantidade_anualizado'] > 0:
+            return f"Muito baixo ({row['giro_quantidade_anualizado']:.1f}x/ano)"
+        else:
+            return "Sem giro calculável"
     
-    def classificar_abc(percentual):
-        if percentual <= 80:
+    analise_base['resultado_giro'] = analise_base.apply(resultado_giro, axis=1)
+
+    # Calcular o último dia de venda para cada produto
+    ultimo_dia_venda = df_venda_itens_pedido.groupby('id_produto')['data_venda'].max().reset_index()
+    ultimo_dia_venda.rename(columns={'data_venda': 'ultima_venda'}, inplace=True)
+    
+    # Mesclar com a análise base
+    analise_base = analise_base.merge(ultimo_dia_venda, on='id_produto', how='left')
+    
+    # Calcular dias desde a última venda
+    analise_base['dias_desde_ultima_venda'] = (data_atual - analise_base['ultima_venda']).dt.days
+    
+    # Substituir NaN por "Nunca vendido"
+    analise_base['ultima_venda'] = analise_base['ultima_venda'].fillna(pd.NaT)
+    analise_base['dias_desde_ultima_venda'] = analise_base['dias_desde_ultima_venda'].fillna(-1)
+    
+    # 11. Classificação ABC apenas para produtos com movimentação no último mês
+    # MOVER ESTE BLOCO PARA ANTES DA ORDENAÇÃO
+    
+    # Definir período de um mês
+    data_inicio_mes = data_atual - timedelta(days=30)
+
+    # Filtrar vendas do último mês
+    df_vendas_ultimo_mes = df_venda_itens_pedido[df_venda_itens_pedido['data_venda'] >= data_inicio_mes].copy()
+    
+    # Criar um DataFrame com IDs de produtos que tiveram movimentação no último mês
+    produtos_com_movimentacao = df_vendas_ultimo_mes['id_produto'].unique()
+    
+    # Identificar produtos com movimentação no último mês
+    analise_base['movimentou_ultimo_mes'] = analise_base['id_produto'].isin(produtos_com_movimentacao)
+    
+    # Filtrar apenas produtos com movimentação no último mês para classificação ABC
+    produtos_movimentados = analise_base[analise_base['movimentou_ultimo_mes']].copy()
+    
+    # Ordenar por valor vendido para classificação ABC
+    produtos_movimentados = produtos_movimentados.sort_values('valor_vendido', ascending=False).reset_index(drop=True)
+    
+    # Calcular valor acumulado e percentual acumulado para classificação ABC
+    produtos_movimentados['valor_acumulado'] = produtos_movimentados['valor_vendido'].cumsum()
+    produtos_movimentados['percentual_acumulado'] = produtos_movimentados['valor_acumulado'] / produtos_movimentados['valor_vendido'].sum() * 100
+    
+    # Definir limites para classificação ABC (apenas para produtos com movimentação)
+    total_produtos_movimentados = len(produtos_movimentados)
+    limite_a = int(total_produtos_movimentados * 0.2)  # 20% dos produtos
+    limite_b = int(total_produtos_movimentados * 0.5)  # 50% dos produtos (20% + 30%)
+    
+    # Função para classificação ABC
+    def classificar_abc_por_quantidade(posicao, limite_a, limite_b):
+        if posicao < limite_a:
             return 'A'
-        elif percentual <= 95:
+        elif posicao < limite_b:
             return 'B'
         else:
             return 'C'
     
-    analise_base['classe_abc'] = analise_base['percentual_acumulado'].apply(classificar_abc)
+    # Aplicar classificação ABC apenas para produtos com movimentação
+    produtos_movimentados['classe_abc'] = produtos_movimentados.index.map(
+        lambda x: classificar_abc_por_quantidade(x, limite_a, limite_b)
+    )
     
+    # Criar um mapeamento de id_produto para classe_abc
+    mapeamento_abc = dict(zip(produtos_movimentados['id_produto'], produtos_movimentados['classe_abc']))
+    
+    # Aplicar classificação na análise base (produtos sem movimentação ficam vazios)
+    analise_base['classe_abc'] = analise_base['id_produto'].map(
+        lambda x: mapeamento_abc.get(x, '') if x in mapeamento_abc else ''
+    )
+
     # 12. Identificar produtos críticos e com estoque negativo
     analise_base['estoque_negativo'] = analise_base['estoque_atual'] < 0
     
     # 13. Adicionar flag para produtos críticos com baixo estoque
-    analise_base['alerta_estoque'] = (analise_base['estoque_atual'] <= 0) & (analise_base['critico'] == True)
+    analise_base['alerta_estoque'] = (analise_base['estoque_atual'] <= 0)
     
     # 14. Calcular taxa de crescimento de vendas (se tivermos dados históricos suficientes)
     if periodo in ['anual', 'semestral']:
@@ -321,12 +469,12 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
         meio_periodo = data_inicio + (data_atual - data_inicio) / 2
         
         # Vendas na primeira metade
-        vendas_primeira_metade = df_vendas_periodo[df_vendas_periodo['data_emissao'] < meio_periodo]
+        vendas_primeira_metade = df_vendas_periodo[df_vendas_periodo['data_venda'] < meio_periodo]
         vendas_primeira = vendas_primeira_metade.groupby('id_produto')['quantidade'].sum().reset_index()
         vendas_primeira.rename(columns={'quantidade': 'vendas_periodo1'}, inplace=True)
         
         # Vendas na segunda metade
-        vendas_segunda_metade = df_vendas_periodo[df_vendas_periodo['data_emissao'] >= meio_periodo]
+        vendas_segunda_metade = df_vendas_periodo[df_vendas_periodo['data_venda'] >= meio_periodo]
         vendas_segunda = vendas_segunda_metade.groupby('id_produto')['quantidade'].sum().reset_index()
         vendas_segunda.rename(columns={'quantidade': 'vendas_periodo2'}, inplace=True)
         
@@ -373,22 +521,33 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
         
         analise_base['tendencia'] = analise_base['taxa_crescimento'].apply(classificar_tendencia)
     
-    # 15. Ordenar por giro e valor
-    analise_final = analise_base.sort_values(['classe_abc', 'giro_quantidade_anualizado'], 
-                                             ascending=[True, False]).reset_index(drop=True)
+    # 15. Ordenar por classificação ABC (A, B, C primeiro) e giro
+    analise_base['ordem_abc'] = analise_base['classe_abc'].map({'A': 1, 'B': 2, 'C': 3, '': 4})
+    analise_final = analise_base.sort_values(['ordem_abc', 'giro_quantidade_anualizado'], 
+                                           ascending=[True, False]).reset_index(drop=True)
+    analise_final.drop('ordem_abc', axis=1, inplace=True)
     
     # Indicadores gerais
     print("\n=== INDICADORES GERAIS DE GIRO DE ESTOQUE ===")
     print(f"Giro médio: {analise_final['giro_quantidade_anualizado'].mean():.2f}")
-    print(f"Cobertura média (dias): {analise_final['cobertura_dias'].median():.2f}")
+    print(f"Cobertura média (dias): {analise_final['cobertura_dias'].mean():.2f}")
     print(f"Produtos com estoque negativo: {analise_final['estoque_negativo'].sum()}")
     print(f"Produtos críticos com alerta: {analise_final['alerta_estoque'].sum()}")
-    
-    print("\n=== DISTRIBUIÇÃO POR CLASSE ABC ===")
-    print(analise_final['classe_abc'].value_counts())
-    
+
     print("\n=== DISTRIBUIÇÃO POR CLASSIFICAÇÃO DE GIRO ===")
     print(analise_final['classificacao_giro'].value_counts())
+
+    print("\n=== PRODUTOS COM MOVIMENTAÇÃO NO ÚLTIMO MÊS ===")
+    print(f"Período de análise da curva ABC: {data_inicio_mes.strftime('%d/%m/%Y')} até {data_atual.strftime('%d/%m/%Y')}")
+    print(f"Total de produtos com movimentação: {analise_final['movimentou_ultimo_mes'].sum()}")
+    print(f"Total de produtos sem movimentação: {len(analise_final) - analise_final['movimentou_ultimo_mes'].sum()}")   
+
+    # Adicionar estatísticas sobre última venda
+    produtos_sem_venda_1year = analise_final[analise_final['dias_desde_ultima_venda'] > 365].shape[0]
+    print(f"Produtos sem venda há mais de 1 ano: {produtos_sem_venda_1year}")
+    
+    print("\n=== DISTRIBUIÇÃO POR CLASSE ABC ===")
+    print(analise_final['classe_abc'].value_counts(dropna=False))
     
     # Criar também DataFrames filtrados para facilitar análises específicas
     top_giro = analise_final.nlargest(20, 'giro_quantidade_anualizado')
@@ -397,217 +556,6 @@ def analisar_giro_estoque_melhorado(df_venda_itens_pedido, df_estoque, df_produt
     alertas_criticos = analise_final[analise_final['alerta_estoque'] == True]
     
     return analise_final, top_giro, sem_giro, estoque_negativo, alertas_criticos
-
-def visualizar_giro_estoque_melhorado(analise_giro, top_giro, sem_giro, estoque_negativo, alertas_criticos):
-    """
-    Gera visualizações completas para análise de giro de estoque
-    
-    Args:
-        analise_giro: DataFrame principal com a análise de giro de estoque
-        top_giro: DataFrame com produtos de maior giro
-        sem_giro: DataFrame com produtos sem giro
-        estoque_negativo: DataFrame com produtos com estoque negativo
-        alertas_criticos: DataFrame com alertas de produtos críticos
-    """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    diretorio_saida = f'analise_giro'
-    
-    # Configurar o estilo
-    sns.set(style="whitegrid")
-    plt.rcParams['figure.figsize'] = (12, 8)
-    plt.rcParams['font.size'] = 10
-    
-    # 1. Distribuição de produtos por classificação de giro
-    fig, ax = plt.subplots(figsize=(12, 6))
-    cores = sns.color_palette('viridis', n_colors=6)
-    classificacao_counts = analise_giro['classificacao_giro'].value_counts()
-    explode = [0.1 if x == classificacao_counts.index[0] else 0 for x in classificacao_counts.index]
-    
-    wedges, texts, autotexts = ax.pie(
-        classificacao_counts, 
-        labels=classificacao_counts.index, 
-        autopct='%1.1f%%', 
-        colors=cores, 
-        startangle=90, 
-        explode=explode,
-        wedgeprops={'edgecolor': 'white', 'linewidth': 1}
-    )
-    
-    for autotext in autotexts:
-        autotext.set_fontsize(9)
-        autotext.set_weight('bold')
-    
-    ax.set_title('Distribuição de Produtos por Classificação de Giro', fontsize=14, pad=20)
-    ax.axis('equal')
-    
-    # Adicionar legenda com valores absolutos
-    labels = [f'{idx} ({val} produtos)' for idx, val in zip(classificacao_counts.index, classificacao_counts.values)]
-    ax.legend(wedges, labels, title="Classificação", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
-    
-    plt.tight_layout()
-    plt.savefig(f'distribuicao_giro.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 2. Top 10 produtos com maior giro (com nomes dos produtos)
-    fig, ax = plt.subplots(figsize=(14, 8))
-    
-    # Ordenar e limitar para os 10 principais
-    top10 = top_giro.nlargest(10, 'giro_quantidade_anualizado').copy()
-    
-    # Criar labels com nome e ID do produto
-    top10['label'] = top10.apply(lambda x: f"{x['nome'][:15]}... ({x['id_produto']})" 
-                             if len(str(x['nome'])) > 15 
-                             else f"{x['nome']} ({x['id_produto']})", axis=1)
-    
-    # Plotar o gráfico
-    bars = sns.barplot(x='giro_quantidade_anualizado', y='label', data=top10, palette='viridis')
-    
-    # Adicionar valores nas barras
-    for i, p in enumerate(bars.patches):
-        width = p.get_width()
-        plt.text(width + 0.3, p.get_y() + p.get_height()/2, f'{width:.1f}', ha='left', va='center')
-    
-    plt.title('Top 10 Produtos com Maior Giro (Anualizado)', fontsize=14)
-    plt.xlabel('Índice de Giro Anualizado', fontsize=12)
-    plt.ylabel('Produto', fontsize=12)
-    
-    plt.tight_layout()
-    plt.savefig(f'top10_giro.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 3. Gráfico de dispersão: Giro de Estoque vs. Valor Vendido com classes ABC
-    plt.figure(figsize=(14, 10))
-    
-    # Filtrar apenas produtos com movimento
-    produtos_com_movimento = analise_giro[analise_giro['quantidade_vendida'] > 0].copy()
-    
-    # Definir cores por classe ABC
-    cores_abc = {'A': '#1f77b4', 'B': '#ff7f0e', 'C': '#2ca02c'}
-    
-    # Criar o gráfico de dispersão
-    scatter = sns.scatterplot(
-        x='valor_vendido', 
-        y='giro_quantidade_anualizado', 
-        hue='classe_abc', 
-        size='quantidade_vendida',
-        sizes=(50, 400),
-        alpha=0.7,
-        palette=cores_abc,
-        data=produtos_com_movimento
-    )
-    
-    # Ajustar o formato dos eixos
-    plt.xscale('log')
-    formatter = FuncFormatter(lambda x, _: f'R${x:,.0f}' if x >= 1000 else f'R${x:.2f}')
-    plt.gca().xaxis.set_major_formatter(formatter)
-    
-    # Adicionar linhas de referência
-    plt.axhline(y=4, color='red', linestyle='--', alpha=0.3, label='Giro Alto (>4)')
-    plt.axhline(y=2, color='orange', linestyle='--', alpha=0.3, label='Giro Médio (>2)')
-    plt.axhline(y=1, color='blue', linestyle='--', alpha=0.3, label='Giro Baixo (>1)')
-    
-    # Configuração do gráfico
-    plt.title('Relação entre Giro de Estoque e Valor Vendido (com Classificação ABC)', fontsize=14)
-    plt.xlabel('Valor Vendido (R$) - Escala Logarítmica', fontsize=12)
-    plt.ylabel('Giro de Estoque (Anualizado)', fontsize=12)
-    plt.legend(title='Classe ABC', fontsize=10)
-    plt.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(f'giro_vs_valor.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 4. Distribuição de produtos por cobertura de estoque (histograma)
-    plt.figure(figsize=(14, 8))
-    
-    # Filtrar produtos com cobertura calculável e limitar para melhor visualização
-    df_cobertura = analise_giro[(analise_giro['cobertura_dias'].notnull()) & 
-                               (analise_giro['cobertura_dias'] <= 365)].copy()
-    
-    # Plotar histograma
-    sns.histplot(df_cobertura['cobertura_dias'], bins=30, kde=True)
-    
-    # Adicionar linhas de referência
-    plt.axvline(x=30, color='red', linestyle='--', alpha=0.7, label='1 mês')
-    plt.axvline(x=90, color='orange', linestyle='--', alpha=0.7, label='3 meses')
-    plt.axvline(x=180, color='green', linestyle='--', alpha=0.7, label='6 meses')
-    
-    plt.title('Distribuição de Produtos por Cobertura de Estoque', fontsize=14)
-    plt.xlabel('Cobertura de Estoque (Dias)', fontsize=12)
-    plt.ylabel('Número de Produtos', fontsize=12)
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(f'distribuicao_cobertura.png', dpi=300)
-    plt.close()
-    
-    # 5. Mapa de calor: Relação entre Classe ABC e Classificação de Giro
-    plt.figure(figsize=(12, 8))
-    
-    # Criar tabela de contingência
-    cross_table = pd.crosstab(analise_giro['classe_abc'], analise_giro['classificacao_giro'])
-    
-    # Plotar heatmap
-    sns.heatmap(cross_table, annot=True, cmap='YlGnBu', fmt='d', cbar_kws={'label': 'Número de Produtos'})
-    
-    plt.title('Relação entre Classe ABC e Classificação de Giro', fontsize=14)
-    plt.xlabel('Classificação de Giro', fontsize=12)
-    plt.ylabel('Classe ABC', fontsize=12)
-    
-    plt.tight_layout()
-    plt.savefig(f'abc_vs_giro.png', dpi=300)
-    plt.close()
-    
-    # 6. Gráfico de alertas críticos
-    if len(alertas_criticos) > 0:
-        plt.figure(figsize=(14, max(6, len(alertas_criticos) * 0.4)))
-        
-        # Ordenar por classe ABC e depois pelo estoque atual
-        alertas_ordenados = alertas_criticos.sort_values(['classe_abc', 'estoque_atual'])
-        
-        # Criar rótulos para o eixo y
-        alertas_ordenados['label'] = alertas_ordenados.apply(
-            lambda x: f"{x['nome'][:20]}... ({x['id_produto']})" if len(str(x['nome'])) > 20 
-            else f"{x['nome']} ({x['id_produto']})", axis=1
-        )
-        
-        # Definir cores por classe ABC
-        cores = alertas_ordenados['classe_abc'].map({'A': '#d62728', 'B': '#ff7f0e', 'C': '#2ca02c'})
-        
-        # Plotar gráfico de barras horizontais
-        bars = plt.barh(alertas_ordenados['label'], alertas_ordenados['estoque_atual'], color=cores, alpha=0.7)
-        
-        # Adicionar valores nas barras
-        for i, p in enumerate(bars):
-            width = p.get_width()
-            plt.text(width - 0.3 if width < 0 else 0.3, 
-                    p.get_y() + p.get_height()/2, 
-                    f'{width:.0f}', 
-                    ha='right' if width < 0 else 'left', 
-                    va='center',
-                    color='white' if width < 0 else 'black',
-                    fontweight='bold')
-        
-        plt.axvline(x=0, color='black', linestyle='-', alpha=0.7)
-        plt.title('Produtos Críticos com Alerta de Estoque', fontsize=14)
-        plt.xlabel('Estoque Atual', fontsize=12)
-        plt.grid(True, alpha=0.3)
-        
-        # Adicionar legenda para classes ABC
-        from matplotlib.lines import Line2D
-        legend_elements = [
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='#d62728', markersize=10, label='Classe A'),
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='#ff7f0e', markersize=10, label='Classe B'),
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='#2ca02c', markersize=10, label='Classe C')
-        ]
-        plt.legend(handles=legend_elements, loc='best')
-        
-        plt.tight_layout()
-        plt.savefig(f'alertas_criticos.png', dpi=300, bbox_inches='tight')
-        plt.close()
-    
-    return
 
 def recomendar_acoes(analise_giro, top_giro, sem_giro, estoque_negativo, alertas_criticos):
     """
@@ -624,9 +572,19 @@ def recomendar_acoes(analise_giro, top_giro, sem_giro, estoque_negativo, alertas
         DataFrame com recomendações de ações para cada produto
     """
     # Criar DataFrame para recomendações
-    recomendacoes = analise_giro[['id_produto', 'nome', 'classe_abc', 'classificacao_giro', 
-                                 'giro_quantidade_anualizado', 'estoque_atual', 'cobertura_dias',
-                                 'estoque_negativo', 'alerta_estoque']].copy()
+    recomendacoes = analise_giro[['id_produto', 
+        'nome', 
+        'classe_abc', 
+        'classificacao_giro',
+        'resultado_giro',  # Nova coluna
+        'giro_quantidade_anualizado', 
+        'estoque_atual', 
+        'cobertura_dias',
+        'estoque_negativo', 
+        'alerta_estoque',
+        'ultima_venda',    # Nova coluna
+        'dias_desde_ultima_venda'  # Nova coluna
+    ]].copy()
     
     # Definir recomendações com base na classe ABC e giro
     def definir_recomendacao(row):
@@ -639,6 +597,12 @@ def recomendar_acoes(analise_giro, top_giro, sem_giro, estoque_negativo, alertas
         # Verificar alertas críticos
         if row['alerta_estoque']:
             recomendacoes.append("CRÍTICO: Repor estoque imediatamente. Produto crítico com estoque insuficiente.")
+
+        # Adicionar recomendações baseadas na última venda
+        if row['dias_desde_ultima_venda'] > 90:
+            recomendacoes.append(f"Produto sem venda há {row['dias_desde_ultima_venda']} dias. Considerar promoção ou descontinuação.")
+        elif row['dias_desde_ultima_venda'] == -1:
+            recomendacoes.append("Produto nunca vendido. Verificar cadastro ou considerar descontinuação.")
         
         # Recomendações baseadas na combinação de classe ABC e giro
         if row['classe_abc'] == 'A':
@@ -676,7 +640,7 @@ def recomendar_acoes(analise_giro, top_giro, sem_giro, estoque_negativo, alertas
 
 # Executar a análise melhorada
 analise, top_giro, sem_giro, estoque_negativo, alertas_criticos = analisar_giro_estoque_melhorado(
-    df_venda_itens_pedido, df_estoque, df_produtos, periodo='anual')
+    df_venda_itens_pedido, df_estoque_movi, df_produtos, periodo='anual')
 # # Para análise de um único dia:
 # analise_diaria, top_giro, sem_giro, estoque_negativo, alertas_criticos = analisar_giro_estoque_melhorado(
 #     df_venda_itens_pedido, df_estoque, df_produtos, periodo='diario')
@@ -685,30 +649,26 @@ analise, top_giro, sem_giro, estoque_negativo, alertas_criticos = analisar_giro_
 # analise_semanal, top_giro, sem_giro, estoque_negativo, alertas_criticos = analisar_giro_estoque_melhorado(
 #     df_venda_itens_pedido, df_estoque, df_produtos, periodo='diario', dias_personalizados=7)
 
-# Visualizar os resultados
-visualizar_giro_estoque_melhorado(analise, top_giro, sem_giro, estoque_negativo, alertas_criticos)
-
 # Gerar recomendações
 recomendacoes = recomendar_acoes(analise, top_giro, sem_giro, estoque_negativo, alertas_criticos)
 
-# Obter o diretório do script atual
-diretorio_script = os.path.dirname(os.path.abspath(__file__))
-
-# Caminho completo para os arquivos de saída
-caminho_analise = os.path.join(diretorio_script, "analise_giro_completa.xlsx")
-caminho_recomendacoes = os.path.join(diretorio_script, "recomendacoes_giro_estoque.xlsx")
-
 # Exportar resultados
+# Obter o diretório do script atual
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+
+# Construir os caminhos completos para os arquivos de saída
+caminho_analise = os.path.join(diretorio_atual, "analise_giro_completa.xlsx")
+caminho_recomendacoes = os.path.join(diretorio_atual, "recomendacoes_giro_estoque.xlsx")
+
+###############################################
+# Exportar os resultados para arquivos Excel
+###############################################
+
+# Exportar os arquivos para o diretório do script
 print(f"Exportando análise para: {caminho_analise}")
 analise.to_excel(caminho_analise, index=False)
 
-print(f"Exportando recomendações para: {caminho_recomendacoes}")
-recomendacoes.to_excel(caminho_recomendacoes, index=False)
+# print(f"Exportando recomendações para: {caminho_recomendacoes}")
+# recomendacoes.to_excel(caminho_recomendacoes, index=False)
 
-# Opcionalmente, exportar também os arquivos de imagem na mesma pasta
-diretorio_imagens = os.path.join(diretorio_script, "analise_giro")
-if not os.path.exists(diretorio_imagens):
-    os.makedirs(diretorio_imagens)
-    print(f"Diretório para imagens criado: {diretorio_imagens}")
-
-print("Análise de giro de estoque concluída com sucesso!")
+print("Exportação concluída com sucesso!")

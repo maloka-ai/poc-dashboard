@@ -20,7 +20,7 @@ try:
     print("Conectando ao banco de dados PostgreSQL...")
     conn = psycopg2.connect(
         host= os.getenv("DB_HOST"),
-        database="add_v1",
+        database="add",
         user= os.getenv("DB_USER"),
         password= os.getenv("DB_PASS"),
         port= os.getenv("DB_PORT")
@@ -33,7 +33,7 @@ try:
     ########################################################
     
     print("Consultando a tabela vendas...")
-    query = "SELECT * FROM vendas"
+    query = "SELECT * FROM maloka_core.venda"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_vendas = pd.read_sql_query(query, conn)
@@ -58,7 +58,7 @@ try:
     
     # Consultar a tabela clientes
     print("Consultando a tabela clientes...")
-    query = "SELECT * FROM clientes"
+    query = "SELECT * FROM maloka_core.cliente"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_clientes = pd.read_sql_query(query, conn)
@@ -77,16 +77,12 @@ try:
     # Exportar para Excel
     #df_clientes.to_excel("df_clientes.xlsx", index=False)
 
-    # Fechar conexão
-    conn.close()
-    print("\nConexão com o banco de dados fechada.")
-
     ########################################################
     # consulta da tabela cliente pessoa física
     ########################################################
 
     print("Consultando a tabela cliente...")
-    query = "SELECT * FROM clientespessoafisica"
+    query = "SELECT * FROM maloka_core.cliente_pessoa_fisica"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_clientes_PF = pd.read_sql_query(query, conn)
@@ -103,6 +99,29 @@ try:
     print(df_clientes_PF.head())
 
     # df_clientes_PF.to_excel("df_clientes_PF.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela cliente pessoa jurídica
+    ########################################################
+
+    print("Consultando a tabela cliente...")
+    query = "SELECT * FROM maloka_core.cliente_pessoa_juridica"
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_clientes_PJ = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_vendas)
+    num_colunas = len(df_clientes_PJ.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_clientes_PJ.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_clientes_PJ.head())
+
+    # df_clientes_PF.to_excel("df_clientes_PJ.xlsx", index=False)
 
     # Fechar conexão
     conn.close()
@@ -352,6 +371,8 @@ print(analise)
 # Preparando dados para Dashboard da ADD
 ################################################################
 
+rfma_segmentado = rfma_segmentado.merge(df_clientes_PF[['id_cliente', 'cpf']], on='id_cliente', how='left')
+rfma_segmentado = rfma_segmentado.merge(df_clientes_PJ[['id_cliente', 'cnpj']], on='id_cliente', how='left')
 rfma_segmentado = rfma_segmentado.merge(df_clientes[['id_cliente', 'nome', 'email', 'telefone']], on='id_cliente', how='left')
 print(rfma_segmentado.columns)
 #Arquivo usado para o dash de segmentação

@@ -462,7 +462,7 @@ def render_page_content(pathname, data):
         return get_retencao_layout(data), None
     elif pathname == "/predicao":
         return get_predicao_layout(data), None
-    elif pathname == "/faturamento/anual": 
+    elif pathname == "/faturamento/anual" or pathname == "/app/": 
         return get_faturamento_anual_layout(data), None
     elif pathname == "/estoque/vendas-atipicas":
         return get_vendas_atipicas_layout(data), None
@@ -472,8 +472,8 @@ def render_page_content(pathname, data):
         return get_produtos_inativos_layout(data), None
     elif pathname == "/estoque/giro-estoque":
         return get_giro_estoque_layout(data), None
-    elif pathname == "/chat" or pathname == "/app/": 
-        return get_chat_layout(data), None
+    # elif pathname == "/chat" or pathname == "/app/": 
+    #     return get_chat_layout(data), None
     
     # 404 Page Not Found com estilização
     return html.Div(

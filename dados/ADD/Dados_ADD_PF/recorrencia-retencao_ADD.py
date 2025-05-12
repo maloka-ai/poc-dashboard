@@ -14,7 +14,7 @@ try:
     print("Conectando ao banco de dados PostgreSQL...")
     conn = psycopg2.connect(
         host= os.getenv("DB_HOST"),
-        database="add_v1",
+        database="add",
         user= os.getenv("DB_USER"),
         password= os.getenv("DB_PASS"),
         port= os.getenv("DB_PORT")
@@ -27,7 +27,7 @@ try:
     ########################################################
     
     print("Consultando a tabela vendas...")
-    query = "SELECT * FROM vendas"
+    query = "SELECT * FROM maloka_core.venda"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_vendas = pd.read_sql_query(query, conn)

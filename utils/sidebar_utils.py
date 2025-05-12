@@ -125,23 +125,23 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
             }),
             html.Hr(style={"borderColor": "rgba(255, 255, 255, 0.2)", "margin": "1.5rem 0"}),
             
-            # Navigation sections with icons and improved styling
-            html.Div([
-                html.P("INTERAÇÃO", style={"color": "rgba(255, 255, 255, 0.5)", "fontSize": "0.8rem", "letterSpacing": "1px", "marginBottom": "0.5rem", "marginLeft": "0.5rem"}),
-                dbc.Nav(
-                    [
-                        dbc.NavLink(
-                            [html.I(className="fas fa-comments me-2"), "Chat Assistente"], 
-                            href="/chat", 
-                            active="exact",
-                            style=nav_link_style,
-                            className="my-1"
-                        ),
-                    ],
-                    vertical=True,
-                    pills=True,
-                ),
-            ], style={"marginBottom": "1.5rem"}),
+            # # Navigation sections with icons and improved styling
+            # html.Div([
+            #     html.P("INTERAÇÃO", style={"color": "rgba(255, 255, 255, 0.5)", "fontSize": "0.8rem", "letterSpacing": "1px", "marginBottom": "0.5rem", "marginLeft": "0.5rem"}),
+            #     dbc.Nav(
+            #         [
+            #             dbc.NavLink(
+            #                 [html.I(className="fas fa-comments me-2"), "Chat Assistente"], 
+            #                 href="/chat", 
+            #                 active="exact",
+            #                 style=nav_link_style,
+            #                 className="my-1"
+            #             ),
+            #         ],
+            #         vertical=True,
+            #         pills=True,
+            #     ),
+            # ], style={"marginBottom": "1.5rem"}),
             
             # Primeiro Collapse: "Meus Clientes" - Análises de cliente
             html.Div([

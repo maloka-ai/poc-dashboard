@@ -22,7 +22,7 @@ try:
     print("Conectando ao banco de dados PostgreSQL...")
     conn = psycopg2.connect(
         host= os.getenv("DB_HOST"),
-        database="add_v1",
+        database="add",
         user= os.getenv("DB_USER"),
         password= os.getenv("DB_PASS"),
         port= os.getenv("DB_PORT")
@@ -35,7 +35,7 @@ try:
     ########################################################
     
     print("Consultando a tabela vendas...")
-    query = "SELECT * FROM vendas"
+    query = "SELECT * FROM maloka_core.venda"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_vendas = pd.read_sql_query(query, conn)
@@ -59,7 +59,7 @@ try:
     ########################################################
 
     print("Consultando a tabela cliente...")
-    query = "SELECT * FROM clientes"
+    query = "SELECT * FROM maloka_core.cliente"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_clientes = pd.read_sql_query(query, conn)
@@ -82,7 +82,7 @@ try:
     ########################################################
     
     print("Consultando a tabela venda_item...")
-    query = "SELECT * FROM vendasitens"
+    query = "SELECT * FROM maloka_core.venda_item"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_venda_itens = pd.read_sql_query(query, conn)
@@ -148,10 +148,10 @@ print(df_anual.head())
 df_vendas['Ano'] = df_vendas['data_venda'].dt.year
 
 # Mesclar df_vendas com df_clientes para trazer a coluna 'tipo_cliente'
-df_vendas_com_tipo = df_vendas.merge(df_clientes[['id_cliente', 'tipo_cliente']], on='id_cliente', how='left')
+df_vendas_com_tipo = df_vendas.merge(df_clientes[['id_cliente', 'tipo']], on='id_cliente', how='left')
 
 # Classificamos corretamente baseado no tipo do cliente
-df_vendas_com_tipo['grupo_cliente'] = df_vendas_com_tipo['tipo_cliente'].apply(
+df_vendas_com_tipo['grupo_cliente'] = df_vendas_com_tipo['tipo'].apply(
     lambda tipo: 'Cadastrado' if tipo in ['F', 'J'] else 'Sem Cadastro'
 )
 
