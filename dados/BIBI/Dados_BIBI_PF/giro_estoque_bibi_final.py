@@ -70,7 +70,7 @@ try:
     print(df_venda_itens.head())
     
     # EXPORTAR EXCEL
-    df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
+    # df_venda_itens.to_excel("df_venda_itens.xlsx", index=False)
 
     ########################################################
     # consulta da tabela estoque_movimentos
@@ -120,7 +120,7 @@ try:
     print(df_estoque.head())
     
     # EXPORTAR EXCEL
-    df_estoque.to_excel("df_estoque.xlsx", index=False)
+    # df_estoque.to_excel("df_estoque.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produtos
@@ -146,6 +146,31 @@ try:
     
     # EXPORTAR EXCEL
     # df_produtos.to_excel("df_produtos.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela categoria
+    ########################################################
+    
+    # Consultar a tabela produtos
+    print("Consultando a tabela PRODUTOS...")
+    query = "SELECT * FROM maloka_core.categoria"
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_categoria = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_categoria)
+    num_colunas = len(df_categoria.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_categoria.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_categoria.head())
+    
+    # EXPORTAR EXCEL
+    # df_categoria.to_excel("df_categoria.xlsx", index=False)
 
     # Fechar conexão
     conn.close()
@@ -178,28 +203,47 @@ estoque_consolidado = estoque_mais_recente.groupby('id_produto').agg({
 #Adicionar informações do produto
 estoque_final = pd.merge(
     estoque_consolidado,
-    df_produtos[['id_produto', 'nome']],
+    df_produtos[['id_produto', 'nome', 'id_categoria', 'data_criacao']],
     on='id_produto',
+    how='left'
+)
+#Adicionar informações da categoria
+estoque_final = pd.merge(
+    estoque_final,
+    df_categoria[['id_categoria', 'nome_categoria']],
+    on='id_categoria',
     how='left'
 )
 
 # 3. Renomear colunas para melhor compreensão
 estoque_final = estoque_final.rename(columns={
     'id_produto': 'SKU',
+    'id_categoria': 'ID Categoria',
+    'nome': 'Descrição do Produto',
+    'nome_categoria': 'Categoria',
+    'data_criacao': 'Data Criação',
     'estoque': 'Estoque Total',
     'data_estoque': 'Data Atualização',
     'id_loja': 'Qtd Lojas',
-    'nome': 'Descrição do Produto'
 })
 
 # 4. Reorganizar colunas
 estoque_final = estoque_final[[
     'SKU', 
+    'ID Categoria',
     'Descrição do Produto', 
+    'Categoria',
+    'Data Criação',
     'Estoque Total', 
     'Data Atualização', 
     'Qtd Lojas'
 ]]
+
+#remover produtos com 'TAXA' na descrição
+total_antes = len(estoque_final)
+estoque_final = estoque_final[~estoque_final['Descrição do Produto'].str.contains('TAXA', case=False, na=False)]
+total_removidos = total_antes - len(estoque_final)
+print(f"\nForam excluídos {total_removidos} produtos contendo 'TAXA' na descrição.")
 
 # 5. Ordenar do menor para o maior estoque para destacar produtos críticos
 estoque_final = estoque_final.sort_values('Estoque Total')
@@ -397,13 +441,6 @@ estoque_com_vendas['Recência (dias)'] = estoque_com_vendas['Data Última Venda'
     lambda data: (data_atual - data).days if pd.notnull(data) else None
 )
 
-# Resumo dos produtos com vendas históricas
-produtos_com_vendas_historicas = estoque_com_vendas['Tem Vendas > 1 ano'].value_counts()
-print("\n=== PRODUTOS COM HISTÓRICO DE VENDAS ===")
-for status, count in produtos_com_vendas_historicas.items():
-    percentual = (count / total_skus) * 100
-    print(f"- {status}: {count:,} produtos ({percentual:.1f}%)")
-
 # Resumo de recência
 produtos_com_venda = estoque_com_vendas['Recência (dias)'].notna().sum()
 print(f"\nProdutos com histórico de vendas: {produtos_com_venda} ({produtos_com_venda/total_skus*100:.1f}% do total)")
@@ -413,42 +450,28 @@ def classificar_situacao_produto(row):
     # Verificar se teve venda no último ano
     sem_venda_ano = row['vendas_ultimo_ano'] == 0
     
-    # Verificar se estoque é zero
-    estoque_zero = row['Estoque Total'] == 0
-    
     # Verificar se tem vendas históricas (mais de um ano)
     tem_vendas_historicas = row['Tem Vendas > 1 ano'] == "Sim"
     
-    # Verificar se nunca teve venda (nenhuma recência registrada)
-    nunca_teve_venda = pd.isnull(row['Recência (dias)'])
-
-    # Se nunca teve venda (novo produto)
-    if nunca_teve_venda:
-        if row['Estoque Total'] > 0:
-            return "Novo(sem Venda com Saldo)"
-        else:
-            return "Novo(sem Venda sem Saldo)"
-    
     # Se não teve venda no último ano, mas teve anteriormente
-    elif sem_venda_ano:
+    if sem_venda_ano:
         if tem_vendas_historicas:
-            # Produto com vendas históricas (mais de um ano)
-            if estoque_zero:
-                return "Inativo (Histórico)"
+            if row['Estoque Total'] > 0:
+                return "Inativo (ESTOQUE > 0)"
             else:
-                return "Inativo com Saldo (Histórico)"
+                return "Inativo (ESTOQUE <= 0)"
         else:
-            # Produto sem vendas históricas antigas
-            if estoque_zero:
-                return "Inativo"
+            # Se nunca teve venda (novo produto)
+            if row['Estoque Total'] > 0:
+                return "Não Comercializado (ESTOQUE > 0)"
             else:
-                return "Inativo com Saldo"
+                return "Não Comercializado (ESTOQUE <= 0)"
     else:
         # Teve vendas no último ano
         if row['Estoque Total'] > 0:
-            return "Ativo"
+            return "Ativo (ESTOQUE > 0)"
         else:
-            return "Ativo sem Estoque"
+            return "Ativo (ESTOQUE <= 0)"
 
 # Aplicar a classificação
 estoque_com_vendas['Situação do Produto'] = estoque_com_vendas.apply(classificar_situacao_produto, axis=1)
@@ -547,71 +570,131 @@ else:
     print("Não foram encontrados produtos com vendas nos últimos 90 dias.")
     estoque_com_vendas['Curva ABC'] = 'Sem Venda'
 
-# 13. Análise de cobertura de estoque para produtos ativos
-print("\n=== ANÁLISE DE COBERTURA DE ESTOQUE PARA PRODUTOS ATIVOS ===")
+# 13. Análise de cobertura de estoque para todos os produtos por curva ABC
+print("\n=== ANÁLISE DE COBERTURA DE ESTOQUE POR CURVA ABC ===")
 
-# Filtrar apenas produtos ativos
-produtos_ativos = estoque_com_vendas[estoque_com_vendas['Situação do Produto'] == 'Ativo'].copy()
+# Utilizando todos os produtos, sem filtro de ativos
+produtos_abc = estoque_com_vendas[estoque_com_vendas['Curva ABC'].isin(['A', 'B', 'C'])].copy()
+print(f"Total de produtos na Curva ABC analisados: {len(produtos_abc)}")
 
 # Calcular a cobertura de estoque (em dias) com base nas vendas dos últimos 90 dias
-produtos_ativos['vendas_diarias'] = produtos_ativos['vendas_ultimos_90_dias'] / 90
-produtos_ativos['cobertura_estoque_dias'] = 0  # Valor padrão
+produtos_abc['vendas_diarias'] = produtos_abc['vendas_ultimos_90_dias'] / 90
+produtos_abc['cobertura_estoque_dias'] = 0  # Valor padrão
 
-# Evitar divisão por zero
-mask = produtos_ativos['vendas_diarias'] > 0
-produtos_ativos.loc[mask, 'cobertura_estoque_dias'] = (
-    produtos_ativos.loc[mask, 'Estoque Total'] / produtos_ativos.loc[mask, 'vendas_diarias']
+# Evitar divisão por zero e definir cobertura zero para estoque zero ou negativo
+mask = (produtos_abc['vendas_diarias'] > 0) & (produtos_abc['Estoque Total'] > 0)
+produtos_abc.loc[mask, 'cobertura_estoque_dias'] = (
+    produtos_abc.loc[mask, 'Estoque Total'] / produtos_abc.loc[mask, 'vendas_diarias']
 )
 
 # Copiar os valores calculados para o DataFrame principal
 estoque_com_vendas['Vendas Diárias'] = 0
 estoque_com_vendas['Cobertura Estoque (dias)'] = 0
 
-for idx, row in produtos_ativos.iterrows():
+for idx, row in produtos_abc.iterrows():
     estoque_com_vendas.loc[estoque_com_vendas['SKU'] == row['SKU'], 'Vendas Diárias'] = row['vendas_diarias']
     estoque_com_vendas.loc[estoque_com_vendas['SKU'] == row['SKU'], 'Cobertura Estoque (dias)'] = row['cobertura_estoque_dias']
 
-# Estatísticas da cobertura de estoque
-cobertura_stats = produtos_ativos['cobertura_estoque_dias'].describe()
-
-print(f"Total de produtos ativos analisados: {len(produtos_ativos)}")
-print("\nEstatísticas de cobertura de estoque (em dias):")
-print(f"- Média: {cobertura_stats['mean']:.1f}")
-print(f"- Mediana: {cobertura_stats['50%']:.1f}")
-print(f"- Mínimo: {cobertura_stats['min']:.1f}")
-print(f"- Máximo: {cobertura_stats['max']:.1f}")
+# Estatísticas da cobertura de estoque por curva
+print("\nEstatísticas de cobertura de estoque por curva ABC (em dias):")
+for curva in ['A', 'B', 'C']:
+    produtos_curva = produtos_abc[produtos_abc['Curva ABC'] == curva]
+    if len(produtos_curva) > 0:
+        cobertura_stats = produtos_curva['cobertura_estoque_dias'].describe()
+        print(f"\nCurva {curva} ({len(produtos_curva)} produtos):")
+        print(f"- Média: {cobertura_stats['mean']:.1f}")
+        print(f"- Mediana: {cobertura_stats['50%']:.1f}")
+        print(f"- Mínimo: {cobertura_stats['min']:.1f}")
+        print(f"- Máximo: {cobertura_stats['max']:.1f}")
+    else:
+        print(f"\nCurva {curva}: Nenhum produto encontrado")
 
 # Distribuição da cobertura de estoque
-print("\nDistribuição da cobertura de estoque:")
-bins = [0, 15, 30, 60, 90, 180, float('inf')]
-labels = ['1-15 dias', '16-30 dias', '31-60 dias', '61-90 dias', '91-180 dias', 'Mais de 180 dias']
-produtos_ativos['faixa_cobertura'] = pd.cut(produtos_ativos['cobertura_estoque_dias'], bins=bins, labels=labels)
-cobertura_dist = produtos_ativos['faixa_cobertura'].value_counts().sort_index()
+print("\nDistribuição da cobertura de estoque por curva ABC:")
+bins = [-1, 0, 15, 30, 60, 90, 180, float('inf')]
+labels = ['0 dias', '1-15 dias', '16-30 dias', '31-60 dias', '61-90 dias', '91-180 dias', 'Mais de 180 dias']
 
-for faixa, count in cobertura_dist.items():
-    pct = (count / len(produtos_ativos)) * 100
-    print(f"- {faixa}: {count} produtos ({pct:.1f}%)")
-
-# Adicionar análise por curva ABC
-print("\nCobertura média por curva ABC (produtos ativos):")
 for curva in ['A', 'B', 'C']:
-    produtos_curva = produtos_ativos[produtos_ativos['Curva ABC'] == curva]
+    print(f"\nCurva {curva}:")
+    produtos_curva = produtos_abc[produtos_abc['Curva ABC'] == curva]
     if len(produtos_curva) > 0:
-        cobertura_media = produtos_curva['cobertura_estoque_dias'].mean()
-        print(f"- Curva {curva}: {cobertura_media:.1f} dias")
-
-# Identificar produtos críticos (cobertura inferior a 15 dias)
-produtos_criticos = produtos_ativos[produtos_ativos['cobertura_estoque_dias'] < 15].sort_values('cobertura_estoque_dias')
-print(f"\nProdutos ativos com cobertura crítica (menos de 15 dias): {len(produtos_criticos)}")
-
-if len(produtos_criticos) > 0:
-    print("\nTop 10 produtos críticos que precisam de reposição urgente:")
-    for idx, row in produtos_criticos.head(10).iterrows():
-        print(f"- SKU {int(row['SKU'])}: {row['Descrição do Produto'][:50]} - Cobertura: {row['cobertura_estoque_dias']:.1f} dias")
+        produtos_curva['faixa_cobertura'] = pd.cut(produtos_curva['cobertura_estoque_dias'], bins=bins, labels=labels)
+        cobertura_dist = produtos_curva['faixa_cobertura'].value_counts().sort_index()
+        
+        for faixa, count in cobertura_dist.items():
+            pct = (count / len(produtos_curva)) * 100
+            print(f"- {faixa}: {count} produtos ({pct:.1f}%)")
+    else:
+        print("  Nenhum produto encontrado")
 
 #############################################################
 ### Exportar o DataFrame completo e métricas para análise ###
 #############################################################
+
+print("Consultando a tabela COMPRA_ITEM para obter o último preço de compra...")
+query = """
+WITH RankedPurchases AS (
+    SELECT 
+        ci.id_produto,
+        ci.preco_bruto,
+        c.data_compra,
+        ROW_NUMBER() OVER(PARTITION BY ci.id_produto ORDER BY c.data_compra DESC) as rn
+    FROM 
+        maloka_core.compra_item ci
+    JOIN 
+        maloka_core.compra c ON ci.id_compra = c.id_compra
+)
+SELECT 
+    id_produto, 
+    preco_bruto as ultimo_preco_compra
+FROM 
+    RankedPurchases
+WHERE 
+    rn = 1
+"""
+
+# Carregar os dados diretamente em um DataFrame do pandas
+try:
+    conn = psycopg2.connect(
+        host= os.getenv("DB_HOST"),
+        database="bibicell",
+        user= os.getenv("DB_USER"),
+        password= os.getenv("DB_PASS"),
+        port= os.getenv("DB_PORT"),
+    )
+    df_precos_compra = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    # Informações sobre os dados obtidos
+    num_registros = len(df_precos_compra)
+    print(f"Dados de preços de compra obtidos com sucesso! {num_registros} SKUs com último preço de compra.")
+    
+    # Mesclar com o DataFrame de estoque
+    estoque_com_vendas = pd.merge(
+        estoque_com_vendas,
+        df_precos_compra,
+        left_on='SKU',
+        right_on='id_produto',
+        how='left'
+    )
+    
+    # Remover coluna id_produto redundante, se existir
+    if 'id_produto' in estoque_com_vendas.columns:
+        estoque_com_vendas.drop('id_produto', axis=1, inplace=True)
+    
+    # Tratar valores nulos no preço de compra
+    # Para SKUs sem preço de compra registrado, usar um valor padrão ou 0
+    estoque_com_vendas['ultimo_preco_compra'].fillna(0, inplace=True)
+    
+    # Calcular o valor de estoque em custo de compra usando o último preço
+    estoque_com_vendas['valor_estoque_custo'] = estoque_com_vendas['Estoque Total'] * estoque_com_vendas['ultimo_preco_compra']
+    
+except Exception as e:
+    print(f"Erro ao consultar preços de compra: {e}")
+    print("Utilizando quantidade como proxy para custo.")
+    # Fallback: criar coluna de valor baseado apenas na quantidade
+    estoque_com_vendas['ultimo_preco_compra'] = 1
+    estoque_com_vendas['valor_estoque_custo'] = estoque_com_vendas['Estoque Total']
 
 #excel com análise completa
 estoque_com_vendas.to_excel(caminho_arquivo_completo, index=False)
@@ -630,91 +713,91 @@ metricas['TOTAL DE SKUs'] = total_skus
 # Total e percentual de SKUs com venda acima de 1 ano
 total_sku_venda_acima_1ano = (estoque_com_vendas['Tem Vendas > 1 ano'] == "Sim").sum()
 metricas['TOTAL SKU COM VENDA ACIMA DE 1 ANO'] = total_sku_venda_acima_1ano
-metricas['% SKU COM VENDA ACIMA DE 1 ANO'] = (total_sku_venda_acima_1ano / total_skus) * 100
+metricas['%SKU COM VENDA ACIMA DE 1 ANO'] = (total_sku_venda_acima_1ano / total_skus) * 100
 
 # Total e percentual de SKUs com venda somente no último ano
 total_sku_venda_ultimo_ano = ((estoque_com_vendas['vendas_ultimo_ano'] > 0) & (estoque_com_vendas['Tem Vendas > 1 ano'] == "Não")).sum()
-metricas['TOTAL SKU COM VENDA SOMENTE NO ÚLTIMO ANO'] = total_sku_venda_ultimo_ano
-metricas['% SKU COM VENDA SOMENTE NO ÚLTIMO ANO'] = (total_sku_venda_ultimo_ano / total_skus) * 100
+metricas['TOTAL SKU COM VENDA SOMENTE NO ULTIMO ANO'] = total_sku_venda_ultimo_ano
+metricas['%SKU COM VENDA SOMENTE NO ULTIMO ANO'] = (total_sku_venda_ultimo_ano / total_skus) * 100
 
 # Total e percentual de SKUs com estoque zero
 total_sku_estoque_zero = (estoque_com_vendas['Estoque Total'] == 0).sum()
 metricas['TOTAL SKU COM ESTOQUE ZERO'] = total_sku_estoque_zero
-metricas['% SKU COM ESTOQUE ZERO'] = (total_sku_estoque_zero / total_skus) * 100
+metricas['%SKU COM ESTOQUE ZERO'] = (total_sku_estoque_zero / total_skus) * 100
 
 # Total e percentual de SKUs com estoque positivo
 total_sku_estoque_positivo = (estoque_com_vendas['Estoque Total'] > 0).sum()
 metricas['TOTAL SKU COM ESTOQUE POSITIVO'] = total_sku_estoque_positivo
-metricas['% SKU COM ESTOQUE POSITIVO'] = (total_sku_estoque_positivo / total_skus) * 100
+metricas['%SKU COM ESTOQUE POSITIVO'] = (total_sku_estoque_positivo / total_skus) * 100
 
 # Custo total de estoque positivo (vamos usar a quantidade como proxy para o custo, já que não temos o valor unitário)
-metricas['CUSTO TOTAL ESTOQUE POSITIVO'] = estoque_com_vendas[estoque_com_vendas['Estoque Total'] > 0]['Estoque Total'].sum()
+metricas['CUSTO TOTAL ESTOQUE POSITIVO'] = estoque_com_vendas[estoque_com_vendas['Estoque Total'] > 0]['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs com estoque negativo
 total_sku_estoque_negativo = (estoque_com_vendas['Estoque Total'] < 0).sum()
 metricas['TOTAL SKU COM ESTOQUE NEGATIVO'] = total_sku_estoque_negativo
-metricas['% SKU COM ESTOQUE NEGATIVO'] = (total_sku_estoque_negativo / total_skus) * 100
+metricas['%SKU COM ESTOQUE NEGATIVO'] = (total_sku_estoque_negativo / total_skus) * 100
 
 # Custo total de estoque negativo
-metricas['CUSTO TOTAL ESTOQUE NEGATIVO'] = abs(estoque_com_vendas[estoque_com_vendas['Estoque Total'] < 0]['Estoque Total'].sum())
+metricas['CUSTO TOTAL ESTOQUE NEGATIVO'] = abs(estoque_com_vendas[estoque_com_vendas['Estoque Total'] < 0]['valor_estoque_custo'].sum())
 
 # Total e percentual de SKUs inativos com saldo
-total_inativo_com_saldo = ((estoque_com_vendas['Situação do Produto'] == 'Inativo com Saldo') | 
-                          (estoque_com_vendas['Situação do Produto'] == 'Inativo com Saldo (Histórico)')).sum()
-metricas['TOTAL SKU inativo com Saldo'] = total_inativo_com_saldo
-metricas['% SKU INATIVO COM SALDO'] = (total_inativo_com_saldo / total_skus) * 100
+total_inativo_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Inativo (ESTOQUE > 0)').sum()
+metricas['TOTAL SKU INATIVO COM SALDO'] = total_inativo_com_saldo
+metricas['%SKU INATIVO COM SALDO'] = (total_inativo_com_saldo / total_skus) * 100
 
 # Custo total de inativos com saldo
-filtro_inativo_saldo = ((estoque_com_vendas['Situação do Produto'] == 'Inativo com Saldo') | 
-                        (estoque_com_vendas['Situação do Produto'] == 'Inativo com Saldo (Histórico)'))
-metricas['CUSTO TOTAL INATIVO COM SALDO'] = estoque_com_vendas[filtro_inativo_saldo]['Estoque Total'].sum()
+filtro_inativo_saldo = (estoque_com_vendas['Situação do Produto'] == 'Inativo (ESTOQUE > 0)')
+metricas['CUSTO TOTAL INATIVO COM SALDO'] = estoque_com_vendas[filtro_inativo_saldo]['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs inativos sem saldo
-total_inativo_sem_saldo = ((estoque_com_vendas['Situação do Produto'] == 'Inativo') | 
-                          (estoque_com_vendas['Situação do Produto'] == 'Inativo (Histórico)')).sum()
-metricas['TOTAL SKU Inativo sem Saldo'] = total_inativo_sem_saldo
-metricas['% SKU INATIVO SEM SALDO'] = (total_inativo_sem_saldo / total_skus) * 100
+total_inativo_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Inativo (ESTOQUE <= 0)').sum()
+metricas['TOTAL SKU INATIVO SEM SALDO'] = total_inativo_sem_saldo
+metricas['%SKU INATIVO SEM SALDO'] = (total_inativo_sem_saldo / total_skus) * 100
 
 # Total e percentual de SKUs ativos com saldo
-total_ativo_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Ativo').sum()
-metricas['TOTAL SKU Ativo com Saldo'] = total_ativo_com_saldo
-metricas['% SKU ATIVO COM SALDO'] = (total_ativo_com_saldo / total_skus) * 100
+total_ativo_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE > 0)').sum()
+metricas['TOTAL SKU ATIVO COM SALDO'] = total_ativo_com_saldo
+metricas['%SKU ATIVO COM SALDO'] = (total_ativo_com_saldo / total_skus) * 100
 
 # Custo total de ativos com saldo
-metricas['CUSTO TOTAL ATIVO COM SALDO'] = estoque_com_vendas[estoque_com_vendas['Situação do Produto'] == 'Ativo']['Estoque Total'].sum()
+metricas['CUSTO TOTAL ATIVO COM SALDO'] = estoque_com_vendas[estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE > 0)']['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs ativos sem saldo
-total_ativo_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Ativo sem Estoque').sum()
-metricas['TOTAL SKU Ativo sem Saldo'] = total_ativo_sem_saldo
-metricas['% SKU ATIVO SEM SALDO'] = (total_ativo_sem_saldo / total_skus) * 100
+total_ativo_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE <= 0)').sum()
+metricas['TOTAL SKU ATIVO SEM SALDO'] = total_ativo_sem_saldo
+metricas['%SKU ATIVO SEM SALDO'] = (total_ativo_sem_saldo / total_skus) * 100
 
 # Total e percentual de SKUs sem venda com saldo
-filtro_sem_venda_com_saldo = ((estoque_com_vendas['Situação do Produto'] == 'Novo(sem Venda com Saldo)'))
+filtro_sem_venda_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Não Comercializado (ESTOQUE > 0)')
 total_sem_venda_com_saldo = filtro_sem_venda_com_saldo.sum()
-metricas['TOTAL SKU SEM VENDA com Saldo'] = total_sem_venda_com_saldo
-metricas['% SKU SEM VENDA COM SALDO'] = (total_sem_venda_com_saldo / total_skus) * 100
+metricas['TOTAL SKU SEM VENDA COM SALDO'] = total_sem_venda_com_saldo
+metricas['%SKU SEM VENDA COM SALDO'] = (total_sem_venda_com_saldo / total_skus) * 100
 
 # Custo total de sem venda com saldo
-metricas['CUSTO TOTAL SEM VENDA COM SALDO'] = estoque_com_vendas[filtro_sem_venda_com_saldo]['Estoque Total'].sum()
+metricas['CUSTO TOTAL SEM VENDA COM SALDO'] = estoque_com_vendas[filtro_sem_venda_com_saldo]['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs sem venda sem saldo
-total_sem_venda_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Novo(sem Venda sem Saldo)').sum()
-metricas['TOTAL SKU SEM VENDA sem Saldo'] = total_sem_venda_sem_saldo
-metricas['% SKU SEM VENDA SEM SALDO'] = (total_sem_venda_sem_saldo / total_skus) * 100
+total_sem_venda_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Não Comercializado (ESTOQUE <= 0)').sum()
+metricas['TOTAL SKU SEM VENDA SEM SALDO'] = total_sem_venda_sem_saldo
+metricas['%SKU SEM VENDA SEM SALDO'] = (total_sem_venda_sem_saldo / total_skus) * 100
 
 # Totais por grupo ABC
 total_grupo_a = (estoque_com_vendas['Curva ABC'] == 'A').sum()
 total_grupo_b = (estoque_com_vendas['Curva ABC'] == 'B').sum()
 total_grupo_c = (estoque_com_vendas['Curva ABC'] == 'C').sum()
 
+# Total de produtos com vendas nos últimos 90 dias (base para os percentuais da curva ABC)
+total_produtos_com_vendas_90dias = (estoque_com_vendas['vendas_ultimos_90_dias'] > 0).sum()
+
 metricas['TOTAL SKU GRUPO A'] = total_grupo_a
 metricas['TOTAL SKU GRUPO B'] = total_grupo_b
 metricas['TOTAL SKU GRUPO C'] = total_grupo_c
 
-# Percentuais por grupo ABC
-metricas['% SKU GRUPO A'] = (total_grupo_a / total_skus) * 100
-metricas['%SKU GRUPO B'] = (total_grupo_b / total_skus) * 100
-metricas['% SKU GRUPO C'] = (total_grupo_c / total_skus) * 100
+# Percentuais por grupo ABC (baseado apenas nos produtos com vendas nos últimos 90 dias)
+metricas['%SKU GRUPO A'] = (total_grupo_a / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['%SKU GRUPO B'] = (total_grupo_b / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['%SKU GRUPO C'] = (total_grupo_c / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
 
 # Total venda por grupo ABC (usando valor_ultimos_90_dias)
 venda_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['valor_ultimos_90_dias'].sum()
@@ -727,23 +810,28 @@ metricas['TOTAL VENDA GRUPO C'] = venda_grupo_c
 
 # Percentual venda por grupo ABC
 venda_total = venda_grupo_a + venda_grupo_b + venda_grupo_c
-metricas['% VENDA GRUPO A'] = (venda_grupo_a / venda_total) * 100 if venda_total > 0 else 0
-metricas['% VENDA GRUPO B'] = (venda_grupo_b / venda_total) * 100 if venda_total > 0 else 0
-metricas['% VENDA GRUPO C'] = (venda_grupo_c / venda_total) * 100 if venda_total > 0 else 0
+metricas['%VENDA GRUPO A'] = (venda_grupo_a / venda_total) * 100 if venda_total > 0 else 0
+metricas['%VENDA GRUPO B'] = (venda_grupo_b / venda_total) * 100 if venda_total > 0 else 0
+metricas['%VENDA GRUPO C'] = (venda_grupo_c / venda_total) * 100 if venda_total > 0 else 0
 
-# Coberturas em dias (geral e por grupo)
-# Cobertura geral - usando produtos ativos
-cobertura_geral = produtos_ativos['cobertura_estoque_dias'].mean() if len(produtos_ativos) > 0 else 0
-metricas['COBERTURA EM DIAS'] = cobertura_geral
+# Cálculo da cobertura em dias por grupo ABC
+# Para grupo A
+estoque_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['Estoque Total'].sum()
+vendas_diarias_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['vendas_ultimos_90_dias'].sum() / 90
+cobertura_grupo_a = estoque_grupo_a / vendas_diarias_grupo_a if vendas_diarias_grupo_a > 0 else 0
+metricas['COBERTURA EM DIAS GRUPO A'] = cobertura_grupo_a
 
-# Cobertura por grupo ABC
-produtos_a = produtos_ativos[produtos_ativos['Curva ABC'] == 'A']
-produtos_b = produtos_ativos[produtos_ativos['Curva ABC'] == 'B']
-produtos_c = produtos_ativos[produtos_ativos['Curva ABC'] == 'C']
+# Para grupo B
+estoque_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['Estoque Total'].sum()
+vendas_diarias_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['vendas_ultimos_90_dias'].sum() / 90
+cobertura_grupo_b = estoque_grupo_b / vendas_diarias_grupo_b if vendas_diarias_grupo_b > 0 else 0
+metricas['COBERTURA EM DIAS GRUPO B'] = cobertura_grupo_b
 
-metricas['COBERTURA EM DIAS GRUPO A'] = produtos_a['cobertura_estoque_dias'].mean() if len(produtos_a) > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO B'] = produtos_b['cobertura_estoque_dias'].mean() if len(produtos_b) > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO C'] = produtos_c['cobertura_estoque_dias'].mean() if len(produtos_c) > 0 else 0
+# Para grupo C
+estoque_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['Estoque Total'].sum()
+vendas_diarias_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['vendas_ultimos_90_dias'].sum() / 90
+cobertura_grupo_c = estoque_grupo_c / vendas_diarias_grupo_c if vendas_diarias_grupo_c > 0 else 0
+metricas['COBERTURA EM DIAS GRUPO C'] = cobertura_grupo_c
 
 # Criar DataFrame com as métricas
 df_metricas = pd.DataFrame([metricas])
