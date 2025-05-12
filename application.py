@@ -450,7 +450,7 @@ def render_page_content(pathname, data):
     # Renderizar a página apropriada com base no pathname
     if pathname == "/" or pathname == "/rfma":
         return get_rfma_layout(data), None
-    elif pathname == "/segmentacao":
+    elif pathname == "/segmentacao" or pathname == "/app/":
         return get_segmentacao_layout(data), None
     elif pathname == "/recorrencia/mensal":
         return get_recorrencia_mensal_layout(data), None
@@ -472,8 +472,8 @@ def render_page_content(pathname, data):
         return get_produtos_inativos_layout(data), None
     elif pathname == "/estoque/giro-estoque":
         return get_giro_estoque_layout(data), None
-    elif pathname == "/chat" or pathname == "/app/": 
-        return get_chat_layout(data), None
+    # elif pathname == "/chat" or pathname == "/app/": 
+    #     return get_chat_layout(data), None
     
     # 404 Page Not Found com estilização
     return html.Div(

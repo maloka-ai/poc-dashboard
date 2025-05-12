@@ -99,6 +99,29 @@ try:
 
     # df_clientes_PF.to_excel("df_clientes_PF.xlsx", index=False)
 
+    ########################################################
+    # consulta da tabela cliente pessoa jurídica
+    ########################################################
+
+    print("Consultando a tabela cliente...")
+    query = "SELECT * FROM maloka_core.cliente_pessoa_juridica"
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_clientes_PJ = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_vendas)
+    num_colunas = len(df_clientes_PJ.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_clientes_PJ.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_clientes_PJ.head())
+
+    # df_clientes_PF.to_excel("df_clientes_PJ.xlsx", index=False)
+
     # Fechar conexão
     conn.close()
     print("\nConexão com o banco de dados fechada.")
@@ -357,6 +380,7 @@ print(analise)
 ################################################################
 
 rfma_segmentado = rfma_segmentado.merge(df_clientes_PF[['id_cliente', 'cpf']], on='id_cliente', how='left')
+rfma_segmentado = rfma_segmentado.merge(df_clientes_PJ[['id_cliente', 'cnpj']], on='id_cliente', how='left')
 rfma_segmentado = rfma_segmentado.merge(df_clientes[['id_cliente', 'nome', 'email', 'telefone']], on='id_cliente', how='left')
 print(rfma_segmentado.columns)
 #Arquivo usado para o dash de segmentação

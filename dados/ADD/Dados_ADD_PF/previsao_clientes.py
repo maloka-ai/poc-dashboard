@@ -17,10 +17,10 @@ def classificar_padrao_compra(df_cliente):
         return "Histórico insuficiente (menos de 6 pedidos)"
    
     # Ordenar por data
-    df_cliente = df_cliente.sort_values('data_emissao')
+    df_cliente = df_cliente.sort_values('data_venda')
    
     # Calcular dias entre compras
-    df_cliente['dias_ate_proxima'] = df_cliente['data_emissao'].shift(-1) - df_cliente['data_emissao']
+    df_cliente['dias_ate_proxima'] = df_cliente['data_venda'].shift(-1) - df_cliente['data_venda']
     df_cliente['dias_ate_proxima'] = df_cliente['dias_ate_proxima'].dt.days
    
     # Calcular métricas
@@ -28,11 +28,11 @@ def classificar_padrao_compra(df_cliente):
     mediana_dias = df_cliente['dias_ate_proxima'].median()
    
     # Calcular compras por dia da semana
-    compras_por_dia = df_cliente['data_emissao'].dt.dayofweek.value_counts()
+    compras_por_dia = df_cliente['data_venda'].dt.dayofweek.value_counts()
     dias_uteis_com_compra = compras_por_dia[compras_por_dia.index < 5].count()
    
     # Calcular período total
-    periodo_total_dias = (df_cliente['data_emissao'].max() - df_cliente['data_emissao'].min()).days
+    periodo_total_dias = (df_cliente['data_venda'].max() - df_cliente['data_venda'].min()).days
     if periodo_total_dias < 30:
         return "Histórico insuficiente (período menor que 30 dias)"
    
@@ -80,8 +80,8 @@ def classificar_padrao_compra(df_cliente):
         consistencia = "irregular"
    
     # Verificar se há preferência por quinzena específica
-    compras_q1 = df_cliente[df_cliente['data_emissao'].dt.day <= 15].shape[0]
-    compras_q2 = df_cliente[df_cliente['data_emissao'].dt.day > 15].shape[0]
+    compras_q1 = df_cliente[df_cliente['data_venda'].dt.day <= 15].shape[0]
+    compras_q2 = df_cliente[df_cliente['data_venda'].dt.day > 15].shape[0]
    
     if abs(compras_q1 - compras_q2) > total_pedidos * 0.3:
         quinzena_preferida = " (preferencialmente na " + ("1ª" if compras_q1 > compras_q2 else "2ª") + " quinzena)"
@@ -96,12 +96,12 @@ def analisar_cliente(df_cliente):
     total_pedidos = len(df_cliente)
    
     # Adicionar colunas de ano, mês e quinzena
-    df_cliente['ano'] = df_cliente['data_emissao'].dt.year
-    df_cliente['mes'] = df_cliente['data_emissao'].dt.month
-    df_cliente['quinzena'] = df_cliente['data_emissao'].apply(lambda x: 1 if x.day <= 15 else 2)
+    df_cliente['ano'] = df_cliente['data_venda'].dt.year
+    df_cliente['mes'] = df_cliente['data_venda'].dt.month
+    df_cliente['quinzena'] = df_cliente['data_venda'].apply(lambda x: 1 if x.day <= 15 else 2)
    
     # Criar identificador único para cada quinzena
-    df_cliente['quinzena_id'] = df_cliente['data_emissao'].dt.to_period('M').astype(str) + '_Q' + df_cliente['quinzena'].astype(str)
+    df_cliente['quinzena_id'] = df_cliente['data_venda'].dt.to_period('M').astype(str) + '_Q' + df_cliente['quinzena'].astype(str)
    
     # Agrupar por quinzena
     compras_quinzena = df_cliente.groupby('quinzena_id').size().reset_index()
@@ -109,8 +109,8 @@ def analisar_cliente(df_cliente):
     compras_quinzena['comprou'] = 1
    
     # Criar DataFrame com todas as quinzenas no período
-    data_inicial = df_cliente['data_emissao'].min()
-    data_final = df_cliente['data_emissao'].max()
+    data_inicial = df_cliente['data_venda'].min()
+    data_final = df_cliente['data_venda'].max()
    
     # Criar range de datas
     datas_range = pd.date_range(start=data_inicial, end=data_final, freq='MS')
@@ -171,7 +171,7 @@ try:
     ########################################################
     
     print("Consultando a tabela vendas...")
-    query = "SELECT * FROM vendas"
+    query = "SELECT * FROM maloka_core.venda"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_vendas = pd.read_sql_query(query, conn)
@@ -196,7 +196,7 @@ try:
     
     # Consultar a tabela clientes
     print("Consultando a tabela clientes...")
-    query = "SELECT * FROM clientes"
+    query = "SELECT * FROM maloka_core.cliente"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_clientes_info = pd.read_sql_query(query, conn)
@@ -229,9 +229,8 @@ except Exception as e:
 # ----------------------------------------------------
 # 2. Processamento dos dados
 # ----------------------------------------------------
-# Converter a coluna 'data_emissao' para datetime
-df_vendas['data_emissao'] = pd.to_datetime(df_vendas['data_emissao'])
-df_vendas = df_vendas[df_vendas['status'].str.startswith('Pedido')]
+# Converter a coluna 'data_venda' para datetime
+df_vendas['data_venda'] = pd.to_datetime(df_vendas['data_venda'])
 
 # Identificar clientes com pelo menos 6 compras
 contagem_compras = df_vendas.groupby('id_cliente').size()
@@ -303,7 +302,7 @@ with pd.ExcelWriter(nome_arquivo, engine='xlsxwriter') as writer:
    
     # Segunda aba: Resumo por cliente
     # Criar DataFrame com últimas compras
-    ultimas_compras = df_vendas.groupby('id_cliente')['data_emissao'].max().reset_index()
+    ultimas_compras = df_vendas.groupby('id_cliente')['data_venda'].max().reset_index()
     ultimas_compras.columns = ['cliente_id', 'ultima_compra']
     
     # Calcular próxima compra baseada no padrão
@@ -383,7 +382,7 @@ with pd.ExcelWriter(nome_arquivo, engine='xlsxwriter') as writer:
         axis=1
     )
     resumo_cliente.rename(columns={'cliente_id': 'id_cliente'}, inplace=True)
-    resumo_cliente = pd.merge(resumo_cliente, df_clientes_info[['id_cliente', 'nome_cliente']], on='id_cliente', how='left')
+    resumo_cliente = pd.merge(resumo_cliente, df_clientes_info[['id_cliente', 'nome']], on='id_cliente', how='left')
     cols_to_round = ['prob_media', 'prob_minima', 'prob_maxima', 'regularidade']
     for col in cols_to_round:
         if col in resumo_cliente.columns:

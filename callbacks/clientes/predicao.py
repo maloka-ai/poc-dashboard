@@ -99,6 +99,14 @@ def register_predicao_callbacks(app):
             }
         
         # Adicionar colunas de contato se disponíveis
+        if 'cpf' in df_Previsoes.columns:   
+            display_columns.append("cpf")
+            col_rename["cpf"] = "CPF"
+
+        if 'cnpj' in df_Previsoes.columns:   
+            display_columns.append("cnpj")
+            col_rename["cnpj"] = "CNPJ"
+
         if 'email' in df_Previsoes.columns:
             display_columns.append("email")
             col_rename["email"] = "E-mail"

@@ -57,7 +57,7 @@ def register_segmentacao_callbacks(app):
                 "telefone": "Contato"
             }
         else:
-            display_columns = ["id_cliente", "nome", "Recency", "Frequency", "Monetary", "Age", "email", "telefone"]
+            display_columns = ["id_cliente", "nome", "Recency", "Frequency", "Monetary", "Age", "cpf", "cnpj", "email", "telefone"]
             col_rename = {
                 "id_cliente": "Código do Cliente",
                 "nome": "Cliente",
@@ -65,6 +65,8 @@ def register_segmentacao_callbacks(app):
                 "Frequency": "Frequência",
                 "Monetary": "Valor Monetário (R$)",
                 "Age": "Antiguidade (dias)",
+                "cpf": "CPF",
+                "cnpj": "CNPJ",
                 "email": "E-mail",
                 "telefone": "Contato"
             }
