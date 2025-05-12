@@ -450,7 +450,7 @@ def render_page_content(pathname, data):
     # Renderizar a página apropriada com base no pathname
     if pathname == "/" or pathname == "/rfma":
         return get_rfma_layout(data), None
-    elif pathname == "/segmentacao" or pathname == "/app/":
+    elif pathname == "/segmentacao":
         return get_segmentacao_layout(data), None
     elif pathname == "/recorrencia/mensal":
         return get_recorrencia_mensal_layout(data), None
@@ -462,7 +462,7 @@ def render_page_content(pathname, data):
         return get_retencao_layout(data), None
     elif pathname == "/predicao":
         return get_predicao_layout(data), None
-    elif pathname == "/faturamento/anual": 
+    elif pathname == "/faturamento/anual" or pathname == "/app/": 
         return get_faturamento_anual_layout(data), None
     elif pathname == "/estoque/vendas-atipicas":
         return get_vendas_atipicas_layout(data), None
