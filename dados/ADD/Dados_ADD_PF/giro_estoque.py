@@ -99,7 +99,7 @@ try:
     print(df_estoque.head())
     
     # EXPORTAR EXCEL
-    df_estoque.to_excel("df_estoque.xlsx", index=False)
+    # df_estoque.to_excel("df_estoque.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produtos

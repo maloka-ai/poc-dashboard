@@ -383,9 +383,6 @@ with pd.ExcelWriter(nome_arquivo, engine='xlsxwriter') as writer:
     )
     resumo_cliente.rename(columns={'cliente_id': 'id_cliente'}, inplace=True)
     resumo_cliente = pd.merge(resumo_cliente, df_clientes_info[['id_cliente', 'nome']], on='id_cliente', how='left')
-
-    #renoemar coluna 'nome' para 'nome_cliente' para compatibilidade com o dashboard
-    resumo_cliente.rename(columns={'nome': 'nome_cliente'}, inplace=True)
     
     cols_to_round = ['prob_media', 'prob_minima', 'prob_maxima', 'regularidade']
     for col in cols_to_round:

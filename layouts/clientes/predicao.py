@@ -179,7 +179,7 @@ def get_predicao_layout(data):
     
     # Preparar as colunas para exibição
     columns = [
-        {"name": "Cliente", "id": "nome_cliente"},
+        {"name": "Cliente", "id": "nome"},
         {"name": "Prob. Média", "id": "prob_media_fmt"},
         {"name": "Última Compra", "id": "ultima_compra_fmt"},
         {"name": "Próxima Compra", "id": "proxima_compra_fmt"},
@@ -233,7 +233,7 @@ def get_predicao_layout(data):
             r=[row[m] for m in metrics] + [row[metrics[0]]],  # Repetir o primeiro para fechar o polígono
             theta=[metrics_label[m] for m in metrics] + [metrics_label[metrics[0]]],
             fill='toself',
-            name=row['nome_cliente'][:20] + ('...' if len(row['nome_cliente']) > 20 else '')
+            name=row['nome'][:20] + ('...' if len(row['nome']) > 20 else '')
         ))
     
     fig_radar.update_layout(
@@ -258,12 +258,12 @@ def get_predicao_layout(data):
     # Criar gráfico de barras para probabilidades médias
     fig_prob = px.bar(
         df_cliente_display.nlargest(10, 'prob_media'),
-        y='nome_cliente',
+        y='nome',
         x='prob_media',
         orientation='h',
         labels={
             'prob_media': 'Probabilidade Média',
-            'nome_cliente': 'Cliente'
+            'nome': 'Cliente'
         },
         color='prob_media',
         color_continuous_scale=px.colors.sequential.Viridis,

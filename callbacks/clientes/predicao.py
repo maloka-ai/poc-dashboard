@@ -286,7 +286,7 @@ def register_predicao_callbacks(app):
         
         # Preparar as colunas para exibição
         columns = [
-            {"name": "Cliente", "id": "nome_cliente"},
+            {"name": "Cliente", "id": "nome"},
             {"name": "Prob. Média", "id": "prob_media_fmt"},
             {"name": "Última Compra", "id": "ultima_compra_fmt"},
             {"name": "Próxima Compra", "id": "proxima_compra_fmt"},
@@ -451,13 +451,13 @@ def register_predicao_callbacks(app):
             return [], show_message_style
         
         # Obter o cliente selecionado da tabela
-        selected_cliente = table_data[selected_rows[0]]['nome_cliente']
+        selected_cliente = table_data[selected_rows[0]]['nome']
         
         # Obter dados de previsão de retorno
         df_previsao_retorno = pd.read_json(io.StringIO(data["df_previsao_retorno"]), orient='split')
         
         # Verificar se o cliente selecionado existe nos dados
-        if selected_cliente not in df_previsao_retorno['nome_cliente'].values:
+        if selected_cliente not in df_previsao_retorno['nome'].values:
             return [
                 html.Div(
                     className="text-center my-4",
@@ -469,7 +469,7 @@ def register_predicao_callbacks(app):
             ], hide_message_style
         
         # Filtrar os dados para o cliente selecionado
-        cliente_data = df_previsao_retorno[df_previsao_retorno['nome_cliente'] == selected_cliente].iloc[0]
+        cliente_data = df_previsao_retorno[df_previsao_retorno['nome'] == selected_cliente].iloc[0]
 
         regularidade_formatada = f"{round(cliente_data['regularidade'], 2):.2f}".replace(".", ",") if pd.notnull(cliente_data['regularidade']) else "N/A"
         
@@ -665,7 +665,7 @@ def register_predicao_callbacks(app):
         if not selected_rows or len(selected_rows) == 0 or not table_data:
             return {'display': 'none'}, ""
         
-        selected_cliente = table_data[selected_rows[0]]['nome_cliente']
+        selected_cliente = table_data[selected_rows[0]]['nome']
         return {'display': 'block'}, selected_cliente
     
     @app.callback(
