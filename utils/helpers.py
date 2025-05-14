@@ -34,10 +34,11 @@ gradient_colors = {
 }
 
 cores_segmento = {
+    'Todos': gradient_colors['blue_gradient'][0],
     'Novos': color['highlight'],  
     'Recentes Baixo Valor': color['accent'],   
     'Recentes Alto Valor': color['warning'],    
-    'Fiéis Baixo Valor': color['secondary'],    
+    'Fiéis Baixo Valor': gradient_colors['blue_gradient'][2],   
     'Fiéis Alto Valor': gradient_colors['green_gradient'][2], 
     'Campeões': gradient_colors['green_gradient'][0],     
     'Inativos': color['primary'],    
