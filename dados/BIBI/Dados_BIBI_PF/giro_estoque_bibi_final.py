@@ -696,10 +696,6 @@ except Exception as e:
     estoque_com_vendas['ultimo_preco_compra'] = 1
     estoque_com_vendas['valor_estoque_custo'] = estoque_com_vendas['Estoque Total']
 
-#excel com análise completa
-estoque_com_vendas.to_excel(caminho_arquivo_completo, index=False)
-
-#excel com métricas para análise
 # Criar dataframe com as métricas solicitadas em uma única linha
 metricas = {}
 
@@ -782,6 +778,95 @@ total_sem_venda_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Nã
 metricas['TOTAL SKU SEM VENDA SEM SALDO'] = total_sem_venda_sem_saldo
 metricas['%SKU SEM VENDA SEM SALDO'] = (total_sem_venda_sem_saldo / total_skus) * 100
 
+# Análise de consistência de movimentações de estoque usando DataFrames já carregados
+print("\n=== ANÁLISE DE CONSISTÊNCIA DE MOVIMENTAÇÕES DE ESTOQUE ===")
+try:
+    # Preparar o DataFrame com o histórico de estoque mais recente por produto/loja
+    print("Analisando consistência entre histórico de estoque e últimas movimentações...")
+    
+    # Obter o estoque mais recente para cada par produto/loja do histórico
+    historico_mais_recente = df_estoque.sort_values(['id_produto', 'id_loja', 'data_estoque'], ascending=[True, True, False])
+    historico_mais_recente = historico_mais_recente.drop_duplicates(subset=['id_produto', 'id_loja'], keep='first')
+    
+    # Obter a última movimentação para cada par produto/loja
+    # Ordenando por data de movimento (mais recente primeiro) e ordem de movimento
+    movimento_mais_recente = df_estoque_movi.sort_values(
+        ['id_produto', 'id_loja', 'data_movimento', 'ordem_movimento'], 
+        ascending=[True, True, False, False]
+    )
+    movimento_mais_recente = movimento_mais_recente.drop_duplicates(subset=['id_produto', 'id_loja'], keep='first')
+    
+    # Juntar os dois DataFrames para comparação
+    analise_consistencia = pd.merge(
+        historico_mais_recente[['id_produto', 'id_loja', 'estoque', 'data_estoque']],
+        movimento_mais_recente[['id_produto', 'id_loja', 'estoque_depois', 'data_movimento']],
+        on=['id_produto', 'id_loja'],
+        how='left'
+    )
+    
+    # Calcular a diferença e determinar se é consistente
+    # Definindo um limite de tolerância (0.01) para considerar diferenças de arredondamento
+    analise_consistencia['estoque_depois'] = analise_consistencia['estoque_depois'].fillna(0)
+    analise_consistencia['diferenca'] = abs(analise_consistencia['estoque'] - analise_consistencia['estoque_depois'])
+    analise_consistencia['status_consistencia'] = analise_consistencia['diferenca'].apply(
+        lambda x: 'Consistente' if x <= 0.01 else 'Inconsistente'
+    )
+    
+    # Total de produtos verificados
+    total_skus_verificados = analise_consistencia['id_produto'].nunique()
+    
+    # Contagem de produtos consistentes e inconsistentes
+    consistentes = analise_consistencia[analise_consistencia['status_consistencia'] == 'Consistente']['id_produto'].nunique()
+    inconsistentes = total_skus_verificados - consistentes
+    
+    # Calcular percentuais
+    pct_consistentes = (consistentes / total_skus_verificados * 100) if total_skus_verificados > 0 else 0
+    pct_inconsistentes = 100 - pct_consistentes
+    
+    # Adicionar às métricas
+    metricas['TOTAL SKUs VERIFICADOS'] = total_skus_verificados
+    metricas['TOTAL SKUs CONSISTENTES'] = consistentes
+    metricas['%SKUs CONSISTENTES'] = pct_consistentes
+    metricas['TOTAL SKUs INCONSISTENTES'] = inconsistentes
+    metricas['%SKUs INCONSISTENTES'] = pct_inconsistentes
+    
+    # Estatísticas adicionais sobre as inconsistências
+    inconsistencias = analise_consistencia[analise_consistencia['status_consistencia'] == 'Inconsistente']
+    
+    if len(inconsistencias) > 0:
+        # Exibir top 10 inconsistências
+        print(f"\nTotal de SKUs verificados: {total_skus_verificados}")
+        print(f"SKUs consistentes: {consistentes} ({pct_consistentes:.1f}%)")
+        print(f"SKUs inconsistentes: {inconsistentes} ({pct_inconsistentes:.1f}%)")
+        
+        # Exibir as 5 maiores inconsistências 
+        top_inconsistentes = inconsistencias.sort_values('diferenca', ascending=False).head(5)
+        if len(top_inconsistentes) > 0:
+            print("\nAs 5 maiores inconsistências encontradas:")
+            for _, row in top_inconsistentes.iterrows():
+                print(f"- Produto ID {int(row['id_produto'])}, Loja {int(row['id_loja'])}: " 
+                      f"Saldo histórico = {row['estoque']:.1f}, "
+                      f"Saldo movimentação = {row['estoque_depois']:.1f}, "
+                      f"Diferença = {row['diferenca']:.1f}")
+        
+        # Exportar detalhes das inconsistências
+        caminho_inconsistencias = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_consistencia_estoque.xlsx")
+        analise_consistencia.to_excel(caminho_inconsistencias, index=False)
+        print(f"\nDetalhes das inconsistências exportados para: {caminho_inconsistencias}")
+    else:
+        print("\nNão foram encontradas inconsistências entre o histórico de estoque e os movimentos.")
+        caminho_inconsistencias = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_consistencia_estoque.xlsx")
+        analise_consistencia.to_excel(caminho_inconsistencias, index=False)
+        print(f"\nDetalhes das inconsistências exportados para: {caminho_inconsistencias}")
+     
+except Exception as e:
+    print(f"Erro ao analisar consistência de estoque: {e}")
+    metricas['TOTAL SKUs VERIFICADOS'] = 0
+    metricas['TOTAL SKUs CONSISTENTES'] = 0
+    metricas['%SKUs CONSISTENTES'] = 0
+    metricas['TOTAL SKUs INCONSISTENTES'] = 0
+    metricas['%SKUs INCONSISTENTES'] = 0
+
 # Totais por grupo ABC
 total_grupo_a = (estoque_com_vendas['Curva ABC'] == 'A').sum()
 total_grupo_b = (estoque_com_vendas['Curva ABC'] == 'B').sum()
@@ -835,6 +920,49 @@ metricas['COBERTURA EM DIAS GRUPO C'] = cobertura_grupo_c
 
 # Criar DataFrame com as métricas
 df_metricas = pd.DataFrame([metricas])
+
+# Identificar todas as lojas disponíveis
+print("\nAdicionando informações de estoque por loja e consistência...")
+todas_lojas = df_estoque['id_loja'].unique()
+todas_lojas = sorted(todas_lojas)  # Ordenar lojas por ID
+
+# Para cada loja, adicionar uma coluna com o estoque
+# Primeiro criar um dicionário para mapear o estoque de cada produto em cada loja
+estoque_por_loja = {}
+for loja in todas_lojas:
+    # Filtrar o estoque mais recente para esta loja
+    estoque_loja = historico_mais_recente[historico_mais_recente['id_loja'] == loja]
+    # Criar mapeamento de produto para estoque nesta loja
+    mapa_estoque = dict(zip(estoque_loja['id_produto'], estoque_loja['estoque']))
+    estoque_por_loja[loja] = mapa_estoque
+
+# Adicionar colunas de estoque por loja ao DataFrame principal
+for loja in todas_lojas:
+    coluna_estoque = f'Estoque Loja {loja}'
+    estoque_com_vendas[coluna_estoque] = estoque_com_vendas['SKU'].map(
+        lambda sku: estoque_por_loja[loja].get(sku, 0)
+    )
+
+# Adicionar informação de consistência por loja
+consistencia_por_loja = {}
+for loja in todas_lojas:
+    # Filtrar a análise de consistência para esta loja
+    consistencia_loja = analise_consistencia[analise_consistencia['id_loja'] == loja]
+    # Criar mapeamento de produto para status de consistência nesta loja
+    mapa_consistencia = dict(zip(consistencia_loja['id_produto'], consistencia_loja['status_consistencia']))
+    consistencia_por_loja[loja] = mapa_consistencia
+
+# Adicionar colunas de consistência por loja ao DataFrame principal
+for loja in todas_lojas:
+    coluna_consistencia = f'Consistência Loja {loja}'
+    estoque_com_vendas[coluna_consistencia] = estoque_com_vendas['SKU'].map(
+        lambda sku: consistencia_por_loja[loja].get(sku, 'Sem Informação')
+    )
+
+print(f"Adicionadas {len(todas_lojas)} colunas de estoque por loja e {len(todas_lojas)} colunas de consistência.")
+
+estoque_com_vendas.to_excel(caminho_arquivo_completo, index=False)
+print(f"\nTabela completa com estoque por loja e consistência exportada para: {caminho_arquivo_completo}")
 
 # Exportar para Excel
 caminho_arquivo_metricas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metricas_analise_estoque.xlsx")
