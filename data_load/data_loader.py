@@ -66,12 +66,30 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         df_Vendas_Atipicas = pd.read_excel(file_paths["vendas_atipicas_path"]) if os.path.exists(file_paths["vendas_atipicas_path"]) else None
         df_relatorio_produtos = pd.read_excel(file_paths["relatorio_produtos_path"], sheet_name=0) if os.path.exists(file_paths["relatorio_produtos_path"]) else None
         df_analise_giro = pd.read_excel(file_paths["analise_giro_path"], sheet_name=0) if os.path.exists(file_paths["analise_giro_path"]) else None
-        # df_analise_curva_cobertura = pd.read_excel(file_paths["analise_curva_cobertura_path"], sheet_name=0) if os.path.exists(file_paths["analise_curva_cobertura_path"]) else None
-
-        previsao_retorno_path = file_paths.get("previsao_retorno_path", "caminho não definido")
-        # print(f"Caminho do arquivo de previsão de retorno: {previsao_retorno_path}")
-        # print(f"O arquivo existe? {os.path.exists(previsao_retorno_path) if previsao_retorno_path != 'caminho não definido' else False}")
         
+        # Tratamento para df_analise_curva_cobertura similar ao de previsao_retorno
+        analise_curva_cobertura_path = file_paths.get("analise_curva_cobertura_path", "caminho não definido")
+        if analise_curva_cobertura_path != "caminho não definido" and os.path.exists(analise_curva_cobertura_path):
+            try:
+                # Tentar ler todas as planilhas para verificar os nomes disponíveis
+                excel_file = pd.ExcelFile(analise_curva_cobertura_path)
+                sheet_names = excel_file.sheet_names
+                # print(f"Planilhas disponíveis no arquivo de análise curva cobertura: {sheet_names}")
+                
+                # Tentar carregar a planilha especificada (usando a primeira aba por padrão)
+                df_analise_curva_cobertura = pd.read_excel(
+                    analise_curva_cobertura_path, 
+                    sheet_name=0  # Podemos especificar o nome da aba se necessário
+                )
+                # print(f"DataFrame analise_curva_cobertura carregado com {len(df_analise_curva_cobertura)} linhas e {len(df_analise_curva_cobertura.columns)} colunas.")
+            except Exception as e:
+                print(f"Erro específico ao carregar df_analise_curva_cobertura: {str(e)}")
+                df_analise_curva_cobertura = None
+        else:
+            df_analise_curva_cobertura = None
+            print("Arquivo de análise de curva de cobertura não encontrado ou caminho não definido.")
+        
+        previsao_retorno_path = file_paths.get("previsao_retorno_path", "caminho não definido")
         if previsao_retorno_path != "caminho não definido" and os.path.exists(previsao_retorno_path):
             try:
                 # Tentar ler todas as planilhas para verificar os nomes disponíveis
@@ -137,7 +155,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         "df_relatorio_produtos": df_relatorio_produtos,
         "df_previsao_retorno": df_previsao_retorno,
         "df_analise_giro": df_analise_giro,
-        # "df_analise_curva_cobertura": df_analise_curva_cobertura,
+        "df_analise_curva_cobertura": df_analise_curva_cobertura,
         "titulo": titulo,
         "company_context": company_context,
         "segmentos_context": segmentos_context,

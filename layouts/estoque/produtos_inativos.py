@@ -27,10 +27,16 @@ def get_produtos_inativos_layout(data):
                 ])
             )
         ], style=content_style)
+    else:
+        # Carregar os dados do DataFrame
+        df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
     
-    # Carregar os dados do DataFrame
-    df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
-    
+    if data.get["df_analise_curva_cobertura"] is None:
+        print("Verifique se o arquivo relatorio_produtos.xlsx está presente no diretório de dados")
+    else:
+        # Carregar os dados do DataFrame
+        df_analise_curva_cobertura = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
+
     # Garantir que a coluna 'recencia' esteja no formato de data
     if 'recencia' in df_produtos.columns and df_produtos['recencia'].dtype == 'object':
         # Tratamento para valores problemáticos como "0" ou vazios
