@@ -47,6 +47,22 @@ def get_segmentacao_layout(data):
     # Calcular percentuais
     total_clients = segment_counts['Quantidade de Clientes'].sum()
     segment_counts['Percentual'] = segment_counts['Quantidade de Clientes'] / total_clients * 100
+
+    # Adicionar linha para "Todos"
+    todos_row = pd.DataFrame({
+        'Segmento': ['Todos'],
+        'Quantidade de Clientes': [total_clients],
+        'Percentual': [100.0]
+    })
+    
+    # Ordenar os segmentos originais por quantidade (do maior para o menor)
+    segment_counts = segment_counts.sort_values('Quantidade de Clientes', ascending=False)
+    
+    # Concatenar o DataFrame original com a linha "Todos"
+    segment_counts = pd.concat([todos_row, segment_counts], ignore_index=True)
+    
+    # Obter a ordem personalizada: "Todos" primeiro, seguido pelos demais segmentos ordenados por quantidade
+    segment_order = ["Todos"] + segment_counts[segment_counts['Segmento'] != 'Todos']['Segmento'].tolist()
     
     # Criar o gráfico de barras diretamente na função
     fig_segments = px.bar(
@@ -56,7 +72,8 @@ def get_segmentacao_layout(data):
         color='Segmento', 
         labels={"Segmento": "Segmentos"},
         color_discrete_map=cores_segmento,
-        template='plotly_white'
+        template='plotly_white',
+        category_orders={"Segmento": segment_order}
     )
     
     # Adicionar anotações de valores

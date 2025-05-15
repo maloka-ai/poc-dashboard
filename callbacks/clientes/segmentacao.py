@@ -37,8 +37,12 @@ def register_segmentacao_callbacks(app):
         selected_segment = clickData["points"][0]["x"]
         header_text = f"Clientes do Segmento: {selected_segment}"
         
-        # Filtrar o DataFrame para o segmento selecionado
-        filtered_df = df[df["Segmento"] == selected_segment]
+        # Filtrar o DataFrame para o segmento selecionado ou mostrar todos
+        if selected_segment == "Todos":
+            filtered_df = df  # Não filtra, usa todos os registros
+            header_text = "Todos os Clientes"
+        else:
+            filtered_df = df[df["Segmento"] == selected_segment]
         
         if filtered_df.empty:
             return header_text, "Nenhum cliente encontrado para o segmento selecionado."
