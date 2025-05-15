@@ -229,5 +229,6 @@ if dfs_mensais:
     excel_path = os.path.join(diretorio_atual, 'faturamento_diario.xlsx')
     df_faturamento_diario.to_excel(excel_path, index=False)
     print(f"Dados de faturamento diário salvos em: {excel_path}")
+    print(df_faturamento_diario.head(15))
 else:
     print("Não há dados para gerar análise de faturamento diário.")
