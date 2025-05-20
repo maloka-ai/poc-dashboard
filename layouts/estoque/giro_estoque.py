@@ -77,8 +77,8 @@ def get_giro_estoque_layout(data):
     )
     
     # Gráfico 2: Barras com quantidade e porcentagem por situação
-    situacao_counts = df_curva_cobertura['situacao'].value_counts().reset_index()
-    situacao_counts.columns = ['situacao', 'count']
+    situacao_counts = df_curva_cobertura['Situação do Produto'].value_counts().reset_index()
+    situacao_counts.columns = ['Situação do Produto', 'count']
     
     total_produtos = situacao_counts['count'].sum()
     situacao_counts['porcentagem'] = (situacao_counts['count'] / total_produtos * 100).round(1)
@@ -87,25 +87,12 @@ def get_giro_estoque_layout(data):
     
     # Adicionando barras para contagem
     fig_barras.add_trace(go.Bar(
-        x=situacao_counts['situacao'],
-        y=situacao_counts['count'],
-        text=situacao_counts['count'],
+        x=situacao_counts['Situação do Produto'],
+        y=situacao_counts['porcentagem'],
+        text=[f"{count} ({pct}%)" for count, pct in zip(situacao_counts['count'], situacao_counts['porcentagem'])],
         textposition='auto',
         name='Quantidade',
-        marker_color='rgb(55, 83, 109)'
-    ))
-    
-    # Adicionando linha para porcentagem
-    fig_barras.add_trace(go.Scatter(
-        x=situacao_counts['situacao'],
-        y=situacao_counts['porcentagem'],
-        text=[f'{p}%' for p in situacao_counts['porcentagem']],
-        mode='lines+markers+text',
-        textposition='top center',
-        name='Porcentagem',
-        yaxis='y2',
-        marker=dict(size=10, color='rgb(255, 127, 14)'),
-        line=dict(width=3, color='rgb(255, 127, 14)')
+        marker_color=gradient_colors['blue_gradient'][0],
     ))
 
     fig_barras.update_traces(
@@ -117,18 +104,19 @@ def get_giro_estoque_layout(data):
     
     # Configurando o layout com dois eixos Y
     fig_barras.update_layout(
-        title_text='Quantidade e Porcentagem por Situação do Produto',
         xaxis=dict(title='Situação'),
         yaxis=dict(
-            title='Quantidade',
-            titlefont=dict(color='rgb(55, 83, 109)'),
-            tickfont=dict(color='rgb(55, 83, 109)'),
+            title=dict(
+                text='Quantidade',
+                font=dict(color='rgb(55, 83, 109)')
+            ),
             side='left'
         ),
         yaxis2=dict(
-            title='Porcentagem (%)',
-            titlefont=dict(color='rgb(255, 127, 14)'),
-            tickfont=dict(color='rgb(255, 127, 14)'),
+            title=dict(
+                text='Porcentagem (%)',
+                font=dict(color='rgb(255, 127, 14)')
+            ),
             overlaying='y',
             side='right',
             range=[0, 100]
@@ -138,29 +126,51 @@ def get_giro_estoque_layout(data):
         margin=dict(t=50, b=50, l=50, r=50)
     )
     
-    # Montando o layout final com os gráficos
-    return html.Div([
+    #layout final com os gráficos
+    layout = html.Div([
         html.H2("Análise de Situação do Estoque", className="dashboard-title"),
 
         # Linha de métricas
         metrics_row,
         
+        # Primeira linha - Gráfico de pizza
         html.Div([
-            create_card(
-                "Distribuição de Produtos por Curva ABC",
-                dcc.Graph(figure=fig_pie, id='grafico-curva-abc-pizza')
-        )
-            ], className="col-md-6"),
-            
-        html.Div([
-            create_card(
-                "Quantidade e Porcentagem por Situação do Produto",
-                dcc.Graph(figure=fig_barras, id='grafico-situacao-barras')
-            )
-        ], className="col-md-6"),
-
-        html.Div([
-            html.Div(id="tabela-produtos-container", className="mt-4", style={'display': 'none'})
+            html.Div([
+                create_card(
+                    "Distribuição de Produtos por Curva ABC",
+                    dcc.Graph(figure=fig_pie, id='grafico-curva-abc-pizza')
+                )
+            ], className="col-md-12"),
         ], className="row mb-4"),
+            
+        # Segunda linha - Gráfico de barras
+        html.Div([
+            html.Div([
+                create_card(
+                    "Quantidade e Porcentagem por Situação do Produto",
+                    dcc.Graph(figure=fig_barras, id='grafico-situacao-barras')
+                )
+            ], className="col-md-12"),
+        ], className="row mb-4"),
+
+        # Terceira linha - Tabela de produtos (inicialmente oculta)
+        html.Div([
+            html.Div([
+                create_card(
+                    "Tabela dos produtos",
+                    html.Div([
+                        html.Div([
+                            html.I(className="fas fa-mouse-pointer fa-3x text-muted d-block text-center mb-3"),
+                            html.H4("Clique em uma barra no gráfico acima", className="text-center mb-2"),
+                            html.P("Para visualizar os produtos correspondentes a cada situação, selecione uma barra no gráfico de situação do produto acima.",
+                                className="text-center text-muted")
+                        ], id="tabela-produtos-container")
+                    ])
+                )
+            ], className="col-md-12"),
+        ], className="row mb-4"),
+
     ], style=content_style)
+
+    return layout
 

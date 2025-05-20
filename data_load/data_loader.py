@@ -29,92 +29,150 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         cached_data = app_cache.get(cache_key)
         if cached_data is not None:
             print(f"[CACHE] Encontrado no cache: {cache_key}")
-            return cached_data
+            # Verificar se os dados em cache estão válidos e não têm erro
+            if cached_data.get("error", False):
+                print(f"[CACHE] Dados com erro encontrados no cache. Recarregando...")
+            else:
+                return cached_data
     
     print(f"[CACHE] Cache não encontrado para {cache_key}, carregando dados...")
     
     # Verificar se existem os arquivos necessários
     valid, missing_files = validate_client_data(client, data_type)
     if not valid:
-        return {
+        error_result = {
             "error": True,
-            "message": f"Arquivos necessários ausentes para {client} - {data_type}: {', '.join(missing_files)}"
+            "message": f"Arquivos necessários ausentes para {client} - {data_type}: {', '.join(missing_files)}",
+            "titulo": f"{client} - {data_type}",
+            "company_context": get_client_context(client),
+            "segmentos_context": get_client_segmentos(client)
         }
+        return error_result
     
     # Obter caminhos dos arquivos
     file_paths = get_file_paths(client, data_type)
     if file_paths is None:
-        return {
+        error_result = {
             "error": True,
-            "message": f"Não foram encontrados dados para {client} - {data_type}"
+            "message": f"Não foram encontrados dados para {client} - {data_type}",
+            "titulo": f"{client} - {data_type}",
+            "company_context": get_client_context(client),
+            "segmentos_context": get_client_segmentos(client)
         }
+        return error_result
     
-    # Carregar arquivos
+    # Inicializar dicionário de resultados e erros
+    result = {
+        "df": None,
+        "df_RC_Mensal": None,
+        "df_RC_Trimestral": None,
+        "df_RC_Anual": None,
+        "df_Previsoes": None,
+        "df_RT_Anual": None,
+        "df_fat_Anual": None,
+        "df_fat_Anual_Geral": None,
+        "df_fat_Mensal": None,
+        "df_fat_Mensal_lojas": None,
+        "df_fat_Diario": None,
+        "df_fat_Diario_lojas": None,
+        "df_Vendas_Atipicas": None,
+        "df_relatorio_produtos": None,
+        "df_previsao_retorno": None,
+        "df_analise_giro": None,
+        "df_analise_curva_cobertura": None,
+        "errors": []
+    }
+    
+    # Lista de arquivos essenciais (sem os quais o carregamento deve falhar)
+    essential_files = ["analytics_path", "rc_mensal_path", "rc_trimestral_path", "rc_anual_path"]
+    essential_errors = []
+    
+    # Carregar arquivos com tratamento individual de erros
     try:
-        df = pd.read_csv(file_paths["analytics_path"][0]) if file_paths["analytics_path"] else None
-        df_RC_Mensal = pd.read_excel(file_paths["rc_mensal_path"]) if os.path.exists(file_paths["rc_mensal_path"]) else None
-        df_RC_Trimestral = pd.read_excel(file_paths["rc_trimestral_path"]) if os.path.exists(file_paths["rc_trimestral_path"]) else None
-        df_RC_Anual = pd.read_excel(file_paths["rc_anual_path"]) if os.path.exists(file_paths["rc_anual_path"]) else None
-        df_Previsoes = pd.read_excel(file_paths["previsoes_path"]) if os.path.exists(file_paths["previsoes_path"]) else None
-        df_RT_Anual = pd.read_excel(file_paths["rt_anual_path"]) if os.path.exists(file_paths["rt_anual_path"]) else None
-        df_fat_Anual = pd.read_excel(file_paths["fat_anual_path"]) if os.path.exists(file_paths["fat_anual_path"]) else None
-        df_fat_Anual_Geral = pd.read_excel(file_paths["fat_anual_geral_path"]) if os.path.exists(file_paths["fat_anual_geral_path"]) else None
-        df_fat_Mensal = pd.read_excel(file_paths["fat_mensal_path"]) if os.path.exists(file_paths["fat_mensal_path"]) else None
-        df_fat_Mensal_lojas = pd.read_excel(file_paths["fat_mensal_lojas_path"]) if os.path.exists(file_paths["fat_mensal_lojas_path"]) else None
-        df_fat_Diario = pd.read_excel(file_paths["fat_diario_path"]) if os.path.exists(file_paths["fat_diario_path"]) else None
-        df_fat_Diario_lojas = pd.read_excel(file_paths["fat_diario_lojas_path"]) if os.path.exists(file_paths["fat_diario_lojas_path"]) else None
-        df_Vendas_Atipicas = pd.read_excel(file_paths["vendas_atipicas_path"]) if os.path.exists(file_paths["vendas_atipicas_path"]) else None
-        df_relatorio_produtos = pd.read_excel(file_paths["relatorio_produtos_path"], sheet_name=0) if os.path.exists(file_paths["relatorio_produtos_path"]) else None
-        df_analise_giro = pd.read_excel(file_paths["analise_giro_path"], sheet_name=0) if os.path.exists(file_paths["analise_giro_path"]) else None
-        
-        # Tratamento para df_analise_curva_cobertura similar ao de previsao_retorno
-        analise_curva_cobertura_path = file_paths.get("analise_curva_cobertura_path", "caminho não definido")
-        if analise_curva_cobertura_path != "caminho não definido" and os.path.exists(analise_curva_cobertura_path):
+        if file_paths["analytics_path"]:
             try:
-                # Tentar ler todas as planilhas para verificar os nomes disponíveis
-                excel_file = pd.ExcelFile(analise_curva_cobertura_path)
-                sheet_names = excel_file.sheet_names
-                # print(f"Planilhas disponíveis no arquivo de análise curva cobertura: {sheet_names}")
-                
-                # Tentar carregar a planilha especificada (usando a primeira aba por padrão)
-                df_analise_curva_cobertura = pd.read_excel(
-                    analise_curva_cobertura_path, 
-                    sheet_name=0  # Podemos especificar o nome da aba se necessário
-                )
-                # print(f"DataFrame analise_curva_cobertura carregado com {len(df_analise_curva_cobertura)} linhas e {len(df_analise_curva_cobertura.columns)} colunas.")
+                result["df"] = pd.read_csv(file_paths["analytics_path"][0])
             except Exception as e:
-                print(f"Erro específico ao carregar df_analise_curva_cobertura: {str(e)}")
-                df_analise_curva_cobertura = None
+                error_msg = f"Erro ao carregar analytics_path: {str(e)}"
+                essential_errors.append(error_msg)
+                result["errors"].append(error_msg)
         else:
-            df_analise_curva_cobertura = None
-            print("Arquivo de análise de curva de cobertura não encontrado ou caminho não definido.")
+            essential_errors.append("analytics_path não disponível")
+            result["errors"].append("analytics_path não disponível")
+    
+        # Carregar cada arquivo individualmente com tratamento de erros
+        for file_key, df_key in [
+            ("rc_mensal_path", "df_RC_Mensal"),
+            ("rc_trimestral_path", "df_RC_Trimestral"),
+            ("rc_anual_path", "df_RC_Anual"),
+            ("previsoes_path", "df_Previsoes"),
+            ("rt_anual_path", "df_RT_Anual"),
+            ("fat_anual_path", "df_fat_Anual"),
+            ("fat_anual_geral_path", "df_fat_Anual_Geral"),
+            ("fat_mensal_path", "df_fat_Mensal"),
+            ("fat_mensal_lojas_path", "df_fat_Mensal_lojas"),
+            ("fat_diario_path", "df_fat_Diario"),
+            ("fat_diario_lojas_path", "df_fat_Diario_lojas"),
+            ("vendas_atipicas_path", "df_Vendas_Atipicas")
+        ]:
+            if os.path.exists(file_paths[file_key]):
+                try:
+                    result[df_key] = pd.read_excel(file_paths[file_key])
+                except Exception as e:
+                    error_msg = f"Erro ao carregar {file_key}: {str(e)}"
+                    result["errors"].append(error_msg)
+                    if file_key in essential_files:
+                        essential_errors.append(error_msg)
+            elif file_key in essential_files:
+                error_msg = f"{file_key} não encontrado"
+                essential_errors.append(error_msg)
+                result["errors"].append(error_msg)
         
-        previsao_retorno_path = file_paths.get("previsao_retorno_path", "caminho não definido")
-        if previsao_retorno_path != "caminho não definido" and os.path.exists(previsao_retorno_path):
+        # Tratamento especial para arquivos com sheet_name
+        for file_key, df_key in [
+            ("relatorio_produtos_path", "df_relatorio_produtos"),
+            ("analise_giro_path", "df_analise_giro")
+        ]:
+            if os.path.exists(file_paths[file_key]):
+                try:
+                    result[df_key] = pd.read_excel(file_paths[file_key], sheet_name=0)
+                except Exception as e:
+                    result["errors"].append(f"Erro ao carregar {file_key}: {str(e)}")
+        
+        # Tratamento especial para df_analise_curva_cobertura
+        if os.path.exists(file_paths.get("analise_curva_cobertura_path", "")):
             try:
-                # Tentar ler todas as planilhas para verificar os nomes disponíveis
-                excel_file = pd.ExcelFile(previsao_retorno_path)
-                sheet_names = excel_file.sheet_names
-                # print(f"Planilhas disponíveis no arquivo: {sheet_names}")
-                
-                # Tentar carregar a planilha específica
-                df_previsao_retorno = pd.read_excel(
-                    previsao_retorno_path, 
-                    sheet_name="Resumo_por_Cliente"
-                )
-                # print(f"DataFrame carregado com {len(df_previsao_retorno)} linhas e {len(df_previsao_retorno.columns)} colunas.")
+                result["df_analise_curva_cobertura"] = pd.read_excel(file_paths["analise_curva_cobertura_path"], sheet_name=0)
             except Exception as e:
-                print(f"Erro específico ao carregar df_previsao_retorno: {str(e)}")
-                df_previsao_retorno = None
-        else:
-            df_previsao_retorno = None
-            print("Arquivo de previsão de retorno não encontrado ou caminho não definido.")
-        # if df_previsao_retorno is not None:
-        #     print(f"DataFrame carregado com {len(df_previsao_retorno)} linhas e {len(df_previsao_retorno.columns)} colunas.")
+                result["errors"].append(f"Erro ao carregar analise_curva_cobertura: {str(e)}")
+        
+        # Tratamento especial para df_previsao_retorno
+        if os.path.exists(file_paths.get("previsao_retorno_path", "")):
+            try:
+                excel_file = pd.ExcelFile(file_paths["previsao_retorno_path"])
+                sheet_names = excel_file.sheet_names
+                sheet_to_use = "Resumo_por_Cliente" if "Resumo_por_Cliente" in sheet_names else 0
+                result["df_previsao_retorno"] = pd.read_excel(file_paths["previsao_retorno_path"], sheet_name=sheet_to_use)
+            except Exception as e:
+                result["errors"].append(f"Erro ao carregar previsao_retorno: {str(e)}")
+        
     except Exception as e:
         return {
             "error": True,
-            "message": f"Erro ao carregar arquivos: {str(e)}"
+            "message": f"Erro geral ao carregar arquivos: {str(e)}",
+            "titulo": f"{client} - {data_type}",
+            "company_context": get_client_context(client),
+            "segmentos_context": get_client_segmentos(client)
+        }
+
+    # Se houver erros em arquivos essenciais, retorne erro
+    if essential_errors:
+        return {
+            "error": True,
+            "message": f"Erros em arquivos essenciais: {'; '.join(essential_errors)}",
+            "titulo": f"{client} - {data_type}",
+            "company_context": get_client_context(client),
+            "segmentos_context": get_client_segmentos(client)
         }
 
     titulo = f"{client} - {data_type}"
@@ -122,48 +180,33 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
     # =============================================================================
     # Processamento dos dados
     # =============================================================================
-    if df_RC_Mensal is not None:
-        df_RC_Mensal['retention_rate'] = df_RC_Mensal['retention_rate'].round(2)
+    if result["df_RC_Mensal"] is not None:
+        result["df_RC_Mensal"]['retention_rate'] = result["df_RC_Mensal"]['retention_rate'].round(2)
     
-    if df_RC_Trimestral is not None:
-        df_RC_Trimestral['recurrence_rate'] = df_RC_Trimestral['recurrence_rate'].round(2)
+    if result["df_RC_Trimestral"] is not None:
+        result["df_RC_Trimestral"]['recurrence_rate'] = result["df_RC_Trimestral"]['recurrence_rate'].round(2)
     
-    if df_RC_Anual is not None:
-        df_RC_Anual['new_rate'] = df_RC_Anual['new_rate'].round(2)
-        df_RC_Anual['returning_rate'] = df_RC_Anual['returning_rate'].round(2)
-        df_RC_Anual['retention_rate'] = df_RC_Anual['retention_rate'].round(2)
+    if result["df_RC_Anual"] is not None:
+        result["df_RC_Anual"]['new_rate'] = result["df_RC_Anual"]['new_rate'].round(2)
+        result["df_RC_Anual"]['returning_rate'] = result["df_RC_Anual"]['returning_rate'].round(2)
+        result["df_RC_Anual"]['retention_rate'] = result["df_RC_Anual"]['retention_rate'].round(2)
     
     # Obter contexto específico do cliente
     company_context = get_client_context(client)
     segmentos_context = get_client_segmentos(client)
 
-    # Preparar o resultado final
-    result = {
-        "df": df,
-        "df_RC_Mensal": df_RC_Mensal,
-        "df_RC_Trimestral": df_RC_Trimestral,
-        "df_RC_Anual": df_RC_Anual,
-        "df_Previsoes": df_Previsoes,
-        "df_RT_Anual": df_RT_Anual,
-        "df_fat_Anual": df_fat_Anual,
-        "df_fat_Anual_Geral": df_fat_Anual_Geral,
-        "df_fat_Mensal": df_fat_Mensal,
-        "df_fat_Mensal_lojas": df_fat_Mensal_lojas,
-        "df_fat_Diario": df_fat_Diario,
-        "df_fat_Diario_lojas": df_fat_Diario_lojas,
-        "df_Vendas_Atipicas": df_Vendas_Atipicas,
-        "df_relatorio_produtos": df_relatorio_produtos,
-        "df_previsao_retorno": df_previsao_retorno,
-        "df_analise_giro": df_analise_giro,
-        "df_analise_curva_cobertura": df_analise_curva_cobertura,
-        "titulo": titulo,
-        "company_context": company_context,
-        "segmentos_context": segmentos_context,
-        "error": False
-    }
+    # Adicionar informações ao resultado
+    result["titulo"] = titulo
+    result["company_context"] = company_context
+    result["segmentos_context"] = segmentos_context
+    result["error"] = len(result["errors"]) > 0
+    
+    # Mostrar warnings para arquivos não-essenciais com erro
+    if result["errors"] and not essential_errors:
+        print(f"[AVISO] Alguns arquivos não-essenciais não puderam ser carregados: {result['errors']}")
     
     # Salvar no cache antes de retornar
-    if app_cache is not None:
+    if app_cache is not None and not essential_errors:
         try:
             # Salvar no cache do Flask com um timeout específico (15 minutos = 900 segundos)
             app_cache.set(cache_key, result, timeout=900)
