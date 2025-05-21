@@ -53,27 +53,44 @@ def get_giro_estoque_layout(data):
     
     metrics_row = create_metric_row(metrics)
     
-    # Gráfico 1: Distribuição de produtos por Curva ABC (Pizza)
+    # Gráfico 1: Distribuição de produtos por Curva ABC (Barras)
     curva_abc_counts = df_curva_cobertura['Curva ABC'].value_counts().reset_index()
     curva_abc_counts.columns = ['curva_abc', 'count']
     
-    fig_pie = px.pie(
+    # Ordem personalizada para a Curva ABC
+    curva_abc_counts = curva_abc_counts.sort_values(by='count', ascending=False)
+    
+    # Definir cores específicas para cada categoria da Curva ABC
+    color_map = {
+        'A': gradient_colors['green_gradient'][0],
+        'B': gradient_colors['blue_gradient'][0],
+        'C': 'orange',
+        'Sem Venda': 'darkred'
+    }
+    
+    fig_barras_abc = px.bar(
         curva_abc_counts, 
-        values='count', 
-        names='curva_abc',
-        color_discrete_sequence=px.colors.sequential.Viridis,
-        hover_data=['count']
+        x='curva_abc', 
+        y='count',
+        text='count',
+        labels={'curva_abc': 'Curva ABC', 'count': 'Quantidade de Produtos'},
+        color='curva_abc',
+        color_discrete_map=color_map  # Usar o mapeamento de cores personalizado
     )
     
-    fig_pie.update_traces(
+    # Configurando o texto nas barras
+    fig_barras_abc.update_traces(
+        texttemplate='%{text}',
         textposition='outside',
-        textinfo='percent+label',
-        hovertemplate='<b>%{label}</b><br>Produtos: %{value}<br>Porcentagem: %{percent}'
+        hovertemplate='<b>%{x}</b><br>Produtos: %{y}<extra></extra>'
     )
     
-    fig_pie.update_layout(
+    fig_barras_abc.update_layout(
         legend_title='Curva ABC',
-        margin=dict(t=50, b=0, l=0, r=0)
+        margin=dict(t=50, b=0, l=0, r=0),
+        showlegend=False,  # Remover legenda já que as cores são explicativas
+        xaxis_title='',
+        yaxis_title='Quantidade de Produtos'
     )
     
     # Gráfico 2: Barras com quantidade e porcentagem por situação
@@ -129,21 +146,21 @@ def get_giro_estoque_layout(data):
     #layout final com os gráficos
     layout = html.Div([
         html.H2("Análise de Situação do Estoque", className="dashboard-title"),
-
+        dcc.Store(id='selected-data', data=data),
         # Linha de métricas
         metrics_row,
         
-        # Primeira linha - Gráfico de pizza
+        # Primeira linha - Gráfico de barras da Curva ABC
         html.Div([
             html.Div([
                 create_card(
                     "Distribuição de Produtos por Curva ABC",
-                    dcc.Graph(figure=fig_pie, id='grafico-curva-abc-pizza')
+                    dcc.Graph(figure=fig_barras_abc, id='grafico-curva-abc-barras')
                 )
             ], className="col-md-12"),
         ], className="row mb-4"),
             
-        # Segunda linha - Gráfico de barras
+        # Segunda linha - Gráfico de barras da Situação do Produto
         html.Div([
             html.Div([
                 create_card(
@@ -153,7 +170,7 @@ def get_giro_estoque_layout(data):
             ], className="col-md-12"),
         ], className="row mb-4"),
 
-        # Terceira linha - Tabela de produtos (inicialmente oculta)
+        # Terceira linha - Tabela de produtos
         html.Div([
             html.Div([
                 create_card(

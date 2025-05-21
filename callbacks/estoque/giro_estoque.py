@@ -4,6 +4,7 @@ from dash import html
 from dash.dependencies import Input, Output, State
 from dash import dash_table
 from utils import color
+from dash import no_update
 
 def register_giro_estoque_callbacks(app):
     @app.callback(
@@ -12,20 +13,41 @@ def register_giro_estoque_callbacks(app):
         State("selected-data", "data")
     )
     def display_produtos_por_situacao(clickData, data):
-        if clickData is None or data is None or data.get("df_analise_curva_cobertura") is None:
-            return html.Div([
-                html.I(className="fas fa-mouse-pointer fa-3x text-muted d-block text-center mb-3"),
-                html.H4("Clique em uma barra no gráfico acima", className="text-center mb-2"),
-                html.P("Para visualizar os produtos correspondentes a cada situação, selecione uma barra no gráfico de situação do produto acima.",
-                    className="text-center text-muted")
-            ])
+        print("Clickdata:", clickData)
+        print("Data:", data)
+        if clickData is None:
+            return no_update
         
         try:
+            # Verificar a estrutura do clickData antes de tentar acessar os índices
+            if not clickData or 'points' not in clickData or not clickData['points'] or 'x' not in clickData['points'][0]:
+                return html.Div([
+                    html.P("Dados do clique inválidos ou incompletos", className="text-warning text-center my-4"),
+                    html.I(className="fas fa-exclamation-circle fa-3x text-warning d-block text-center mb-3"),
+                    html.P("Por favor, tente clicar novamente na barra desejada.", className="text-center text-muted")
+                ])
+            
+            # Verificar se data contém os dados necessários
+            if not data or 'df_analise_curva_cobertura' not in data:
+                return html.Div([
+                    html.P("Dados necessários não encontrados", className="text-danger text-center my-4"),
+                    html.I(className="fas fa-database fa-3x text-danger d-block text-center mb-3"),
+                    html.P("Os dados de análise não estão disponíveis.", className="text-center text-muted")
+                ])
+            
             # Extrair a situação selecionada do clique
             situacao = clickData['points'][0]['x']
             
-            # Carregar dados
-            df_curva_cobertura = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
+            # Carregar dados com tratamento de erro
+            try:
+                df_curva_cobertura = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
+                if df_curva_cobertura.empty:
+                    raise ValueError("DataFrame está vazio")
+            except Exception as e:
+                return html.Div([
+                    html.P(f"Erro ao carregar os dados: {str(e)}", className="text-danger text-center my-4"),
+                    html.I(className="fas fa-file-excel fa-3x text-danger d-block text-center mb-3")
+                ])
             
             # Filtrar por situação selecionada
             df_filtrado = df_curva_cobertura[df_curva_cobertura['Situação do Produto'] == situacao]
@@ -38,22 +60,28 @@ def register_giro_estoque_callbacks(app):
                 'Categoria', 
                 'Estoque Total', 
                 'Situação do Produto', 
-                'Curva ABC', 
-                'Cobertura Estoque (dias)',
-                'Recência (dias)',  
+                'Curva ABC',
+                #estoque loja 1, 2, 3 e 4
+                # 
                 'Data Última Venda'
             ]
 
             # Verificar se todas as colunas existem no DataFrame
             colunas_existentes = [col for col in colunas_exibir if col in df_curva_cobertura.columns]
             
+            if not colunas_existentes:
+                return html.Div([
+                    html.P("Nenhuma coluna válida encontrada nos dados", className="text-warning text-center my-4"),
+                    html.I(className="fas fa-columns fa-3x text-warning d-block text-center mb-3")
+                ])
+            
             df_exibir = df_filtrado[colunas_existentes].copy()
             
             # Formatar a data
             if 'Data Última Venda' in df_exibir.columns:
-                df_exibir['Data Última Venda'] = pd.to_datetime(df_exibir['Data Última Venda']).dt.strftime('%d/%m/%Y')
+                df_exibir['Data Última Venda'] = pd.to_datetime(df_exibir['Data Última Venda'], errors='coerce').dt.strftime('%d/%m/%Y')
             
-            # Criar componente da tabela no mesmo estilo de produtos_inativos.py
+            # Criar componente da tabela
             table = dash_table.DataTable(
                 id='datatable-situacao-produtos',
                 columns=[{"name": col, "id": col} for col in df_exibir.columns],
@@ -112,8 +140,7 @@ def register_giro_estoque_callbacks(app):
         except Exception as e:
             print(f"Erro ao processar dados da tabela: {e}")
             return html.Div([
-                html.P(f"Erro ao processar dados: {e}", className="text-danger text-center my-4"),
+                html.P(f"Erro ao processar dados: {str(e)}", className="text-danger text-center my-4"),
                 html.I(className="fas fa-exclamation-triangle fa-3x text-danger d-block text-center mb-3"),
                 html.P("Por favor, tente novamente ou contate o suporte.", className="text-muted text-center")
             ])
-        
