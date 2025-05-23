@@ -1,19 +1,17 @@
 import io
 import pandas as pd
-import datetime
 from dash import html, dcc
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 
-from utils import create_card, content_style
+from utils import create_card, content_style, create_metric_row, color, gradient_colors
 
 def get_giro_estoque_layout(data):
     """
     Cria o layout da página de produtos inativos com gráficos e tabelas interativas
     para análise de produtos que não são vendidos há um determinado período.
     """
-    if data.get("df_analise_giro") is None:
+    if data.get("df_analise_curva_cobertura") is None:
         return html.Div([
             html.H2("Análise de Produtos Inativos", className="dashboard-title"),
             create_card(
@@ -21,111 +19,193 @@ def get_giro_estoque_layout(data):
                 html.Div([
                     html.P("Não foram encontrados dados de produtos para este cliente.", className="text-center text-muted my-4"),
                     html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
-                    html.P("Verifique se o arquivo analise_giro_completa.xlsx está presente no diretório de dados",  
+                    html.P("Verifique se o arquivo analise_curva_cobertura.xlsx está presente no diretório de dados",  
                            className="text-muted text-center")
                 ])
             )
         ], style=content_style)
     
     # Carregar os dados do DataFrame
-    df_giro_estoque = pd.read_json(io.StringIO(data["df_analise_giro"]), orient='split')
+    df_curva_cobertura = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
     
-    # Supondo que o DataFrame df_giro_estoque já tenha as colunas necessárias:
-    # classificacao_giro, cobertura_dias, classe_abc
+    # Definir o período de análise
+    periodo_analise = "90 dias"
     
-    # Gráfico 1: Distribuição de Giro (Pizza)
-    classificacao_counts = df_giro_estoque['classificacao_giro'].value_counts().reset_index()
-    classificacao_counts.columns = ['classificacao_giro', 'count']
+    # Calcular métricas para as curvas ABC
+    total_produtos = len(df_curva_cobertura)
+    produtos_curva_a = len(df_curva_cobertura[df_curva_cobertura['Curva ABC'] == 'A'])
+    produtos_curva_b = len(df_curva_cobertura[df_curva_cobertura['Curva ABC'] == 'B'])
+    produtos_curva_c = len(df_curva_cobertura[df_curva_cobertura['Curva ABC'] == 'C'])
+    produtos_sem_venda = len(df_curva_cobertura[df_curva_cobertura['Curva ABC'] == 'Sem Venda'])
     
-    fig_pie = px.pie(
-        classificacao_counts, 
-        values='count', 
-        names='classificacao_giro',
-        color_discrete_sequence=px.colors.sequential.Viridis,
-        hover_data=['count']
+    # Função para formatar números com separador de milhar
+    def formatar_numero(numero):
+        return f"{numero:,}".replace(",", ".")
+    
+    # Criar métricas
+    metrics = [
+        {"title": "Total de Produtos", "value": formatar_numero(total_produtos), "color": gradient_colors['blue_gradient'][0]},
+        {"title": "Curva A (90 dias)", "value": formatar_numero(produtos_curva_a), "color": 'darkred'},
+        {"title": "Curva B (90 dias)", "value": formatar_numero(produtos_curva_b), "color": 'orange'},
+        {"title": "Curva C (90 dias)", "value": formatar_numero(produtos_curva_c), "color": gradient_colors['green_gradient'][0]},
+        {"title": "Sem Venda (90 dias)", "value": formatar_numero(produtos_sem_venda), "color": color['warning']},
+    ]
+    
+    metrics_row = create_metric_row(metrics)
+    
+    # Gráfico 1: Distribuição de produtos por Curva ABC (Barras)
+    curva_abc_counts = df_curva_cobertura['Curva ABC'].value_counts().reset_index()
+    curva_abc_counts.columns = ['curva_abc', 'count']
+    
+    # Ordem personalizada para a Curva ABC
+    curva_abc_counts = curva_abc_counts.sort_values(by='count', ascending=False)
+    
+    # Definir cores específicas para cada categoria da Curva ABC
+    color_map = {
+        'A': gradient_colors['green_gradient'][0],
+        'B': gradient_colors['blue_gradient'][0],
+        'C': 'orange',
+        'Sem Venda': 'darkred'
+    }
+    
+    fig_barras_abc = px.bar(
+        curva_abc_counts, 
+        x='curva_abc', 
+        y='count',
+        text='count',
+        labels={'curva_abc': 'Curva ABC', 'count': 'Quantidade de Produtos'},
+        color='curva_abc',
+        color_discrete_map=color_map  # Usar o mapeamento de cores personalizado
     )
     
-    fig_pie.update_traces(
+    # Configurando o texto nas barras
+    fig_barras_abc.update_traces(
+        texttemplate='%{text}',
         textposition='outside',
-        textinfo='percent+label',
-        hovertemplate='<b>%{label}</b><br>Produtos: %{value}<br>Porcentagem: %{percent}'
+        hovertemplate='<b>%{x}</b><br>Produtos: %{y}<extra></extra>',
+        marker_line_width=1.5,
+        opacity=0.8,
+        marker_line_color="white",
     )
     
-    fig_pie.update_layout(
-        legend_title='Classificação',
-        margin=dict(t=50, b=0, l=0, r=0)
+    fig_barras_abc.update_layout(
+        legend_title='Curva ABC',
+        margin=dict(t=50, b=0, l=0, r=0),
+        showlegend=False,  # Remover legenda já que as cores são explicativas
+        xaxis_title='',
+        yaxis_title='Quantidade de Produtos',
+        clickmode='event+select'  # Habilitar modo de clique para seleção
     )
     
-    # Gráfico 2: Distribuição de Cobertura (Histograma)
-    df_cobertura = df_giro_estoque[(df_giro_estoque['cobertura_dias'].notnull()) & 
-                                  (df_giro_estoque['cobertura_dias'] <= 365)].copy()
+    # Gráfico 2: Barras com quantidade e porcentagem por situação
+    situacao_counts = df_curva_cobertura['Situação do Produto'].value_counts().reset_index()
+    situacao_counts.columns = ['Situação do Produto', 'count']
     
-    fig_hist = px.histogram(
-        df_cobertura,
-        x='cobertura_dias',
-        nbins=30,
-        labels={'cobertura_dias': 'Cobertura de Estoque (Dias)'},
-        marginal='box'
+    total_produtos = situacao_counts['count'].sum()
+    situacao_counts['porcentagem'] = (situacao_counts['count'] / total_produtos * 100).round(1)
+    
+    fig_barras = go.Figure()
+    
+    # Adicionando barras para contagem
+    fig_barras.add_trace(go.Bar(
+        x=situacao_counts['Situação do Produto'],
+        y=situacao_counts['porcentagem'],
+        text=[f"{count} ({pct}%)" for count, pct in zip(situacao_counts['count'], situacao_counts['porcentagem'])],
+        textposition='auto',
+        name='Quantidade',
+        marker_color=gradient_colors['blue_gradient'][0],
+        marker_line_width=1.5,
+        opacity=0.8,
+        marker_line_color="white",
+    ))
+    
+    # Configurando o layout com dois eixos Y
+    fig_barras.update_layout(
+        xaxis=dict(title='Situação'),
+        yaxis=dict(
+            title=dict(
+                text='Quantidade',
+                font=dict(color='rgb(55, 83, 109)')
+            ),
+            side='left'
+        ),
+        yaxis2=dict(
+            title=dict(
+                text='Porcentagem (%)',
+                font=dict(color='rgb(255, 127, 14)')
+            ),
+            overlaying='y',
+            side='right',
+            range=[0, 100]
+        ),
+        legend=dict(x=0.01, y=0.99),
+        barmode='group',
+        margin=dict(t=50, b=50, l=50, r=50),
+        clickmode='event+select'  # Habilitar modo de clique para seleção
     )
     
-    # Adicionar linhas de referência
-    fig_hist.add_vline(x=30, line_dash="dash", line_color="red",
-                       annotation_text="1 mês", annotation_position="top right")
-    fig_hist.add_vline(x=90, line_dash="dash", line_color="orange",
-                      annotation_text="3 meses", annotation_position="top right")
-    fig_hist.add_vline(x=180, line_dash="dash", line_color="green",
-                      annotation_text="6 meses", annotation_position="top right")
-    
-    fig_hist.update_layout(
-        xaxis_title='Cobertura de Estoque (Dias)',
-        yaxis_title='Número de Produtos',
-        margin=dict(t=50, b=0, l=0, r=0)
-    )
-    
-    # Gráfico 3: ABC vs Giro (Heatmap)
-    cross_table = pd.crosstab(df_giro_estoque['classe_abc'], df_giro_estoque['classificacao_giro'])
-    
-    fig_heatmap = px.imshow(
-        cross_table,
-        text_auto=True,
-        labels=dict(x='Classificação de Giro', y='Classe ABC', color='Número de Produtos'),
-        color_continuous_scale='YlGnBu',
-        aspect="auto",
-    )
-    
-    fig_heatmap.update_layout(
-        margin=dict(t=50, b=0, l=0, r=0)
-    )
-    
-    # Montando o layout final com os três gráficos
-    return html.Div([
-        html.H2("Análise de Giro de Estoque", className="dashboard-title"),
-        
-        # Primeira linha com o gráfico de pizza
+    # Adicionando instruções sobre como filtrar
+    instrucoes_filtro = html.Div([
         html.Div([
-            create_card(
-                "Distribuição de Produtos por Classificação de Giro",
-                dcc.Graph(figure=fig_pie, id='grafico-giro-pizza')
-            )
-        ], className="row mb-4"),
+            html.I(className="fas fa-info-circle fa-2x text-primary me-3"),
+            html.Div([
+                html.H5("Como usar os filtros:", className="mb-1"),
+                html.Ul([
+                    html.Li("Clique em uma barra para filtrar os dados pela categoria correspondente"),
+                    html.Li("Clique em barras diferentes em ambos os gráficos para combinar filtros"),
+                    html.Li("Clique novamente em uma barra selecionada para remover o filtro")
+                ], className="mb-0")
+            ])
+        ], className="d-flex align-items-start")
+    ], className="bg-light p-3 rounded mb-4 border-start border-4 border-primary")
+    
+    #layout final com os gráficos
+    layout = html.Div([
+        html.H2("Análise de Situação do Estoque", className="dashboard-title"),
+        dcc.Store(id='selected-data', data=data),
+        # Linha de métricas
+        metrics_row,
         
-        # Segunda linha com o histograma de cobertura
+        # Instrução sobre como usar os filtros
+        instrucoes_filtro,
+        
+        # Primeira linha - Gráfico de barras da Curva ABC
         html.Div([
-            create_card(
-                "Distribuição de Produtos por Cobertura de Estoque",
-                dcc.Graph(figure=fig_hist, id='grafico-cobertura-hist')
-            )
+            html.Div([
+                create_card(
+                    "Distribuição de Produtos por Curva ABC (Clique para filtrar)",
+                    dcc.Graph(figure=fig_barras_abc, id='grafico-curva-abc-barras', clear_on_unhover=True)
+                )
+            ], className="col-md-12"),
         ], className="row mb-4"),
-        
-        # Terceira linha com o heatmap ABC vs Giro
+            
+        # Segunda linha - Gráfico de barras da Situação do Produto
         html.Div([
-            create_card(
-                "Relação entre Classe ABC e Classificação de Giro",
-                dcc.Graph(figure=fig_heatmap, id='grafico-abc-giro-heatmap')
-            )
+            html.Div([
+                create_card(
+                    "Quantidade e Porcentagem por Situação do Produto (Clique para filtrar)",
+                    dcc.Graph(figure=fig_barras, id='grafico-situacao-barras', clear_on_unhover=True)
+                )
+            ], className="col-md-12"),
         ], className="row mb-4"),
-        
+
+        # Terceira linha - Tabela de produtos
+        html.Div([
+            html.Div([
+                create_card(
+                    "Tabela de produtos filtrados",
+                    html.Div([
+                        html.Div([
+                            html.I(className="fas fa-mouse-pointer fa-3x text-muted d-block text-center mb-3"),
+                            html.H4("Clique em uma barra nos gráficos acima", className="text-center mb-2"),
+                            html.P("Para visualizar os produtos, selecione uma barra em qualquer um dos gráficos acima. Você pode combinar filtros selecionando barras em ambos os gráficos.",
+                                className="text-center text-muted")
+                        ], id="tabela-produtos-container")
+                    ])
+                )
+            ], className="col-md-12"),
+        ], className="row mb-4"),
+
     ], style=content_style)
 
-
-
+    return layout

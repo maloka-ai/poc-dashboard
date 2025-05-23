@@ -38,6 +38,8 @@ def register_data_callbacks(app, app_cache=None):
         return None
 
     
+    # Ajuste apenas na função load_data_callback
+
     @app.callback(
         Output("selected-data", "data"),
         Input("selected-client", "data"),
@@ -55,43 +57,51 @@ def register_data_callbacks(app, app_cache=None):
         cache_key = f"{selected_client}_{selected_data_type}"
         current_time = time.time()
         
-        # Se já temos dados em cache para este cliente/tipo, verificar a idade
+        # Se já temos dados em cache para este cliente/tipo, verificar a idade e se não há erro
         if (current_data and 'client_info' in current_data and 
                 current_data['client_info'] == cache_key and 
-                last_load_time and current_time - last_load_time < 3600):  # Cache de 1 hora
+                last_load_time and current_time - last_load_time < 3600 and
+                not current_data.get("error", False)):  # Não usar cache se houver erro
             return current_data
         
         # Senão, carregue os dados usando a função modularizada
-        print(f"**************** Cache vazio: Carregando dados para {selected_client} - {selected_data_type}")
+        print(f"**************** Cache vazio ou inválido: Carregando dados para {selected_client} - {selected_data_type}")
         data = load_data(selected_client, selected_data_type, app_cache)
         
         if data.get("error", False):
-            error_data = {"client_info": cache_key, "error": True, "message": data.get("message")}
+            error_data = {
+                "client_info": cache_key, 
+                "error": True, 
+                "message": data.get("message", "Erro desconhecido no carregamento de dados")
+            }
             return error_data
         
         # Crie um objeto com os dados serializados e a informação do cliente
         result = {
             "client_info": cache_key,
-            "df": data["df"].to_json(date_format='iso', orient='split') if data["df"] is not None else None,
-            "df_RC_Mensal": data["df_RC_Mensal"].to_json(date_format='iso', orient='split') if data["df_RC_Mensal"] is not None else None,
-            "df_RC_Trimestral": data["df_RC_Trimestral"].to_json(date_format='iso', orient='split') if data["df_RC_Trimestral"] is not None else None,
-            "df_RC_Anual": data["df_RC_Anual"].to_json(date_format='iso', orient='split') if data["df_RC_Anual"] is not None else None,
-            "df_Previsoes": data["df_Previsoes"].to_json(date_format='iso', orient='split') if data["df_Previsoes"] is not None else None,
-            "df_RT_Anual": data["df_RT_Anual"].to_json(date_format='iso', orient='split') if data["df_RT_Anual"] is not None else None,
-            "df_fat_Anual": data["df_fat_Anual"].to_json(date_format='iso', orient='split') if data["df_fat_Anual"] is not None else None,
-            "df_fat_Anual_Geral": data["df_fat_Anual_Geral"].to_json(date_format='iso', orient='split') if data["df_fat_Anual_Geral"] is not None else None,
-            "df_fat_Mensal": data["df_fat_Mensal"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal"] is not None else None,
-            "df_fat_Mensal_lojas": data["df_fat_Mensal_lojas"].to_json(date_format='iso', orient='split') if data["df_fat_Mensal_lojas"] is not None else None,
-            "df_fat_Diario": data["df_fat_Diario"].to_json(date_format='iso', orient='split') if data["df_fat_Diario"] is not None else None,
-            "df_fat_Diario_lojas": data["df_fat_Diario_lojas"].to_json(date_format='iso', orient='split') if data["df_fat_Diario_lojas"] is not None else None,
-            "df_Vendas_Atipicas": data["df_Vendas_Atipicas"].to_json(date_format='iso', orient='split') if data["df_Vendas_Atipicas"] is not None else None,
-            "df_relatorio_produtos": data["df_relatorio_produtos"].to_json(date_format='iso', orient='split') if "df_relatorio_produtos" in data and data["df_relatorio_produtos"] is not None else None,
-            "df_previsao_retorno": data["df_previsao_retorno"].to_json(date_format='iso', orient='split') if "df_previsao_retorno" in data and data["df_previsao_retorno"] is not None else None,
-            "df_analise_giro": data["df_analise_giro"].to_json(date_format='iso', orient='split') if "df_analise_giro" in data and data["df_analise_giro"] is not None else None,
-            # "df_analise_curva_cobertura": data["df_analise_curva_cobertura"].to_json(date_format='iso', orient='split') if "df_analise_curva_cobertura" in data and data["df_analise_curva_cobertura"] is not None else None,
-            "company_context": data["company_context"],
-            "segmentos_context": data["segmentos_context"]
+            "error": False,  # Explicitamente marcar como sem erro
         }
+        
+        # Adicionar cada dataframe ao resultado apenas se estiver presente e não for None
+        dataframes = [
+            "df", "df_RC_Mensal", "df_RC_Trimestral", "df_RC_Anual", 
+            "df_Previsoes", "df_RT_Anual", "df_fat_Anual", "df_fat_Anual_Geral",
+            "df_fat_Mensal", "df_fat_Mensal_lojas", "df_fat_Diario", 
+            "df_fat_Diario_lojas", "df_Vendas_Atipicas", "df_relatorio_produtos",
+            "df_previsao_retorno", "df_analise_giro", "df_analise_curva_cobertura"
+        ]
+        
+        for df_name in dataframes:
+            if df_name in data and data[df_name] is not None:
+                result[df_name] = data[df_name].to_json(date_format='iso', orient='split')
+                print(f"DataFrame {df_name} carregado com sucesso.")
+            else:
+                result[df_name] = None
+                print(f"DataFrame {df_name} não encontrado ou vazio.")
+        
+        # Adicionar os outros campos não-DataFrame
+        result["company_context"] = data["company_context"]
+        result["segmentos_context"] = data["segmentos_context"]
         
         print(f"Dados carregados com sucesso para {selected_client} - {selected_data_type}")
         return result

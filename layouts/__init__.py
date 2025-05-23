@@ -21,6 +21,7 @@ __all__ = [
     # Estoque
     'get_produtos_layout',
     'get_produtos_inativos_layout',
+    'get_giro_estoque_layout',
     
     # Interação
     'get_chat_layout'

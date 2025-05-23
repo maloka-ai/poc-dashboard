@@ -1,11 +1,7 @@
 import io
 import pandas as pd
 import datetime
-import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
-from dash import html, dcc, dash_table, callback, Input, Output, State
-from dash.exceptions import PreventUpdate
+from dash import html, dcc
 
 from utils import create_card, content_style
 
@@ -27,9 +23,9 @@ def get_produtos_inativos_layout(data):
                 ])
             )
         ], style=content_style)
-    
-    # Carregar os dados do DataFrame
-    df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+    else:
+        # Carregar os dados do DataFrame
+        df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
     
     # Garantir que a coluna 'recencia' esteja no formato de data
     if 'recencia' in df_produtos.columns and df_produtos['recencia'].dtype == 'object':

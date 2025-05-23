@@ -15,7 +15,7 @@ from werkzeug.security import check_password_hash
 import bcrypt
 
 # Importar funções modularizadas para carregamento de dados
-from data_load import (get_available_data_types)
+from data_load import (get_available_data_types, load_data)
 
 from data_load.cache_config import setup_diskcache, clear_client_cache
 
@@ -31,7 +31,7 @@ from data_load.load_callbacks import register_data_callbacks
 from layouts.clientes import (get_segmentacao_layout, get_rfma_layout, get_recorrencia_mensal_layout, get_recorrencia_trimestral_layout, get_recorrencia_anual_layout, get_retencao_layout, get_predicao_layout)
 from layouts.vendas import (get_faturamento_anual_layout, get_vendas_atipicas_layout)
 from layouts.estoque import (get_produtos_layout, get_produtos_inativos_layout, get_giro_estoque_layout)
-from layouts.interacao import (get_chat_layout)
+# from layouts.interacao import (get_chat_layout)
 
 #helpers da sidebar
 from utils.sidebar_utils import (create_sidebar, get_available_data_types)
@@ -365,8 +365,8 @@ def debug_session():
     prevent_initial_call=False
 )
 def display_page(pathname):
-    # print(f"[DEBUG] display_page INICIADO - URL: {pathname} - Cliente na sessão: {'sim' if 'cliente' in session else 'não'}")
-    # print(f"[DEBUG] Trigger foi: {dash.callback_context.triggered}")
+    print(f"[DEBUG] display_page INICIADO - URL: {pathname} - Cliente na sessão: {'sim' if 'cliente' in session else 'não'}")
+    print(f"[DEBUG] Trigger foi: {dash.callback_context.triggered}")
 
     # Verificar cliente na sessão de forma simplificada
     cliente = session.get('cliente', None)
@@ -417,10 +417,38 @@ def display_page(pathname):
     Output("loading-output-overlay", "children"),
     Input("url", "pathname"),
     Input("selected-data", "data"),
+    State("selected-client", "data"),
+    State("selected-data-type", "data"),
     prevent_initial_call=True
 )
-def render_page_content(pathname, data):
+def render_page_content(pathname, data, client, data_type):
+    print(f"[DEBUG] render_page_content iniciado: pathname={pathname}, data={type(data)}")
+    print(f"[DEBUG] data contém keys: {list(data.keys()) if data else []}")
     # Verificar se temos dados carregados e válidos
+    if data is None:
+        # Forçar o carregamento se estiver vazio
+        print(f"[DEBUG] Dados vazios, tentando carregar dados para {client}_{data_type}")
+        try:
+            data_loaded = load_data(client, data_type, app_cache)
+            if data_loaded and not data_loaded.get("error", False):
+                data = {}  # Inicializa o dicionário para evitar erro abaixo
+                # Converter DataFrames para formato JSON
+                for key, df in data_loaded.items():
+                    if key.startswith("df_") or key == "df":
+                        if df is not None:
+                            data[key] = df.to_json(date_format='iso', orient='split')
+                        else:
+                            data[key] = None
+                    else:
+                        data[key] = df
+                # Adicionar informação do cliente
+                data["client_info"] = f"{client}_{data_type}"
+            else:
+                print(f"[ERRO] Falha ao carregar dados: {data_loaded.get('message', 'Erro desconhecido')}")
+        except Exception as e:
+            print(f"[ERRO] Exceção ao carregar dados: {str(e)}")
+            # Continuar com data=None para mostrar mensagem de carregamento
+    
     if data is None:
         return html.Div([
             html.Div(className="text-center", style={"marginTop": "20%"},
