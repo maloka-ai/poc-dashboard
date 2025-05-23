@@ -81,6 +81,7 @@ def register_giro_estoque_callbacks(app):
             colunas_base = [
                 'SKU', 
                 'ID Categoria',
+                'EAN',
                 'Descrição do Produto', 
                 'Categoria', 
                 'Estoque Total', 
