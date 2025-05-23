@@ -203,7 +203,7 @@ estoque_consolidado = estoque_mais_recente.groupby('id_produto').agg({
 #Adicionar informações do produto
 estoque_final = pd.merge(
     estoque_consolidado,
-    df_produtos[['id_produto', 'nome', 'id_categoria', 'data_criacao']],
+    df_produtos[['id_produto', 'nome', 'id_categoria', 'data_criacao', 'codigo_barras']],
     on='id_produto',
     how='left'
 )
@@ -222,6 +222,7 @@ estoque_final = estoque_final.rename(columns={
     'nome': 'Descrição do Produto',
     'nome_categoria': 'Categoria',
     'data_criacao': 'Data Criação',
+    'codigo_barras': 'EAN',
     'estoque': 'Estoque Total',
     'data_estoque': 'Data Atualização',
     'id_loja': 'Qtd Lojas',
@@ -231,6 +232,7 @@ estoque_final = estoque_final.rename(columns={
 estoque_final = estoque_final[[
     'SKU', 
     'ID Categoria',
+    'EAN',
     'Descrição do Produto', 
     'Categoria',
     'Data Criação',
