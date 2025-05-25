@@ -63,7 +63,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
     
     # Inicializar dicionário de resultados e erros
     result = {
-        "df": None,
+        "df_analytics": None,
         "df_RC_Mensal": None,
         "df_RC_Trimestral": None,
         "df_RC_Anual": None,
@@ -91,7 +91,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
     try:
         if file_paths["analytics_path"]:
             try:
-                result["df"] = pd.read_csv(file_paths["analytics_path"][0])
+                result["df_analytics"] = pd.read_csv(file_paths["analytics_path"][0])
             except Exception as e:
                 error_msg = f"Erro ao carregar analytics_path: {str(e)}"
                 essential_errors.append(error_msg)

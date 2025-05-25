@@ -28,10 +28,10 @@ def register_segmentacao_callbacks(app):
                 ])
             ])
         
-        if data is None or data.get("df") is None:
+        if data is None or data.get("df_analytics") is None:
             return "Clientes do Segmento Selecionado", "Dados não disponíveis."
         
-        df = pd.read_json(io.StringIO(data["df"]), orient='split')
+        df_analytics = pd.read_json(io.StringIO(data["df_analytics"]), orient='split')
         
         # Extrair o segmento selecionado do clickData
         selected_segment = clickData["points"][0]["x"]
@@ -39,41 +39,28 @@ def register_segmentacao_callbacks(app):
         
         # Filtrar o DataFrame para o segmento selecionado ou mostrar todos
         if selected_segment == "Todos":
-            filtered_df = df  # Não filtra, usa todos os registros
+            filtered_df = df_analytics  # Não filtra, usa todos os registros
             header_text = "Todos os Clientes"
         else:
-            filtered_df = df[df["Segmento"] == selected_segment]
+            filtered_df = df_analytics[df_analytics["Segmento"] == selected_segment]
         
         if filtered_df.empty:
             return header_text, "Nenhum cliente encontrado para o segmento selecionado."
         
         # Determinar colunas de exibição
-        if 'nome_fantasia' in df.columns:
-            display_columns = ["id_cliente", "nome_fantasia", "Recency", "Frequency", "Monetary", "Age", "email", "telefone"]
-            col_rename = {
-                "id_cliente": "Código do Cliente",
-                "nome_fantasia": "Cliente",
-                "Recency": "Recência (dias)",
-                "Frequency": "Frequência",
-                "Monetary": "Valor Monetário (R$)",
-                "Age": "Antiguidade (dias)",
-                "email": "E-mail",
-                "telefone": "Contato"
-            }
-        else:
-            display_columns = ["id_cliente", "nome", "Recency", "Frequency", "Monetary", "Age", "cpf", "cnpj", "email", "telefone"]
-            col_rename = {
-                "id_cliente": "Código do Cliente",
-                "nome": "Cliente",
-                "Recency": "Recência (dias)",
-                "Frequency": "Frequência",
-                "Monetary": "Valor Monetário (R$)",
-                "Age": "Antiguidade (dias)",
-                "cpf": "CPF",
-                "cnpj": "CNPJ",
-                "email": "E-mail",
-                "telefone": "Contato"
-            }
+        display_columns = ["id_cliente", "nome", "Recency", "Frequency", "Monetary", "Age", "cpf", "cnpj", "email", "telefone"]
+        col_rename = {
+            "id_cliente": "Código do Cliente",
+            "nome": "Cliente",
+            "Recency": "Recência (dias)",
+            "Frequency": "Frequência",
+            "Monetary": "Valor Monetário (R$)",
+            "Age": "Antiguidade (dias)",
+            "cpf": "CPF",
+            "cnpj": "CNPJ",
+            "email": "E-mail",
+            "telefone": "Contato"
+        }
         
         # Usar apenas colunas que existem no DataFrame
         existing_columns = [col for col in display_columns if col in filtered_df.columns]

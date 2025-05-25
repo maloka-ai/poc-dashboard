@@ -8,7 +8,7 @@ from utils import formatar_numero
 from utils import create_card, create_metric_row, content_style, color, gradient_colors, cores_segmento
 
 def get_segmentacao_layout(data):
-    if data.get("df") is None:
+    if data.get("df_analytics") is None:
         return html.Div([
             html.H2("Segmentação de Clientes", className="dashboard-title"),
             create_card(
@@ -22,7 +22,7 @@ def get_segmentacao_layout(data):
             )
         ], style=content_style)
     
-    df = pd.read_json(io.StringIO(data["df"]), orient='split')
+    df = pd.read_json(io.StringIO(data["df_analytics"]), orient='split')
     
     # Calculate metrics for the metrics row
     total_clients = len(df)
