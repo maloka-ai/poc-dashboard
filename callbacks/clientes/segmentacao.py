@@ -28,7 +28,7 @@ def register_segmentacao_callbacks(app):
                 ])
             ])
         
-        if data is None or data.get("df_analytics") is None:
+        if data.get("df_analytics") is None:
             return "Clientes do Segmento Selecionado", "Dados não disponíveis."
         
         df_analytics = pd.read_json(io.StringIO(data["df_analytics"]), orient='split')

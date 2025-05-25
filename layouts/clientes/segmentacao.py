@@ -114,7 +114,7 @@ def get_segmentacao_layout(data):
     layout = html.Div(
         [
             html.H2("Segmentação de Clientes", className="dashboard-title"),
-            
+            dcc.Store(id='selected-data', data=data),
             # Summary metrics row
             metrics_row,
             
