@@ -465,5 +465,5 @@ print(f"Mediana de transações previstas: {rfma['predicted_purchases_30d'].medi
 print(f"% de clientes com alta probabilidade: {(rfma['categoria_previsao'] == 'Alta Probabilidade de Compra').mean()*100:.1f}%")
 
 # Salvar resultados
-rfma.to_excel(os.path.join(diretorio_atual, f"rfma_previsoes_ajustado.xlsx"), index=False)
-print("\nResultados salvos em 'rfma_previsoes_ajustado.xlsx'")
+# rfma.to_excel(os.path.join(diretorio_atual, f"rfma_previsoes_ajustado.xlsx"), index=False)
+# print("\nResultados salvos em 'rfma_previsoes_ajustado.xlsx'")

@@ -476,10 +476,10 @@ def render_page_content(pathname, data, client, data_type):
     time.sleep(0.2)
     
     # Renderizar a página apropriada com base no pathname
-    if pathname == "/" or pathname == "/rfma":
-        return get_rfma_layout(data), None
-    elif pathname == "/segmentacao":
-        return get_segmentacao_layout(data), None
+    # if pathname == "/" or pathname == "/rfma":
+    #     return get_rfma_layout(data), None
+    if pathname == "/segmentacao" or pathname == "/app/" or pathname == "/":
+        return get_segmentacao_layout(data) , None
     elif pathname == "/recorrencia/mensal":
         return get_recorrencia_mensal_layout(data), None
     elif pathname == "/recorrencia/trimestral":
@@ -490,7 +490,7 @@ def render_page_content(pathname, data, client, data_type):
         return get_retencao_layout(data), None
     elif pathname == "/predicao":
         return get_predicao_layout(data), None
-    elif pathname == "/faturamento/anual" or pathname == "/app/": 
+    elif pathname == "/faturamento/anual": 
         return get_faturamento_anual_layout(data), None
     elif pathname == "/estoque/vendas-atipicas":
         return get_vendas_atipicas_layout(data), None

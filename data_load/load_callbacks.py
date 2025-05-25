@@ -84,11 +84,23 @@ def register_data_callbacks(app, app_cache=None):
         
         # Adicionar cada dataframe ao resultado apenas se estiver presente e não for None
         dataframes = [
-            "df_analytics", "df_RC_Mensal", "df_RC_Trimestral", "df_RC_Anual", 
-            "df_Previsoes", "df_RT_Anual", "df_fat_Anual", "df_fat_Anual_Geral",
-            "df_fat_Mensal", "df_fat_Mensal_lojas", "df_fat_Diario", 
-            "df_fat_Diario_lojas", "df_Vendas_Atipicas", "df_relatorio_produtos",
-            "df_previsao_retorno", "df_analise_giro", "df_analise_curva_cobertura"
+            "df_analytics", 
+            "df_RC_Mensal", 
+            "df_RC_Trimestral", 
+            "df_RC_Anual", 
+            # "df_Previsoes", 
+            "df_RT_Anual", 
+            "df_fat_Anual", 
+            "df_fat_Anual_Geral",
+            "df_fat_Mensal", 
+            "df_fat_Mensal_lojas", 
+            "df_fat_Diario", 
+            "df_fat_Diario_lojas", 
+            "df_Vendas_Atipicas", 
+            "df_relatorio_produtos",
+            "df_previsao_retorno", 
+            "df_analise_giro", 
+            "df_analise_curva_cobertura"
         ]
         
         for df_name in dataframes:
