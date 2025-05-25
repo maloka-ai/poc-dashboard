@@ -170,13 +170,13 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                                 style=nav_link_style,
                                 className="my-1"
                             ),
-                            dbc.NavLink(
-                                [html.I(className="fas fa-user-tag me-2"), "Clientes por RFMA"], 
-                                href="/rfma", 
-                                active="exact",
-                                style=nav_link_style,
-                                className="my-1"
-                            ),
+                            # dbc.NavLink(
+                            #     [html.I(className="fas fa-user-tag me-2"), "Clientes por RFMA"], 
+                            #     href="/rfma", 
+                            #     active="exact",
+                            #     style=nav_link_style,
+                            #     className="my-1"
+                            # ),
                             # Outros links de navegação...
                             dbc.NavLink(
                                 [html.I(className="fas fa-sync me-2"), "Recorrência Mensal"], 
