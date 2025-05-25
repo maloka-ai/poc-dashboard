@@ -231,6 +231,7 @@ def get_produtos_layout(data):
             id="store-produtos-data", 
             data=data["df_relatorio_produtos"] if data and "df_relatorio_produtos" in data else None
         ),
+        dcc.Store(id='selected-data', data=data),
 
         # Botão de filtro críticos adicionado abaixo do título
         filtro_criticos,

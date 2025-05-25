@@ -354,6 +354,8 @@ def get_predicao_layout(data):
             # Métricas de retorno
             retorno_metrics_row,
             
+            dcc.Store(id='selected-data', data=data),
+            
             # Seleção de cliente e detalhes com o histórico de desempenho
             dbc.Row([
                 create_card(

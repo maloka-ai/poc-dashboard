@@ -53,7 +53,7 @@ def get_produtos_inativos_layout(data):
     # Criamos um layout com um slider para definir o tempo de inatividade
     layout = html.Div([
         html.H2("Análise de Produtos Inativos", className="dashboard-title"),
-        
+        dcc.Store(id='selected-data', data=data),
         # Cartão com slider para definir os dias de inatividade
         create_card(
             "Filtro de Tempo de Inatividade",

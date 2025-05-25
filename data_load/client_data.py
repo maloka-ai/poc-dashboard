@@ -152,7 +152,7 @@ def get_file_paths(client, data_type):
         "rc_mensal_path": f"{base_path}/metricas_recorrencia_mensal.xlsx",
         "rc_trimestral_path": f"{base_path}/metricas_recorrencia_trimestral.xlsx",
         "rc_anual_path": f"{base_path}/metricas_recorrencia_anual.xlsx",
-        "previsoes_path": f"{base_path}/rfma_previsoes_ajustado.xlsx",
+        # "previsoes_path": f"{base_path}/rfma_previsoes_ajustado.xlsx",
         "rt_anual_path": f"{base_path}/metricas_retencao_anual.xlsx",
         "fat_anual_path": f"{base_path}/faturamento_anual.xlsx",
         "fat_anual_geral_path": f"{base_path}/faturamento_anual_geral.xlsx",
