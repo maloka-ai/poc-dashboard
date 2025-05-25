@@ -25,7 +25,7 @@ def register_predicao_callbacks(app):
         selected_situacao = selected_situacao if selected_situacao is not None else 'Todos'
         selected_padrao = selected_padrao if selected_padrao is not None else 'Todos'
         
-        if data is None or data.get("df_Previsoes") is None or data.get("df_previsao_retorno") is None:
+        if data is None or data.get("df_previsao_retorno") is None:
             return "Tabela de Previsão de Retorno", "Dados não disponíveis."
         
         # Obter dados de previsão de retorno

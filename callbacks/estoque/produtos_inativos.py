@@ -463,14 +463,14 @@ def obter_dados_estoque_produto(nome_produto):
         print("Conectando ao banco de dados...")
         conn = psycopg2.connect(
             host= os.getenv("DB_HOST"),
-            dbname="add_v1",
+            dbname="add",
             user= os.getenv("DB_USER"),
             password= os.getenv("DB_PASS"),
             port= os.getenv("DB_PORT"),
         )
         
         # Consultar dados do produto
-        query_produto = f"SELECT * FROM produtos WHERE nome = '{nome_produto}'"
+        query_produto = f"SELECT * FROM maloka_core.produto WHERE nome = '{nome_produto}'"
         df_produto = pd.read_sql_query(query_produto, conn)
         
         if len(df_produto) == 0:
@@ -485,8 +485,8 @@ def obter_dados_estoque_produto(nome_produto):
         
         # Consultar movimentos do produto
         query_estoque = f"""
-        SELECT * FROM estoquemovimentos 
-        WHERE id_produto = {id_produto}
+        SELECT * FROM maloka_core.estoque_movimento 
+        WHERE id_produto = '{id_produto}'
         ORDER BY data_movimento ASC
         """
         
