@@ -158,7 +158,7 @@ def get_giro_estoque_layout(data):
             ])
         ], className="d-flex align-items-start")
     ], className="bg-light p-3 rounded mb-4 border-start border-4 border-primary")
-    
+
     #layout final com os gráficos
     layout = html.Div([
         html.H2("Análise de Situação do Estoque", className="dashboard-title"),
@@ -169,7 +169,7 @@ def get_giro_estoque_layout(data):
         # Instrução sobre como usar os filtros
         instrucoes_filtro,
         
-        # Primeira linha - Gráfico de barras da Curva ABC
+        # Primeira linha - Gráfico de barras da Curva ABC e sua tabela
         html.Div([
             html.Div([
                 create_card(
@@ -179,7 +179,24 @@ def get_giro_estoque_layout(data):
             ], className="col-md-12"),
         ], className="row mb-4"),
             
-        # Segunda linha - Gráfico de barras da Situação do Produto
+        # Tabela filtrada por Curva ABC
+        html.Div([
+            html.Div([
+                create_card(
+                    "Produtos filtrados por Curva ABC",
+                    html.Div([
+                        html.Div([
+                            html.I(className="fas fa-mouse-pointer fa-3x text-muted d-block text-center mb-3"),
+                            html.H4("Clique em uma barra no gráfico acima", className="text-center mb-2"),
+                            html.P("Para visualizar os produtos por Curva ABC, selecione uma barra no gráfico acima.",
+                                className="text-center text-muted")
+                        ], id="tabela-curva-abc-container")
+                    ])
+                )
+            ], className="col-md-12"),
+        ], className="row mb-4"),
+
+        # Segunda linha - Gráfico de barras da Situação do Produto e sua tabela
         html.Div([
             html.Div([
                 create_card(
@@ -189,18 +206,18 @@ def get_giro_estoque_layout(data):
             ], className="col-md-12"),
         ], className="row mb-4"),
 
-        # Terceira linha - Tabela de produtos
+        # Tabela filtrada por Situação
         html.Div([
             html.Div([
                 create_card(
-                    "Tabela de produtos filtrados",
+                    "Produtos filtrados por Situação",
                     html.Div([
                         html.Div([
                             html.I(className="fas fa-mouse-pointer fa-3x text-muted d-block text-center mb-3"),
-                            html.H4("Clique em uma barra nos gráficos acima", className="text-center mb-2"),
-                            html.P("Para visualizar os produtos, selecione uma barra em qualquer um dos gráficos acima. Você pode combinar filtros selecionando barras em ambos os gráficos.",
+                            html.H4("Clique em uma barra no gráfico acima", className="text-center mb-2"),
+                            html.P("Para visualizar os produtos por Situação, selecione uma barra no gráfico acima.",
                                 className="text-center text-muted")
-                        ], id="tabela-produtos-container")
+                        ], id="tabela-situacao-container")
                     ])
                 )
             ], className="col-md-12"),
