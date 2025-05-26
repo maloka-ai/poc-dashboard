@@ -143,21 +143,6 @@ def get_giro_estoque_layout(data):
         margin=dict(t=50, b=50, l=50, r=50),
         clickmode='event+select'  # Habilitar modo de clique para seleção
     )
-    
-    # Adicionando instruções sobre como filtrar
-    instrucoes_filtro = html.Div([
-        html.Div([
-            html.I(className="fas fa-info-circle fa-2x text-primary me-3"),
-            html.Div([
-                html.H5("Como usar os filtros:", className="mb-1"),
-                html.Ul([
-                    html.Li("Clique em uma barra para filtrar os dados pela categoria correspondente"),
-                    html.Li("Clique em barras diferentes em ambos os gráficos para combinar filtros"),
-                    html.Li("Clique novamente em uma barra selecionada para remover o filtro")
-                ], className="mb-0")
-            ])
-        ], className="d-flex align-items-start")
-    ], className="bg-light p-3 rounded mb-4 border-start border-4 border-primary")
 
     #layout final com os gráficos
     layout = html.Div([
@@ -165,9 +150,6 @@ def get_giro_estoque_layout(data):
         dcc.Store(id='selected-data', data=data),
         # Linha de métricas
         metrics_row,
-        
-        # Instrução sobre como usar os filtros
-        instrucoes_filtro,
         
         # Primeira linha - Gráfico de barras da Curva ABC e sua tabela
         html.Div([
