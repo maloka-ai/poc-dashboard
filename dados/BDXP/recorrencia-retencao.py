@@ -101,8 +101,8 @@ for i in range(1, len(months)):
 retention_metrics = pd.DataFrame(retention_rates)
 
 # Salvar resultados
-retention_metrics.to_excel(os.path.join(diretorio_atual, 'metricas_recorrencia_mensal.xlsx'), index=False)
-print(f"\nResultados salvos em {os.path.join(diretorio_atual, 'metricas_recorrencia_mensal.xlsx')}")
+retention_metrics.to_csv(os.path.join(diretorio_atual, 'metricas_recorrencia_mensal.csv'), index=False)
+print(f"\nResultados salvos em {os.path.join(diretorio_atual, 'metricas_recorrencia_mensal.csv')}")
 
 # Imprimir métricas
 print("\nMétricas de Recorrência:")
@@ -170,8 +170,8 @@ quarterly_df = quarterly_df.sort_values('trimestre_obj')  # Ordenar pelos trimes
 
 
 # Salvar resultados
-quarterly_df.to_excel(os.path.join(diretorio_atual, 'metricas_recorrencia_trimestral.xlsx'), index=False)
-print(f"\nResultados salvos em {os.path.join(diretorio_atual, 'metricas_recorrencia_trimestral.xlsx')}")
+quarterly_df.to_csv(os.path.join(diretorio_atual, 'metricas_recorrencia_trimestral.csv'), index=False)
+print(f"\nResultados salvos em {os.path.join(diretorio_atual, 'metricas_recorrencia_trimestral.csv')}")
 
 # Imprimir métricas (removendo a coluna trimestre_obj para melhor visualização)
 print("\nMétricas Trimestrais:")
@@ -244,8 +244,8 @@ annual_df = pd.DataFrame(annual_metrics)
 annual_df = annual_df.sort_values('ano_obj')
 
 # Salvar resultados
-annual_df.to_excel(os.path.join(diretorio_atual, 'metricas_recorrencia_anual.xlsx'), index=False)
-print(f"\nResultados salvos em {os.path.join(diretorio_atual, 'metricas_recorrencia_anual.xlsx')}")
+annual_df.to_csv(os.path.join(diretorio_atual, 'metricas_recorrencia_anual.csv'), index=False)
+print(f"\nResultados salvos em {os.path.join(diretorio_atual, 'metricas_recorrencia_anual.csv')}")
 
 # Imprimir estatísticas
 print("\nMétricas Anuais:")
@@ -299,5 +299,5 @@ cohort_data['retention_rate'] = cohort_data['num_customers'] / cohort_data['coho
 cohort_pivot = cohort_data.pivot(index='cohort_year', columns='period_index', values='retention_rate')
 
 # Exibir a tabela de retenção
-cohort_data.to_excel(os.path.join(diretorio_atual, 'metricas_retencao_anual.xlsx'), index=False)
-print(f"\nTabela de retenção salva em {os.path.join(diretorio_atual, 'metricas_retencao_anual.xlsx')}")
+cohort_data.to_csv(os.path.join(diretorio_atual, 'metricas_retencao_anual.csv'), index=False)
+print(f"\nTabela de retenção salva em {os.path.join(diretorio_atual, 'metricas_retencao_anual.csv')}")

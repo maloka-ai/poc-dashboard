@@ -202,8 +202,8 @@ df_anual_por_tipo = df_anual_por_tipo.merge(df_contagem_por_tipo, on='Ano', how=
 df_anual_por_tipo['Total Itens'] = df_anual_por_tipo[['Qtd Serviços', 'Qtd Produtos']].sum(axis=1)
 
 
-# Exportar os dados para um arquivo Excel
-df_anual_por_tipo.to_excel(os.path.join(diretorio_atual, 'faturamento_anual.xlsx'), index=False)
+# Exportar os dados para um arquivo CSV
+df_anual_por_tipo.to_csv(os.path.join(diretorio_atual, 'faturamento_anual.csv'), index=False)
 print(df_anual_por_tipo.head())
 
 ########################################################
@@ -227,8 +227,8 @@ df_ano_group = df_vendas_com_tipo.groupby(['Ano', 'grupo_cliente'])['total_venda
 # Resetar o índice para incluir 'Ano' como uma coluna no arquivo exportado
 df_ano_group.reset_index(inplace=True)
 
-# Exportar os dados para um arquivo Excel
-df_ano_group.to_excel(os.path.join(diretorio_atual, 'faturamento_anual_geral.xlsx'), index=False)
+# Exportar os dados para um arquivo CSV
+df_ano_group.to_csv(os.path.join(diretorio_atual, 'faturamento_anual_geral.csv'), index=False)
 
 ########################################################
 # Fatuarmento mensal por ano
@@ -239,7 +239,7 @@ df_vendas['Mês'] = df_vendas['data_venda'].dt.month
 df_pivot = df_vendas.groupby(['Ano', 'Mês'])['total_venda'].sum().reset_index()
 df_pivot = df_pivot.pivot(index='Mês', columns='Ano', values='total_venda')
 df_pivot.reset_index(inplace=True)
-df_pivot.to_excel(os.path.join(diretorio_atual, 'faturamento_mensal.xlsx'), index=False)
+df_pivot.to_csv(os.path.join(diretorio_atual, 'faturamento_mensal.csv'), index=False)
 
 ########################################################
 # Faturamento por loja por ano
@@ -294,14 +294,14 @@ for ano in anos_disponiveis:
     # plt.savefig(os.path.join(diretorio_atual, f'faturamento_mensal_{ano}.png'))
     # plt.close()
 
-# Salvar o DataFrame consolidado em um único arquivo Excel
+# Salvar o DataFrame consolidado em um único arquivo CSV
 if not df_consolidado.empty:
-    excel_path = os.path.join(diretorio_atual, 'faturamento_mensal_lojas.xlsx')
+    csv_path = os.path.join(diretorio_atual, 'faturamento_mensal_lojas.csv')
     df_consolidado = df_consolidado.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
-    df_consolidado.to_excel(excel_path, index=False)
-    print(f"Dados de faturamento consolidados salvos em: {excel_path}")
+    df_consolidado.to_csv(csv_path, index=False)
+    print(f"Dados de faturamento consolidados salvos em: {csv_path}")
 else:
-    print("Não há dados para gerar o arquivo Excel consolidado.")
+    print("Não há dados para gerar o arquivo CSV consolidado.")
 
 
 ########################################################
@@ -354,10 +354,10 @@ for i in range(4):
 if dfs_mensais:
     df_faturamento_diario = pd.concat(dfs_mensais, ignore_index=True)
     
-    # Salvar em Excel
-    excel_path = os.path.join(diretorio_atual, 'faturamento_diario.xlsx')
-    df_faturamento_diario.to_excel(excel_path, index=False)
-    print(f"Dados de faturamento diário salvos em: {excel_path}")
+    # Salvar em CSV
+    csv_path = os.path.join(diretorio_atual, 'faturamento_diario.csv')
+    df_faturamento_diario.to_csv(csv_path, index=False)
+    print(f"Dados de faturamento diário salvos em: {csv_path}")
 else:
     print("Não há dados para gerar análise de faturamento diário.")
 
@@ -419,11 +419,11 @@ if not df_mes_atual.empty:
     # Arredondar os valores para 2 casas decimais para melhor visualização
     df_pivot_lojas = df_pivot_lojas.round(2)
     
-    # Salvar em Excel
-    excel_path = os.path.join(diretorio_atual, f'faturamento_diario_lojas.xlsx')
-    df_pivot_lojas.to_excel(excel_path)
+    # Salvar em CSV
+    csv_path = os.path.join(diretorio_atual, f'faturamento_diario_lojas.csv')
+    df_pivot_lojas.to_csv(csv_path)
     print(df_pivot_lojas.head())
-    print(f"Dados de faturamento diário por loja salvos em: {excel_path}")
+    print(f"Dados de faturamento diário por loja salvos em: {csv_path}")
     
 else:
     print(f"Não há dados de vendas para o mês atual ({mes_atual}/{ano_atual})")
