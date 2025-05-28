@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dash import html, dcc, dash_table
 import traceback
+import datetime
 
 from utils import formatar_moeda, formatar_percentual
 from utils import create_card, create_metric_row, content_style, color, gradient_colors
@@ -65,7 +66,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         total_sales = df_fat['Total'].iloc[-1] if not df_fat.empty else 0
         
         # Verificar se temos dados de produtos e serviços para criar gráfico de barras empilhadas
-        has_product_service = 'Produtos' in df_fat.columns and 'Serviços' in df_fat.columns
+        has_product_service = 'Faturamento em Produtos' in df_fat.columns and 'Faturamento em Serviços' in df_fat.columns
 
         if has_product_service:
             # Gráfico empilhado com Produtos e Serviços
@@ -74,9 +75,9 @@ def get_faturamento_anual_layout(data, selected_client=None):
             # Adicionar barras para serviços
             fig_fat.add_trace(go.Bar(
                 x=df_fat['Ano'],
-                y=df_fat['Serviços'],
+                y=df_fat['Faturamento em Serviços'],
                 name='Serviços',
-                text=df_fat['Serviços'].apply(formatar_moeda),
+                text=df_fat['Faturamento em Serviços'].apply(formatar_moeda),
                 textposition='inside',
                 insidetextanchor='middle',
                 marker_color=color['secondary'],
@@ -86,9 +87,9 @@ def get_faturamento_anual_layout(data, selected_client=None):
             # Adicionar barras para produtos
             fig_fat.add_trace(go.Bar(
                 x=df_fat['Ano'],
-                y=df_fat['Produtos'],
+                y=df_fat['Faturamento em Produtos'],
                 name='Produtos',
-                text=df_fat['Produtos'].apply(formatar_moeda),
+                text=df_fat['Faturamento em Produtos'].apply(formatar_moeda),
                 textposition='inside',
                 insidetextanchor='middle',
                 marker_color=color['accent'],
@@ -233,7 +234,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         ticket_medio_servicos = None
         
         # Verificar se temos dados de produtos e serviços
-        if ('Produtos' in df_fat.columns and 'Serviços' in df_fat.columns and
+        if ('Faturamento em Produtos' in df_fat.columns and 'Faturamento em Serviços' in df_fat.columns and
             'Qtd Produtos' in df_fat.columns and 'Qtd Serviços' in df_fat.columns):
             try:
                 # Filtramos para o ano mais recente não vazio
@@ -241,14 +242,14 @@ def get_faturamento_anual_layout(data, selected_client=None):
                 
                 # Encontrar a primeira linha com valores válidos para produtos
                 for i, row in df_fat_atual.iterrows():
-                    if not pd.isna(row['Produtos']) and not pd.isna(row['Qtd Produtos']) and row['Qtd Produtos'] > 0:
-                        ticket_medio_produtos = row['Produtos'] / row['Qtd Produtos']
+                    if not pd.isna(row['Faturamento em Produtos']) and not pd.isna(row['Qtd Produtos']) and row['Qtd Produtos'] > 0:
+                        ticket_medio_produtos = row['Faturamento em Produtos'] / row['Qtd Produtos']
                         break
                         
                 # Encontrar a primeira linha com valores válidos para serviços
                 for i, row in df_fat_atual.iterrows():
-                    if not pd.isna(row['Serviços']) and not pd.isna(row['Qtd Serviços']) and row['Qtd Serviços'] > 0:
-                        ticket_medio_servicos = row['Serviços'] / row['Qtd Serviços']
+                    if not pd.isna(row['Faturamento em Serviços']) and not pd.isna(row['Qtd Serviços']) and row['Qtd Serviços'] > 0:
+                        ticket_medio_servicos = row['Faturamento em Serviços'] / row['Qtd Serviços']
                         break
                         
             except Exception as e:
@@ -263,7 +264,7 @@ def get_faturamento_anual_layout(data, selected_client=None):
         # Adicionar métricas de ticket médio se disponíveis
         if ticket_medio_produtos is not None:
             metrics.append({
-                "title": "Ticket Médio Produtos", 
+                "title": "Valor Médio Produto", 
                 "value": formatar_moeda(ticket_medio_produtos), 
                 "color": color['warning'],
                 "value_style": {"fontSize": "20px"}
@@ -271,11 +272,28 @@ def get_faturamento_anual_layout(data, selected_client=None):
         
         if ticket_medio_servicos is not None:
             metrics.append({
-                "title": "Ticket Médio Serviços", 
+                "title": "Valor Médio Serviço", 
                 "value": formatar_moeda(ticket_medio_servicos), 
                 "color": color['neutral'],
                 "value_style": {"fontSize": "20px"}
             })
+
+        # Obter o ano atual
+        ano_atual = datetime.datetime.now().year
+
+        # Filtrar o dataframe pelo ano atual antes de obter o ticket médio e a quantidade de vendas
+        df_fat_atual = df_fat[df_fat['Ano'] == ano_atual] if not df_fat.empty and ano_atual in df_fat['Ano'].values else (df_fat.iloc[-1:] if not df_fat.empty else pd.DataFrame())
+
+        # Verificar se temos a quantidade de vendas disponível
+        qtd_vendas = df_fat_atual['Qtd Vendas'].iloc[0] if not df_fat_atual.empty and 'Qtd Vendas' in df_fat_atual.columns else None
+
+        # Adicionar a métrica com a quantidade de tickets entre parênteses
+        metrics.append({
+            "title": f"Ticket Médio Ano Atual ({int(qtd_vendas):,} tickets)" if qtd_vendas is not None else "Ticket Médio Ano Atual",
+            "value": formatar_moeda(df_fat_atual['Ticket Médio Anual'].iloc[0]) if not df_fat_atual.empty and 'Ticket Médio Anual' in df_fat_atual.columns else "N/A",
+            "color": color['primary'],
+            "value_style": {"fontSize": "20px"}
+        })
         
         metrics_row = create_metric_row(metrics)
         graficos_processados["metricas"] = True
