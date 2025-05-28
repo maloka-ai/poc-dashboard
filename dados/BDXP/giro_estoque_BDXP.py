@@ -408,7 +408,7 @@ GROUP BY vi.id_produto
 # Executar consulta para obter produtos com vendas anteriores a 1 ano
 conn = psycopg2.connect(
     host= os.getenv("DB_HOST"),
-    database="bibicell",
+    database="demonstracao",
     user= os.getenv("DB_USER"),
     password= os.getenv("DB_PASS"),
     port= os.getenv("DB_PORT"),
