@@ -152,6 +152,8 @@ df_venda_itens_com_data = df_venda_itens.merge(
 )
 
 # Converter data_venda para datetime e criar coluna Ano
+df_vendas['data_venda'] = pd.to_datetime(df_vendas['data_venda'])
+df_vendas['Ano'] = df_vendas['data_venda'].dt.year
 df_venda_itens_com_data['data_venda'] = pd.to_datetime(df_venda_itens_com_data['data_venda'])
 df_venda_itens_com_data['Ano'] = df_venda_itens_com_data['data_venda'].dt.year
 
@@ -168,18 +170,18 @@ if 'P' not in df_anual_por_tipo.columns:
     df_anual_por_tipo['P'] = 0
 
 # Renomear as colunas para melhor clareza
-df_anual_por_tipo.rename(columns={'S': 'Serviços', 'P': 'Produtos'}, inplace=True)
+df_anual_por_tipo.rename(columns={'S': 'Faturamento em Serviços', 'P': 'Faturamento em Produtos'}, inplace=True)
 
 # Calcular o total para cada ano
 df_anual_por_tipo['Total'] = df_anual_por_tipo.sum(axis=1)
 
 # Calcular as porcentagens
-for col in ['Serviços', 'Produtos']:
+for col in ['Faturamento em Serviços', 'Faturamento em Produtos']:
     if col in df_anual_por_tipo.columns:
         df_anual_por_tipo[f'{col} (%)'] = (df_anual_por_tipo[col] / df_anual_por_tipo['Total']) * 100
 
 # Calcular a evolução percentual anual para cada categoria
-for col in ['Serviços', 'Produtos', 'Total']:
+for col in ['Faturamento em Serviços', 'Faturamento em Produtos', 'Total de Faturamento']:
     if col in df_anual_por_tipo.columns:
         df_anual_por_tipo[f'Evolução {col} (%)'] = df_anual_por_tipo[col].pct_change() * 100
 
@@ -204,6 +206,17 @@ df_anual_por_tipo = df_anual_por_tipo.merge(df_contagem_por_tipo, on='Ano', how=
 # Calcular o total de itens por ano
 df_anual_por_tipo['Total Itens'] = df_anual_por_tipo[['Qtd Serviços', 'Qtd Produtos']].sum(axis=1)
 
+# Contar o número de vendas distintas por ano
+df_vendas_por_ano = df_vendas.groupby('Ano').size().reset_index(name='Qtd Vendas')
+
+# Adicionar a contagem de vendas ao dataframe de análise anual
+df_anual_por_tipo = df_anual_por_tipo.merge(df_vendas_por_ano, on='Ano', how='left')
+
+# Calcular o ticket médio anual (Total Faturamento / Qtd Vendas)
+df_anual_por_tipo['Ticket Médio Anual'] = df_anual_por_tipo['Total'] / df_anual_por_tipo['Qtd Vendas']
+
+# Calcular a evolução do ticket médio anual
+df_anual_por_tipo['Evolução Ticket Médio (%)'] = df_anual_por_tipo['Ticket Médio Anual'].pct_change() * 100
 
 # Exportar os dados para um arquivo Excel
 df_anual_por_tipo.to_excel(os.path.join(diretorio_atual, 'faturamento_anual.xlsx'), index=False)

@@ -136,6 +136,18 @@ df_contagem = df_vendas.groupby(['Ano']).size().reset_index(name='Qtd Produtos')
 # Adicionar as contagens ao dataframe de faturamento
 df_anual = df_anual.merge(df_contagem, on='Ano', how='left')
 
+# Contar o número de vendas distintas por ano
+df_vendas_por_ano = df_vendas.groupby('Ano').size().reset_index(name='Qtd Vendas')
+
+# Adicionar a contagem de vendas ao dataframe de análise anual
+df_anual = df_anual.merge(df_vendas_por_ano, on='Ano', how='left')
+
+#Calculo do ticket médio
+df_anual['Ticket Médio Anual'] = df_anual['Total'] / df_anual['Qtd Vendas']
+
+#Evolução do ticket médio
+df_anual['Evolução Ticket Médio (%)'] = df_anual['Ticket Médio Anual'].pct_change() * 100
+
 # Exportar os dados para um arquivo Excel
 df_anual.to_excel(os.path.join(diretorio_atual, 'faturamento_anual.xlsx'), index=False)
 print(df_anual.head())

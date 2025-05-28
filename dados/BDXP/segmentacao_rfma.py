@@ -384,4 +384,4 @@ rfma_segmentado = rfma_segmentado.merge(df_clientes_PJ[['id_cliente', 'cnpj']], 
 rfma_segmentado = rfma_segmentado.merge(df_clientes[['id_cliente', 'nome', 'email', 'telefone']], on='id_cliente', how='left')
 print(rfma_segmentado.columns)
 #Arquivo usado para o dash de segmentação
-rfma_segmentado.to_csv(os.path.join(diretorio_atual, f"analytics_cliente_BIBI_PF.csv"), index=False)
+rfma_segmentado.to_csv(os.path.join(diretorio_atual, f"analytics_cliente.csv"), index=False)
