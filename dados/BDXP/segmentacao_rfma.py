@@ -4,7 +4,6 @@ import dotenv
 import os
 import numpy as np
 import warnings
-from lifetimes import BetaGeoFitter
 from datetime import datetime
 
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -376,7 +375,7 @@ print("=" * 120)
 print(analise)
 
 ################################################################
-# Preparando dados para Dashboard da BIBI
+# Preparando dados para Dashboard da BDXP
 ################################################################
 
 rfma_segmentado = rfma_segmentado.merge(df_clientes_PF[['id_cliente', 'cpf']], on='id_cliente', how='left')
@@ -385,3 +384,100 @@ rfma_segmentado = rfma_segmentado.merge(df_clientes[['id_cliente', 'nome', 'emai
 print(rfma_segmentado.columns)
 #Arquivo usado para o dash de segmentação
 rfma_segmentado.to_csv(os.path.join(diretorio_atual, f"analytics_cliente.csv"), index=False)
+print("Arquivo CSV criado com sucesso!")
+
+################################################################
+# Inserindo dados do CSV na tabela de segmentação no esquema maloka_analytics
+################################################################
+
+try:
+    # Reconectar ao PostgreSQL
+    print("Reconectando ao banco de dados PostgreSQL...")
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        database="demonstracao",
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        port=os.getenv("DB_PORT")
+    )
+    
+    # Criar cursor
+    cursor = conn.cursor()
+    
+    # Verificar se o esquema maloka_analytics existe, caso contrário, criar
+    cursor.execute("SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = 'maloka_analytics')")
+    schema_existe = cursor.fetchone()[0]
+    
+    if not schema_existe:
+        print("Criando esquema maloka_analytics...")
+        cursor.execute("CREATE SCHEMA maloka_analytics")
+        conn.commit()
+    
+    # Verificar se a tabela já existe no esquema maloka_analytics
+    cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='segmentacao' AND table_schema='maloka_analytics')")
+    tabela_existe = cursor.fetchone()[0]
+    
+    if tabela_existe:
+        # Truncar a tabela se ela já existir
+        print("Tabela segmentacao já existe no esquema maloka_analytics. Limpando dados existentes...")
+        cursor.execute("TRUNCATE TABLE maloka_analytics.segmentacao")
+    else:
+        # Criar a tabela se não existir
+        print("Criando tabela segmentacao no esquema maloka_analytics...")
+        # Definir os tipos de dados para cada coluna com base nos tipos do DataFrame
+        colunas = []
+        for coluna, dtype in rfma_segmentado.dtypes.items():
+            if 'int' in str(dtype):
+                tipo = 'INTEGER'
+            elif 'float' in str(dtype):
+                tipo = 'DECIMAL'
+            else:
+                tipo = 'TEXT'
+            colunas.append(f'"{coluna}" {tipo}')
+        
+        create_table_query = f"""
+        CREATE TABLE maloka_analytics.segmentacao (
+            {", ".join(colunas)}
+        )
+        """
+        cursor.execute(create_table_query)
+    
+    # Preparar inserção de dados
+    print("Inserindo dados na tabela segmentacao do esquema maloka_analytics...")
+    
+    # Converter NaN para None para ser compatível com SQL
+    rfma_segmentado = rfma_segmentado.replace({np.nan: None})
+    
+    # Preparar os valores e colunas para inserção
+    colunas = [f'"{col}"' for col in rfma_segmentado.columns]
+    valores = []
+    for _, row in rfma_segmentado.iterrows():
+        valores.append(tuple(row))
+    
+    # Gerar placeholders para os valores
+    placeholders = ", ".join(["%s"] * len(rfma_segmentado.columns))
+    
+    # Executar a inserção em lotes de 1000 registros
+    batch_size = 1000
+    for i in range(0, len(valores), batch_size):
+        batch = valores[i:i+batch_size]
+        insert_query = f"""
+        INSERT INTO maloka_analytics.segmentacao ({", ".join(colunas)})
+        VALUES ({placeholders})
+        """
+        cursor.executemany(insert_query, batch)
+    
+    # Commit das alterações
+    conn.commit()
+    
+    print(f"Dados inseridos com sucesso! Total de {len(rfma_segmentado)} registros adicionados à tabela segmentacao no esquema maloka_analytics.")
+
+    # Fechar cursor e conexão
+    cursor.close()
+    conn.close()
+    print("Conexão com o banco de dados fechada.")
+    
+except Exception as e:
+    print(f"Erro ao inserir dados no banco: {e}")
+    if 'conn' in locals() and conn is not None:
+        conn.close()
