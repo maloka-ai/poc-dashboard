@@ -2,7 +2,6 @@ import pandas as pd
 import psycopg2
 import dotenv
 import os
-import numpy as np
 import warnings
 from datetime import datetime, timedelta
 
@@ -151,7 +150,7 @@ try:
     # consulta da tabela categoria
     ########################################################
     
-    # Consultar a tabela produtos
+    # Consultar a tabela categotia
     print("Consultando a tabela PRODUTOS...")
     query = "SELECT * FROM maloka_core.categoria"
     
@@ -319,11 +318,11 @@ for periodo_nome, data_inicio in periodos.items():
     
     # Agrupar por produto e somar quantidades
     vendas_agrupadas = vendas_periodo.groupby('id_produto')['quantidade'].sum().reset_index()
-    vendas_agrupadas.rename(columns={'quantidade': f'vendas_{periodo_nome}'}, inplace=True)
+    vendas_agrupadas.rename(columns={'quantidade': f'qt_vendas_{periodo_nome}'}, inplace=True)
     
     # Agrupar por produto e somar valores vendidos
     valores_agrupados = vendas_periodo.groupby('id_produto')['total_item'].sum().reset_index()
-    valores_agrupados.rename(columns={'total_item': f'valor_{periodo_nome}'}, inplace=True)
+    valores_agrupados.rename(columns={'total_item': f'valor_vendas_{periodo_nome}'}, inplace=True)
     
     # Armazenar nos dicionários
     vendas_por_periodo[periodo_nome] = vendas_agrupadas
@@ -361,13 +360,13 @@ for periodo_nome, df_vendas_periodo in vendas_por_periodo.items():
 
 # Preencher valores nulos com zero (produtos sem vendas no período)
 for periodo_nome in periodos.keys():
-    estoque_com_vendas[f'vendas_{periodo_nome}'] = estoque_com_vendas[f'vendas_{periodo_nome}'].fillna(0).astype(int)
-    estoque_com_vendas[f'valor_{periodo_nome}'] = estoque_com_vendas[f'valor_{periodo_nome}'].fillna(0).astype(float)
+    estoque_com_vendas[f'qt_vendas_{periodo_nome}'] = estoque_com_vendas[f'qt_vendas_{periodo_nome}'].fillna(0).astype(int)
+    estoque_com_vendas[f'valor_vendas_{periodo_nome}'] = estoque_com_vendas[f'valor_vendas_{periodo_nome}'].fillna(0).astype(float)
 
 # 10. Identificar produtos mais vendidos em cada período
 print("\nTop 5 produtos mais vendidos por período:")
 for periodo_nome in periodos.keys():
-    coluna_vendas = f'vendas_{periodo_nome}'
+    coluna_vendas = f'qt_vendas_{periodo_nome}'
     top_produtos = estoque_com_vendas.nlargest(5, coluna_vendas)
     print(f"\n{periodo_nome.replace('_', ' ').title()}:")
     for idx, row in top_produtos.iterrows():
@@ -375,8 +374,8 @@ for periodo_nome in periodos.keys():
 
 # Mostrar resumo dos valores vendidos nos últimos 30 dias
 print("\nResumo dos valores vendidos nos últimos 30 dias:")
-valor_total_30dias = estoque_com_vendas['valor_ultimos_30_dias'].sum()
-produtos_com_vendas_30dias = (estoque_com_vendas['vendas_ultimos_30_dias'] > 0).sum()
+valor_total_30dias = estoque_com_vendas['valor_vendas_ultimos_30_dias'].sum()
+produtos_com_vendas_30dias = (estoque_com_vendas['qt_vendas_ultimos_30_dias'] > 0).sum()
 print(f"- Valor total vendido: R$ {valor_total_30dias:,.2f}")
 print(f"- Produtos vendidos: {produtos_com_vendas_30dias} SKUs")
 print(f"- Ticket médio por produto: R$ {(valor_total_30dias/produtos_com_vendas_30dias if produtos_com_vendas_30dias > 0 else 0):,.2f}")
@@ -386,7 +385,7 @@ print(f"- Ticket médio por produto: R$ {(valor_total_30dias/produtos_com_vendas
 print("\nClassificando produtos por situação...")
 # Preencher valores nulos com zero (produtos sem vendas no período)
 for periodo_nome in periodos.keys():
-    estoque_com_vendas[f'vendas_{periodo_nome}'] = estoque_com_vendas[f'vendas_{periodo_nome}'].fillna(0).astype(int)
+    estoque_com_vendas[f'qt_vendas_{periodo_nome}'] = estoque_com_vendas[f'qt_vendas_{periodo_nome}'].fillna(0).astype(int)
 
 # Consulta SQL para buscar a data da última venda de cada produto
 query_ultima_venda = """
@@ -450,7 +449,7 @@ print(f"\nProdutos com histórico de vendas: {produtos_com_venda} ({produtos_com
 # Criar função para classificar situação
 def classificar_situacao_produto(row):
     # Verificar se teve venda no último ano
-    sem_venda_ano = row['vendas_ultimo_ano'] == 0
+    sem_venda_ano = row['qt_vendas_ultimo_ano'] == 0
     
     # Verificar se tem vendas históricas (mais de um ano)
     tem_vendas_historicas = row['Tem Vendas > 1 ano'] == "Sim"
@@ -488,8 +487,8 @@ for situacao, count in situacao_counts.items():
 # Resumo de vendas
 print("\nResumo de vendas por período:")
 for periodo_nome in periodos.keys():
-    coluna_vendas = f'vendas_{periodo_nome}'
-    coluna_valores = f'valor_{periodo_nome}'
+    coluna_vendas = f'qt_vendas_{periodo_nome}'
+    coluna_valores = f'valor_vendas_{periodo_nome}'
     total_vendas = estoque_com_vendas[coluna_vendas].sum()
     total_valores = estoque_com_vendas[coluna_valores].sum()
     produtos_vendidos = (estoque_com_vendas[coluna_vendas] > 0).sum()
@@ -499,15 +498,15 @@ for periodo_nome in periodos.keys():
 # 12. Análise de Curva ABC para produtos vendidos nos últimos 90 dias
 print("\n=== ANÁLISE DE CURVA ABC (ÚLTIMOS 90 DIAS) ===")
 # Filtrar apenas os produtos com vendas nos últimos 90 dias
-produtos_com_vendas = estoque_com_vendas[estoque_com_vendas['vendas_ultimos_90_dias'] > 0].copy()
+produtos_com_vendas = estoque_com_vendas[estoque_com_vendas['qt_vendas_ultimos_90_dias'] > 0].copy()
 
 if len(produtos_com_vendas) > 0:
     # Calcular a participação de cada produto no valor total das vendas
-    valor_total = produtos_com_vendas['valor_ultimos_90_dias'].sum()
-    produtos_com_vendas['participacao'] = produtos_com_vendas['valor_ultimos_90_dias'] / valor_total * 100
+    valor_total = produtos_com_vendas['valor_vendas_ultimos_90_dias'].sum()
+    produtos_com_vendas['participacao'] = produtos_com_vendas['valor_vendas_ultimos_90_dias'] / valor_total * 100
     
     # Ordenar por valor de venda decrescente
-    produtos_com_vendas = produtos_com_vendas.sort_values('valor_ultimos_90_dias', ascending=False)
+    produtos_com_vendas = produtos_com_vendas.sort_values('valor_vendas_ultimos_90_dias', ascending=False)
     
     # Calcular a participação acumulada
     produtos_com_vendas['participacao_acumulada'] = produtos_com_vendas['participacao'].cumsum()
@@ -540,7 +539,7 @@ if len(produtos_com_vendas) > 0:
             pct_produtos = (count / total_produtos_com_vendas) * 100
             
             # Calcular valor total para esta curva
-            valor_curva = produtos_com_vendas[produtos_com_vendas['curva_abc'] == curva]['valor_ultimos_90_dias'].sum()
+            valor_curva = produtos_com_vendas[produtos_com_vendas['curva_abc'] == curva]['valor_vendas_ultimos_90_dias'].sum()
             pct_valor = (valor_curva / valor_total) * 100
             
             # Calcular estoque médio para esta curva
@@ -552,7 +551,7 @@ if len(produtos_com_vendas) > 0:
             print(f"- Estoque médio atual: {estoque_medio:.1f} unidades por produto")
             
             # Adicionar informação de cobertura de estoque (dias)
-            vendas_diarias = produtos_com_vendas[produtos_com_vendas['curva_abc'] == curva]['vendas_ultimos_90_dias'].sum() / 90
+            vendas_diarias = produtos_com_vendas[produtos_com_vendas['curva_abc'] == curva]['qt_vendas_ultimos_90_dias'].sum() / 90
             estoque_total_curva = produtos_com_vendas[produtos_com_vendas['curva_abc'] == curva]['Estoque Total'].sum()
             if vendas_diarias > 0:
                 cobertura = estoque_total_curva / vendas_diarias
@@ -560,7 +559,7 @@ if len(produtos_com_vendas) > 0:
     
     # Análise de valor por curva
     print("\nDistribuição do valor vendido por Curva ABC (últimos 90 dias):")
-    curva_valores = estoque_com_vendas.groupby('Curva ABC')['valor_ultimos_90_dias'].sum()
+    curva_valores = estoque_com_vendas.groupby('Curva ABC')['valor_vendas_ultimos_90_dias'].sum()
     for curva, valor in curva_valores.items():
         if valor_total > 0:
             percentual = (valor / valor_total) * 100
@@ -580,7 +579,7 @@ produtos_abc = estoque_com_vendas[estoque_com_vendas['Curva ABC'].isin(['A', 'B'
 print(f"Total de produtos na Curva ABC analisados: {len(produtos_abc)}")
 
 # Calcular a cobertura de estoque (em dias) com base nas vendas dos últimos 90 dias
-produtos_abc['vendas_diarias'] = produtos_abc['vendas_ultimos_90_dias'] / 90
+produtos_abc['vendas_diarias'] = produtos_abc['qt_vendas_ultimos_90_dias'] / 90
 produtos_abc['cobertura_estoque_dias'] = 0  # Valor padrão
 
 # Evitar divisão por zero e definir cobertura zero para estoque zero ou negativo
@@ -714,7 +713,7 @@ metricas['TOTAL SKU COM HISTORICO > 1 ANO'] = total_sku_venda_acima_1ano
 metricas['%SKU COM COM HISTORICO > 1 ANO'] = (total_sku_venda_acima_1ano / total_skus) * 100
 
 # Total e percentual de SKUs com venda somente no último ano
-total_sku_venda_ultimo_ano = ((estoque_com_vendas['vendas_ultimo_ano'] > 0) & (estoque_com_vendas['Tem Vendas > 1 ano'] == "Não")).sum()
+total_sku_venda_ultimo_ano = ((estoque_com_vendas['qt_vendas_ultimo_ano'] > 0) & (estoque_com_vendas['Tem Vendas > 1 ano'] == "Não")).sum()
 metricas['TOTAL SKU COM HISTORICO < 1 ANO'] = total_sku_venda_ultimo_ano
 metricas['%SKU COM HISTORICO < 1 ANO'] = (total_sku_venda_ultimo_ano / total_skus) * 100
 
@@ -875,7 +874,7 @@ total_grupo_b = (estoque_com_vendas['Curva ABC'] == 'B').sum()
 total_grupo_c = (estoque_com_vendas['Curva ABC'] == 'C').sum()
 
 # Total de produtos com vendas nos últimos 90 dias (base para os percentuais da curva ABC)
-total_produtos_com_vendas_90dias = (estoque_com_vendas['vendas_ultimos_90_dias'] > 0).sum()
+total_produtos_com_vendas_90dias = (estoque_com_vendas['qt_vendas_ultimos_90_dias'] > 0).sum()
 
 metricas['TOTAL SKU GRUPO A'] = total_grupo_a
 metricas['TOTAL SKU GRUPO B'] = total_grupo_b
@@ -887,9 +886,9 @@ metricas['%SKU GRUPO B'] = (total_grupo_b / total_produtos_com_vendas_90dias) * 
 metricas['%SKU GRUPO C'] = (total_grupo_c / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
 
 # Total venda por grupo ABC (usando valor_ultimos_90_dias)
-venda_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['valor_ultimos_90_dias'].sum()
-venda_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['valor_ultimos_90_dias'].sum()
-venda_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['valor_ultimos_90_dias'].sum()
+venda_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['valor_vendas_ultimos_90_dias'].sum()
+venda_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['valor_vendas_ultimos_90_dias'].sum()
+venda_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['valor_vendas_ultimos_90_dias'].sum()
 
 metricas['TOTAL VENDA GRUPO A'] = venda_grupo_a
 metricas['TOTAL VENDA GRUPO B'] = venda_grupo_b
@@ -904,19 +903,19 @@ metricas['%VENDA GRUPO C'] = (venda_grupo_c / venda_total) * 100 if venda_total 
 # Cálculo da cobertura em dias por grupo ABC
 # Para grupo A
 estoque_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['Estoque Total'].sum()
-vendas_diarias_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['vendas_ultimos_90_dias'].sum() / 90
+vendas_diarias_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_a = estoque_grupo_a / vendas_diarias_grupo_a if vendas_diarias_grupo_a > 0 else 0
 metricas['COBERTURA EM DIAS GRUPO A'] = cobertura_grupo_a
 
 # Para grupo B
 estoque_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['Estoque Total'].sum()
-vendas_diarias_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['vendas_ultimos_90_dias'].sum() / 90
+vendas_diarias_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_b = estoque_grupo_b / vendas_diarias_grupo_b if vendas_diarias_grupo_b > 0 else 0
 metricas['COBERTURA EM DIAS GRUPO B'] = cobertura_grupo_b
 
 # Para grupo C
 estoque_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['Estoque Total'].sum()
-vendas_diarias_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['vendas_ultimos_90_dias'].sum() / 90
+vendas_diarias_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_c = estoque_grupo_c / vendas_diarias_grupo_c if vendas_diarias_grupo_c > 0 else 0
 metricas['COBERTURA EM DIAS GRUPO C'] = cobertura_grupo_c
 
