@@ -39,29 +39,32 @@ def Funcao_tratamento_base(Dataframe, Dataframe_de_para):
     #||====================================||
 
     # Criar colunas de data
-    Table = Trat_coluna_date(Table, "data_emissao")
+    Table = Trat_coluna_date(Table, "data_venda")
     
-    Table_filtro = Table[((Table["status"] == "Pedido") | 
-                         (Table["status"] == "Pedido/Concluído") | 
-                         (Table["status"] == "Pedido/Pago") | 
-                         (Table["status"] == "Pedido/Entregue") | 
-                         (Table["status"] == "Pedido/Pendente") | 
-                         (Table["status"] == "Pedido/Faturado")) & 
-                         (Table["data_emissao_Ano"] != "2020")]
+    #Para que serve este data_venda_ano diferente de 2020?
+    Table_filtro = Table[(Table["data_venda_Ano"] != "2020")]
+
+    Table_filtro['id_produto'] = Table_filtro['id_produto'].astype(str)
+    df_de['id_produto'] = df_de['id_produto'].astype(str)
 
     # Join tabela + DE_PARA
     Table_join = Table_filtro.merge(df_de, how = "left", on="id_produto")
 
+    print("PASSEI no Funcao_tratamento_base")
+    print(Table_join.head())
     return Table_join
 
 def get_df_preparo_id_vendas():
     # SQL Query
-    query_vendas = "SELECT id_venda, data_emissao, id_cliente, status FROM vendas"
+    query_vendas = "SELECT id_venda, data_venda, id_cliente, status FROM maloka_core.venda"
     query_venda_itens = "SELECT id_venda, id_produto, quantidade FROM venda_itens"
 
     # Load into DataFrame
     df_vendas = pd.read_sql(query_vendas, engine)
     df_venda_itens = pd.read_sql(query_venda_itens, engine)
+
+    df_vendas['id_venda'] = df_vendas['id_venda'].astype(str)
+    df_venda_itens['id_venda'] = df_venda_itens['id_venda'].astype(str)
 
     df = df_venda_itens.merge(df_vendas, on='id_venda', how='left')
 
@@ -69,25 +72,63 @@ def get_df_preparo_id_vendas():
     return df
 
 def de_para_clientes():
-    query = "SELECT id_cliente, nome_cliente FROM clientes"
+    query = "SELECT id_cliente, nome FROM maloka_core.cliente"
     df = pd.read_sql(query, engine)
+    print("PASSEI no de_para_clientes")
+    print(df.head())
     return df
 
 def get_produtos():
-    query = "SELECT id_produto, nome, critico FROM produtos"
+    # Não temos mais o critico, tenho a reposição em dias 
+    query = "SELECT id_produto, nome FROM maloka_core.produto"
     df = pd.read_sql(query, engine)
+    print("PASSEI no get_produtos")
+    print(df.head())
+    return df
+
+def get_compra():
+    query = '''
+    SELECT 
+        id_compra,
+        id_fornecedor,
+        data_compra 
+    FROM maloka_core.compra
+    ORDER BY id_compra, data_compra DESC;
+    '''
+
+    df = pd.read_sql(query, engine)
+    df['data_compra'] = df['data_compra'].dt.date
+    print("PASSEI no get_compra")
+    print(df.head())
+    return df
+
+def get_compra_itens():
+    query = '''
+    SELECT 
+        id_compra,
+        id_produto 
+    FROM maloka_core.compra_item;
+    '''
+
+    df = pd.read_sql(query, engine)
+    print("PASSEI no get_compra_itens")
+    print(df.head())
     return df
 
 def get_estoque_atualizado():
-    query = "SELECT DISTINCT ON (id_produto) * FROM estoquemovimentos ORDER BY id_produto, data_movimento DESC;"
+    query = "SELECT DISTINCT ON (id_produto) * FROM maloka_core.estoque_movimento ORDER BY id_produto, data_movimento DESC;"
     df = pd.read_sql(query, engine)
-    df = df.rename(columns={'depois': 'estoque', 'data_movimento': 'data_estoque_atualizado'})
+    df = df.rename(columns={'estoque_depois': 'estoque', 'data_movimento': 'data_estoque_atualizado'})
     df['data_estoque_atualizado'] = df['data_estoque_atualizado'].dt.date
+    print("PASSEI no get_estoque_atualizado")
+    print(df.head())
     return df
 
 def get_fornecedor():
-    query = "SELECT id_produto, nome_fornecedor FROM fornecedor"
+    query = "SELECT id_fornecedor, nome FROM maloka_core.fornecedor"
     df = pd.read_sql(query, engine)
+    print("PASSEI no get_fornecedor")
+    print(df.head())
     return df
 
 def get_historico_entrada():
@@ -98,14 +139,14 @@ def get_historico_entrada():
         id_movimento,
         id_produto,
         data_movimento,
-        tipo_movimento,
+        tipo,
         quantidade,
-        antes,
-        depois,
+        data_antes,
+        data_depois,
         descricao
         
-        FROM estoquemovimentos
-        WHERE tipo_movimento = 'entrada'
+        FROM maloka_core.estoque_movimento
+        WHERE tipo = 'E'
         ORDER BY id_produto, data_movimento DESC;
     
     '''
@@ -121,12 +162,13 @@ def get_ultima_venda():
     SELECT
         id_produto,
         MAX(data_movimento) AS data_ultima_venda
-        FROM estoquemovimentos
-        WHERE tipo_movimento = 'saída'
+        FROM maloka_core.estoque_movimento
+        WHERE tipo_movimento = 'S'
         GROUP BY id_produto;
     '''
 
     df = pd.read_sql(query, engine)
     df['data_ultima_venda'] = df['data_ultima_venda'].dt.date
-    
+    print("PASSEI no get_ultima_venda")
+    print(df.head())  # Debugging line to check the DataFrame content
     return df
