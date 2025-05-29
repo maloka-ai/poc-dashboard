@@ -1,0 +1,36 @@
+# Segmentação de Clientes BDXP
+
+    Nossa estratégia de segmentação divide os clientes em 8 grupos distintos, baseados em comportamento de compra e valor:
+
+    ## Clientes Ativos
+
+    *Novos*: Clientes recentes (últimos 30 dias) e novos na base (menos de 30 dias).
+
+    *Campeões*: Alto valor (top 10% em gastos) com frequência elevada (3+ compras) e compra nos últimos 6 meses.
+
+    *Fiéis de Alto Valor*: Relacionamento longo (mais de 2 anos), frequência regular (3+ compras), alto valor (top 20% em gastos) e compra no último ano.
+
+    *Fiéis de Baixo Valor*: Relacionamento longo (mais de 2 anos), frequência regular (3+ compras), valor moderado a baixo (até 80% em gastos) e compra no último ano.
+
+    *Recentes de Alto Valor*: compra no último ano, pelo menos 1 compra e valor significativo (top 40% em gastos).
+
+    *Recentes de Baixo Valor*: compra no último ano, pelo menos 1 compra e valor moderado a baixo (abaixo dos 60% em gastos).
+
+    ## Clientes Menos Ativos.
+
+    *Sumidos*: Sem atividade entre 1 e 2 anos.
+
+    *Inativos*: Sem atividade há mais de 2 anos.
+
+Análise Detalhada por Segmento:
+========================================================================================================================
+                      Quantidade Clientes  Média Recency (dias)  Média Frequency  Média Monetary (R$)  Média Age (dias)
+Segmento                                                                                                               
+Inativos                             1896               1274.05             1.24               598.40           1312.96
+Sumidos                               486                538.87             1.41               642.01            650.66
+Recentes Baixo Valor                  267                215.23             1.06               260.94            228.87
+Recentes Alto Valor                   222                200.96             1.76               874.16            417.33
+Novos                                  51                 14.94             1.04               447.49             14.96
+Campeões                               32                 76.31             6.47              2361.22            920.56
+Fiéis Alto Valor                       27                234.19             3.67              1307.51           1166.70
+Fiéis Baixo Valor                       2                264.50             3.00               513.25           1625.50

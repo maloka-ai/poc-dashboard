@@ -405,25 +405,25 @@ try:
     cursor = conn.cursor()
     
     # Verificar se o esquema maloka_analytics existe, caso contrário, criar
-    cursor.execute("SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = 'maloka_analytics')")
+    cursor.execute("SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = 'maloka_core')")
     schema_existe = cursor.fetchone()[0]
     
     if not schema_existe:
-        print("Criando esquema maloka_analytics...")
-        cursor.execute("CREATE SCHEMA maloka_analytics")
-        conn.commit()
+        print("Esquema maloka_core não eciste...")
+    else: 
+        print("Esquema maloka_core já existe.")
     
     # Verificar se a tabela já existe no esquema maloka_analytics
-    cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='segmentacao' AND table_schema='maloka_analytics')")
+    cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='segmentacao' AND table_schema='maloka_core')")
     tabela_existe = cursor.fetchone()[0]
     
     if tabela_existe:
         # Truncar a tabela se ela já existir
-        print("Tabela segmentacao já existe no esquema maloka_analytics. Limpando dados existentes...")
-        cursor.execute("TRUNCATE TABLE maloka_analytics.segmentacao")
+        print("Tabela segmentacao já existe no esquema maloka_core. Limpando dados existentes...")
+        cursor.execute("TRUNCATE TABLE maloka_core.segmentacao")
     else:
         # Criar a tabela se não existir
-        print("Criando tabela segmentacao no esquema maloka_analytics...")
+        print("Criando tabela segmentacao no esquema maloka_core...")
         # Definir os tipos de dados para cada coluna com base nos tipos do DataFrame
         colunas = []
         for coluna, dtype in rfma_segmentado.dtypes.items():
@@ -436,14 +436,14 @@ try:
             colunas.append(f'"{coluna}" {tipo}')
         
         create_table_query = f"""
-        CREATE TABLE maloka_analytics.segmentacao (
+        CREATE TABLE maloka_core.segmentacao (
             {", ".join(colunas)}
         )
         """
         cursor.execute(create_table_query)
     
     # Preparar inserção de dados
-    print("Inserindo dados na tabela segmentacao do esquema maloka_analytics...")
+    print("Inserindo dados na tabela segmentacao do esquema maloka_core...")
     
     # Converter NaN para None para ser compatível com SQL
     rfma_segmentado = rfma_segmentado.replace({np.nan: None})
@@ -462,7 +462,7 @@ try:
     for i in range(0, len(valores), batch_size):
         batch = valores[i:i+batch_size]
         insert_query = f"""
-        INSERT INTO maloka_analytics.segmentacao ({", ".join(colunas)})
+        INSERT INTO maloka_core.segmentacao ({", ".join(colunas)})
         VALUES ({placeholders})
         """
         cursor.executemany(insert_query, batch)
@@ -470,7 +470,7 @@ try:
     # Commit das alterações
     conn.commit()
     
-    print(f"Dados inseridos com sucesso! Total de {len(rfma_segmentado)} registros adicionados à tabela segmentacao no esquema maloka_analytics.")
+    print(f"Dados inseridos com sucesso! Total de {len(rfma_segmentado)} registros adicionados à tabela segmentacao no esquema maloka_core.")
 
     # Fechar cursor e conexão
     cursor.close()
