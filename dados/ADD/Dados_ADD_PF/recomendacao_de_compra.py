@@ -1,6 +1,5 @@
 import pandas as pd # dataframes
-import numpy as np # arrays
-import datetime, os, re, math
+import datetime, os, re
 from alimenatacao_de_dados import *
 
 #||====================================||
@@ -12,7 +11,7 @@ def Funcao_Analise(Dataframe, column_name):
     # De_para = Table[["id_produto", "cd_produto","desc_produto", "emissao", "preco_custo"]].drop_duplicates()
     De_para = Table[["id_produto" ,"nome"]].drop_duplicates()
 
-    lista_tempo  = ["data_emissao_Ano","data_emissao_Ano_Sem","data_emissao_Ano_Tri","data_emissao_Ano_Mes","data_emissao_Ano_Semana"]
+    lista_tempo  = ["data_venda_Ano","data_venda_Ano_Sem","data_venda_Ano_Tri","data_venda_Ano_Mes","data_venda_Ano_Semana"]
     list1 = []
     list2 = []
 
@@ -43,7 +42,7 @@ def Funcao_Analise(Dataframe, column_name):
 # Custom function to calculate the mean
 def conditional_mean(row):
     values = [row[df1.columns[-10]], row[df1.columns[-11]], row[df1.columns[-12]]]
-    count = 3 
+    count = 3
     if 0 in values:
         for i in values:
             if i == 0:

@@ -97,7 +97,7 @@ try:
     print(df_produto.head())
     
     # Exportar para Excel
-    # df_produto.to_excel("df_produto.xlsx", index=False)
+    df_produto.to_excel("df_produto.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produto
@@ -147,7 +147,7 @@ try:
     
     # Definir a data atual e a data de um mês atrás
     data_atual = datetime.now()
-    data_um_mes_atras = data_atual - timedelta(days=15)
+    data_um_mes_atras = data_atual - timedelta(days=30)
     
     print(f"Período: {data_um_mes_atras.strftime('%d/%m/%Y')} até {data_atual.strftime('%d/%m/%Y')}")
     
