@@ -3,12 +3,36 @@ import psycopg2
 import dotenv
 import os
 import warnings
+import argparse
 from datetime import datetime, timedelta
 
+# Configurar o parser de argumentos
+parser = argparse.ArgumentParser(description='Análise de estoque com corte de data específico')
+parser.add_argument('--data_corte', type=str, default=None, 
+help='Data de corte para análise (formato YYYY-MM-DD). Se não informada, usa a data atual')
+
+args = parser.parse_args()
+
+# Definir a data de corte
+if args.data_corte:
+    try:
+        data_corte = datetime.strptime(args.data_corte, "%Y-%m-%d")
+        print(f"Usando data de corte: {data_corte.strftime('%d/%m/%Y')}")
+    except ValueError:
+        print("Formato de data inválido. Usando data atual.")
+        data_corte = datetime.now()
+else:
+    data_corte = datetime.now()
+    print(f"Nenhuma data de corte especificada. Usando data atual: {data_corte.strftime('%d/%m/%Y')}")
+
 warnings.filterwarnings('ignore')
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+timestamp = data_corte.strftime("%Y%m%d_%H%M%S")
 dotenv.load_dotenv()
-caminho_arquivo_completo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_curva_cobertura.csv")
+
+# Modificar o nome do arquivo para incluir a data de corte
+arquivo_base = "analise_curva_cobertura"
+caminho_arquivo_completo = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                        f"{arquivo_base}.csv")
 
 try:
     # Conectar ao PostgreSQL
@@ -24,14 +48,14 @@ try:
     print("Conexão estabelecida com sucesso!")
 
     ########################################################
-    # consulta da tabela vendas
+    # consulta da tabela vendas COM FILTRO DE DATA DE CORTE
     ########################################################
     
     print("Consultando a tabela VENDAS...")
-    query = "SELECT * FROM maloka_core.venda"
+    query = "SELECT * FROM maloka_core.venda WHERE data_venda <= %s"
     
     # Carregar os dados diretamente em um DataFrame do pandas
-    df_vendas = pd.read_sql_query(query, conn)
+    df_vendas = pd.read_sql_query(query, conn, params=(data_corte,))
     
     # Informações sobre os dados
     num_registros = len(df_vendas)
@@ -52,10 +76,15 @@ try:
     ########################################################
     
     print("Consultando a tabela VENDA_ITENS...")
-    query = "SELECT * FROM maloka_core.venda_item"
+    query = """
+    SELECT vi.* 
+    FROM maloka_core.venda_item vi
+    JOIN maloka_core.venda v ON vi.id_venda = v.id_venda
+    WHERE v.data_venda <= %s
+    """
     
     # Carregar os dados diretamente em um DataFrame do pandas
-    df_venda_itens = pd.read_sql_query(query, conn)
+    df_venda_itens = pd.read_sql_query(query, conn, params=(data_corte,))
     
     # Informações sobre os dados
     num_registros = len(df_venda_itens)
@@ -77,10 +106,10 @@ try:
     
     # Consultar a tabela estoque_movimentos
     print("Consultando a tabela ESTOQUE_MOVIMENTOS...")
-    query = "SELECT * FROM maloka_core.estoque_movimento"
+    query = "SELECT * FROM maloka_core.estoque_movimento WHERE data_movimento <= %s"
 
     # Carregar os dados diretamente em um DataFrame do pandas
-    df_estoque_movi = pd.read_sql_query(query, conn)
+    df_estoque_movi = pd.read_sql_query(query, conn, params=(data_corte,))
     
     # Informações sobre os dados
     num_registros = len(df_estoque_movi)
@@ -102,10 +131,10 @@ try:
     
     # Consultar a tabela estoque
     print("Consultando a tabela ESTOQUE...")
-    query = "SELECT * FROM maloka_core.historico_estoque"
+    query = "SELECT * FROM maloka_core.historico_estoque WHERE data_estoque <= %s"
 
     # Carregar os dados diretamente em um DataFrame do pandas
-    df_estoque = pd.read_sql_query(query, conn)
+    df_estoque = pd.read_sql_query(query, conn, params=(data_corte,))
     
     # Informações sobre os dados
     num_registros = len(df_estoque)
@@ -127,10 +156,10 @@ try:
     
     # Consultar a tabela produtos
     print("Consultando a tabela PRODUTOS...")
-    query = "SELECT * FROM maloka_core.produto"
+    query = "SELECT * FROM maloka_core.produto WHERE data_criacao <= %s"
     
     # Carregar os dados diretamente em um DataFrame do pandas
-    df_produtos = pd.read_sql_query(query, conn)
+    df_produtos = pd.read_sql_query(query, conn, params=(data_corte,))
     
     # Informações sobre os dados
     num_registros = len(df_produtos)
@@ -181,6 +210,7 @@ except Exception as e:
     print("1. O PostgreSQL está rodando")
     print("2. O banco de dados existe")
     print("3. As credenciais de conexão estão corretas")
+    exit(1)
 
 # Criar tabela de estoque geral consolidado por SKU
 print("Preparando tabela de estoque geral consolidado...")
@@ -298,14 +328,14 @@ df_venda_itens_pedido = pd.merge(
 )
 
 # Data atual para calcular os períodos
-data_atual = datetime.now()
+# data_atual = datetime.now()
 
 # Definir os períodos de análise
 periodos = {
-    'ultimos_30_dias': data_atual - timedelta(days=30),
-    'ultimos_60_dias': data_atual - timedelta(days=60),
-    'ultimos_90_dias': data_atual - timedelta(days=90),
-    'ultimo_ano': data_atual - timedelta(days=365)
+    'ultimos_30_dias': data_corte - timedelta(days=30),
+    'ultimos_60_dias': data_corte - timedelta(days=60),
+    'ultimos_90_dias': data_corte - timedelta(days=90),
+    'ultimo_ano': data_corte - timedelta(days=365)
 }
 
 # Criar DataFrames para cada período
@@ -421,7 +451,7 @@ cursor.execute(query_ultima_venda)
 ultimas_vendas = {row[0]: row[1] for row in cursor.fetchall()}
 
 # Buscar dados para classificação de produtos com histórico antigo
-data_um_ano_atras = data_atual - timedelta(days=365)
+data_um_ano_atras = data_corte - timedelta(days=365)
 cursor.execute(query_vendas_historicas, (data_um_ano_atras,))
 vendas_historicas = {row[0]: row[1] for row in cursor.fetchall()}
 
@@ -439,7 +469,7 @@ estoque_com_vendas['Data Última Venda'] = estoque_com_vendas['SKU'].apply(
 
 # Calcular recência (dias desde a última venda)
 estoque_com_vendas['Recência (dias)'] = estoque_com_vendas['Data Última Venda'].apply(
-    lambda data: (data_atual - data).days if pd.notnull(data) else None
+    lambda data: (data_corte - data).days if pd.notnull(data) else None
 )
 
 # Resumo de recência
@@ -701,7 +731,7 @@ except Exception as e:
 metricas = {}
 
 # DATA_HORA_ANALISE
-metricas['DATA_HORA_ANALISE'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+metricas['DATA_HORA_ANALISE'] = data_corte.strftime("%Y-%m-%d %H:%M:%S")
 
 # Total de SKUs 
 total_skus = len(estoque_com_vendas)
@@ -965,7 +995,21 @@ print(f"Adicionadas {len(todas_lojas)} colunas de estoque por loja e {len(todas_
 estoque_com_vendas.to_csv(caminho_arquivo_completo, index=False)
 print(f"\nTabela completa com estoque por loja e consistência exportada para: {caminho_arquivo_completo}")
 
-# Exportar para CSV
-caminho_arquivo_metricas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metricas_analise_estoque.csv")
+# Exportar o DataFrame de métricas com nome que inclui a data de corte
+caminho_arquivo_metricas = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                       f"metricas_analise_estoque_{data_corte.strftime('%Y%m%d')}.csv")
 df_metricas.to_csv(caminho_arquivo_metricas, index=False)
 print(f"\nTabela de métricas exportada para: {caminho_arquivo_metricas}")
+
+# Imprimir informação sobre a análise
+print(f"\n=== ANÁLISE CONCLUÍDA ===")
+print(f"Data de corte utilizada: {data_corte.strftime('%d/%m/%Y')}")
+print(f"Arquivos gerados:")
+print(f"1. {caminho_arquivo_completo}")
+print(f"2. {caminho_arquivo_metricas}")
+
+#sem corte
+#python3 giro_estoque_BDXP.py
+
+#com corte
+# python3 giro_estoque_BDXP.py --data_corte 2024-04-01

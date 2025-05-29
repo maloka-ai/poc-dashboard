@@ -32,7 +32,7 @@ try:
     ########################################################
     
     print("Consultando a tabela vendas...")
-    query = "SELECT * FROM maloka_analytics.segmentacao"
+    query = "SELECT * FROM maloka_core.segmentacao"
     
     # Carregar os dados diretamente em um DataFrame do pandas
     df_segmentacao = pd.read_sql_query(query, conn)
@@ -49,7 +49,7 @@ try:
     print(df_segmentacao.head())
     
     # Exportar para Excel
-    # df_segmentacao.to_excel("df_segmentacao.xlsx", index=False)
+    df_segmentacao.to_excel("df_segmentacao_bdxp.xlsx", index=False)
 
     # Fechar conexão
     conn.close()
