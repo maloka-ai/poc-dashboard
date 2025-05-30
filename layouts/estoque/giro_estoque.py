@@ -96,8 +96,90 @@ def get_giro_estoque_layout(data):
         yaxis_title='Quantidade de Produtos',
         clickmode='event+select'  # Habilitar modo de clique para seleção
     )
+
+    # Gráfico 2: Substituindo por uma lista paginada de categorias
+    # Filtrar produtos com vendas (apenas A, B e C)
+    df_com_vendas = df_curva_cobertura[df_curva_cobertura['Curva ABC'].isin(['A', 'B', 'C'])]
     
-    # Gráfico 2: Barras com quantidade e porcentagem por situação
+    # Agrupar por categoria e somar o valor das vendas dos últimos 90 dias
+    categoria_vendas = df_com_vendas.groupby('Categoria')['valor_vendas_ultimos_90_dias'].sum().reset_index()
+    
+    # Calcular a porcentagem de vendas por categoria
+    total_vendas = categoria_vendas['valor_vendas_ultimos_90_dias'].sum()
+    categoria_vendas['Porcentagem'] = (categoria_vendas['valor_vendas_ultimos_90_dias'] / total_vendas * 100).round(1)
+    
+    # Ordenar por valor de vendas em ordem decrescente
+    categoria_vendas = categoria_vendas.sort_values(by='valor_vendas_ultimos_90_dias', ascending=False)
+    
+    # Criar elementos da lista ordenada
+    lista_categorias = []
+    for index, row in categoria_vendas.iterrows():
+        categoria = row['Categoria']
+        valor = row['valor_vendas_ultimos_90_dias']
+        porcentagem = row['Porcentagem']
+        
+        # Formatar o valor para exibição com separador de milhares e duas casas decimais
+        valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        
+        # Criar item da lista com flex para alinhamento
+        item = html.Div([
+            html.Div([
+                # html.Span(f"{index + 1}. ", className="me-1 text-muted"),
+                html.Span(f"{categoria}", style={"fontWeight": "bold"}),
+            ], className="d-flex align-items-center"),
+            html.Div([
+                html.Span(f"{valor_formatado}", className="me-2"),
+                html.Span(f"({porcentagem}%)", className="text-muted"),
+            ], className="d-flex align-items-center"),
+        ], className="d-flex justify-content-between py-2 border-bottom")
+        
+        lista_categorias.append(item)
+    
+    # Dividir a lista em páginas de 10 itens
+    itens_por_pagina = 10
+    total_paginas = (len(lista_categorias) + itens_por_pagina - 1) // itens_por_pagina  # Arredondamento para cima
+    
+    # Container para a lista com paginação
+    container_lista = html.Div([
+        # Cabeçalho com informação sobre o ranking
+        html.Div([
+            html.H6(f"Total de {len(lista_categorias)} categorias", className="text-muted")
+        ], className="d-flex justify-content-between align-items-center mb-3"),
+        
+        # Conteúdo da lista paginada
+        html.Div(id="lista-categorias-content", className="px-3 mb-3"),
+        
+        # Controles de paginação
+        html.Div([
+            html.Div([
+                html.Button(
+                    html.I(className="fas fa-chevron-left"), 
+                    id="btn-pagina-anterior",
+                    className="btn btn-outline-secondary me-2",
+                    disabled=True,
+                ),
+                html.Div([
+                    html.Span("Página ", className="me-1"),
+                    html.Span("1", id="pagina-atual", className="me-1"),
+                    html.Span(f"de {total_paginas}")
+                ], className="d-flex align-items-center mx-2"),
+                html.Button(
+                    html.I(className="fas fa-chevron-right"),
+                    id="btn-proxima-pagina",
+                    className="btn btn-outline-secondary ms-2",
+                    disabled=total_paginas <= 1,
+                ),
+            ], className="d-flex justify-content-center align-items-center"),
+        ], className="mt-3")
+    ])
+    
+    # Armazenar os dados paginados para usar no callback
+    categorias_data = {
+        "total_paginas": total_paginas,
+        "categorias": lista_categorias
+    }
+    
+    # Gráfico 3: Barras com quantidade e porcentagem por situação
     situacao_counts = df_curva_cobertura['Situação do Produto'].value_counts().reset_index()
     situacao_counts.columns = ['Situação do Produto', 'count']
     
@@ -151,14 +233,20 @@ def get_giro_estoque_layout(data):
         # Linha de métricas
         metrics_row,
         
-        # Primeira linha - Gráfico de barras da Curva ABC e sua tabela
+        # Primeira linha - Gráfico de barras da Curva ABC e Ranking de Categorias
         html.Div([
             html.Div([
                 create_card(
                     "Distribuição de Produtos por Curva ABC (Clique para filtrar)",
                     dcc.Graph(figure=fig_barras_abc, id='grafico-curva-abc-barras', clear_on_unhover=True)
                 )
-            ], className="col-md-12"),
+            ], className="col-md-6"),
+            html.Div([
+                create_card(
+                    "Ranking de Categorias por Valor de Vendas (90 dias)",
+                    container_lista
+                )
+            ], className="col-md-6"),
         ], className="row mb-4"),
             
         # Tabela filtrada por Curva ABC
