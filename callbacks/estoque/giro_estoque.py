@@ -1,12 +1,86 @@
 import io
 import pandas as pd
-from dash import html
+from dash import html, callback_context
 from dash.dependencies import Input, Output, State
 from dash import dash_table
 from utils import color
 from dash import no_update
 
 def register_giro_estoque_callbacks(app):
+
+    @app.callback(
+        [Output("lista-categorias-content", "children"),
+        Output("pagina-atual", "children"),
+        Output("btn-pagina-anterior", "disabled"),
+        Output("btn-proxima-pagina", "disabled")],
+        [Input("btn-pagina-anterior", "n_clicks"),
+        Input("btn-proxima-pagina", "n_clicks")],
+        [State("pagina-atual", "children"),
+        State("selected-data", "data")]
+    )
+    def atualizar_paginacao(btn_anterior, btn_proximo, pagina_atual_str, data):
+        ctx = callback_context
+        if not ctx.triggered:
+            # Primeira renderização, exibir a primeira página
+            pagina_atual = 1
+        else:
+            # Determinar qual botão foi clicado
+            trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            pagina_atual = int(pagina_atual_str)
+            
+            if trigger_id == "btn-pagina-anterior" and pagina_atual > 1:
+                pagina_atual -= 1
+            elif trigger_id == "btn-proxima-pagina":
+                pagina_atual += 1
+        
+        # Carregar dados do Store
+        df_curva_cobertura = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
+        df_com_vendas = df_curva_cobertura[df_curva_cobertura['Curva ABC'].isin(['A', 'B', 'C'])]
+        categoria_vendas = df_com_vendas.groupby('Categoria')['valor_vendas_ultimos_90_dias'].sum().reset_index()
+        total_vendas = categoria_vendas['valor_vendas_ultimos_90_dias'].sum()
+        categoria_vendas['Porcentagem'] = (categoria_vendas['valor_vendas_ultimos_90_dias'] / total_vendas * 100).round(1)
+        categoria_vendas = categoria_vendas.sort_values(by='valor_vendas_ultimos_90_dias', ascending=False)
+        
+        # Criar elementos da lista ordenada
+        lista_categorias = []
+        for index, row in categoria_vendas.iterrows():
+            categoria = row['Categoria']
+            valor = row['valor_vendas_ultimos_90_dias']
+            porcentagem = row['Porcentagem']
+            
+            # Formatação...
+            valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            
+            item = html.Div([
+                html.Div([
+                    # html.Span(f"{index + 1}. ", className="me-1 text-muted"),
+                    html.Span(f"{categoria}", style={"fontWeight": "bold"}),
+                ], className="d-flex align-items-center"),
+                html.Div([
+                    html.Span(f"{valor_formatado}", className="me-2"),
+                    html.Span(f"({porcentagem}%)", className="text-muted"),
+                ], className="d-flex align-items-center"),
+            ], className="d-flex justify-content-between py-2 border-bottom")
+            
+            lista_categorias.append(item)
+        
+        # Dividir a lista em páginas
+        itens_por_pagina = 10
+        total_paginas = (len(lista_categorias) + itens_por_pagina - 1) // itens_por_pagina
+        
+        # Calcular o índice inicial e final para a página atual
+        inicio = (pagina_atual - 1) * itens_por_pagina
+        fim = min(inicio + itens_por_pagina, len(lista_categorias))
+        
+        # Selecionar apenas os itens da página atual
+        itens_pagina_atual = lista_categorias[inicio:fim]
+        
+        # Estados dos botões de paginação
+        btn_anterior_disabled = pagina_atual <= 1
+        btn_proximo_disabled = pagina_atual >= total_paginas
+        
+        return itens_pagina_atual, str(pagina_atual), btn_anterior_disabled, btn_proximo_disabled
+
     # Callback para o gráfico de Curva ABC e sua tabela
     @app.callback(
         [
