@@ -363,6 +363,10 @@ def serve_home():
 def serve_lp():
     return send_from_directory('landing', 'lp.html')
 
+@server.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(os.path.join(server.root_path, 'assets'), filename)
+
 # =============================================================================
 # Callback para mostrar login ou dashboard
 # =============================================================================
