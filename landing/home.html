@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <!-- favicon personalizado de diferentes tamanhos -->
+    <link rel="shortcut icon" href="/assets/images/maloka-logo.png" type="image/png" sizes="16x16 32x32 48x48">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maloka | IA para PMEs do Varejo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .hero-bg {
+            background-color: #F2F2F2; /* Light Gray */
+        }
+        .section-padding {
+            padding-top: 4rem; /* py-16 */
+            padding-bottom: 4rem; /* py-16 */
+        }
+        @media (min-width: 768px) { /* md breakpoint */
+            .section-padding {
+                padding-top: 6rem; /* py-24 */
+                padding-bottom: 6rem; /* py-24 */
+            }
+        }
+        .cta-button-primary {
+            background-color: #FF730e; /* New Orange */
+            color: white;
+            padding: 0.75rem 1.5rem; /* px-6 py-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 600; /* semibold */
+            transition: background-color 0.3s ease;
+        }
+        .cta-button-primary:hover {
+            background-color: #E6680D; /* Darker New Orange */
+        }
+        .cta-button-secondary { /* Updated for the new blue */
+            background-color: #0077B6; /* New Blue */
+            color: white;
+            padding: 0.75rem 1.5rem; /* px-6 py-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 600; /* semibold */
+            transition: background-color 0.3s ease;
+        }
+        .cta-button-secondary:hover {
+            background-color: #005F8E; /* Darker New Blue */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 2rem; /* p-8 */
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* shadow-lg */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%; /* For consistent card height in grids */
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* shadow-xl */
+        }
+        .nav-link-active {
+            color: #FF730e; /* New Orange for active link */
+            border-bottom: 2px solid #FF730e;
+        }
+        .nav-link {
+            color: #4B5563; /* gray-700 */
+            font-weight: 500; /* medium */
+        }
+        .nav-link:hover {
+            color: #FF730e; /* New Orange */
+        }
+
+        /* Manifesto Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6B7280; /* gray-500 */
+        }
+        .modal-close-button:hover {
+            color: #1F2937; /* gray-800 */
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-800">
+
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="text-3xl font-bold text-[#FF730e]">Maloka</a>
+            <div class="hidden md:flex space-x-6 items-center">
+                <a href="#hero" class="nav-link nav-link-active">Home</a>
+                <a href="#nossas-solucoes" class="nav-link">Soluções</a>
+                <a href="#agentes" class="nav-link">Agentes</a>
+                <a href="#como-funciona" class="nav-link">Como Funciona</a>
+                <a href="#diferenciais" class="nav-link">Diferenciais</a>
+                <a href="#sobre-nos" class="nav-link">Sobre Nós</a>
+                <a href="http://wa.me/5511998821973" target="_blank" rel="noopener" class="cta-button-primary text-sm">Fale Conosco</a>
+            </div>
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-gray-700 focus:outline-none">
+                    <i data-lucide="menu" class="h-6 w-6"></i>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden bg-white shadow-lg">
+            <a href="#hero" class="block px-6 py-3 text-gray-700 hover:bg-gray-100 font-semibold">Home</a>
+            <a href="#nossas-solucoes" class="block px-6 py-3 text-gray-700 hover:bg-gray-100">Nossas Soluções</a>
+            <a href="#agentes" class="block px-6 py-3 text-gray-700 hover:bg-gray-100">Agentes</a>
+            <a href="#como-funciona" class="block px-6 py-3 text-gray-700 hover:bg-gray-100">Como Funciona</a>
+            <a href="#diferenciais" class="block px-6 py-3 text-gray-700 hover:bg-gray-100">Diferenciais</a>
+            <a href="#sobre-nos" class="block px-6 py-3 text-gray-700 hover:bg-gray-100">Sobre Nós</a>
+            <a href="http://wa.me/5511998821973" target="_blank" rel="noopener" class="block px-6 py-3 text-[#FF730e] hover:bg-orange-50 font-semibold">Fale Conosco</a>
+        </div>
+    </nav>
+
+    <main>
+        <section id="hero" class="hero-bg section-padding">
+            <div class="container mx-auto px-6">
+                <div class="flex flex-col md:flex-row items-center">
+                    <div class="md:w-1/2 text-center md:text-left mb-10 md:mb-0">
+                        <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
+                            IA para PMEs do Varejo: converse com seus dados e execute ações estratégicas.
+                        </h1>
+                        <p class="text-lg text-gray-600 mb-8">
+                            Automatize suas análises, otimize seus estoques e aumente suas vendas com soluções de inteligência artificial criadas para pequenas e médias empresas varejistas.
+                        </p>
+                        <div class="flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
+                            <a href="https://maloka.ai/lp" class="cta-button-primary">Testar com meus dados</a>
+                            <a href="#nossas-solucoes" class="cta-button-secondary">Descubra como</a>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <img src="/assets/images/varejista_celular.png" alt="Uma varejista dona de uma loja de celulares. Ela está sorrindo para a câmera enquanto trabalha em um computador que exibe gráficos e dashboard intuitivos com IA. Sua roupa usa as cores laranja ou azul como paleta. Ao fundo, temos detalhes da sua loja de celulares com efeito blur." class="rounded-lg shadow-xl w-full max-w-2x1">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="problema" class="section-padding bg-white">
+            <div class="container mx-auto px-6">
+                <div class="flex flex-col md:flex-row-reverse items-center">
+                    <div class="md:w-1/2 text-center md:text-left mb-10 md:mb-0 md:pl-12">
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+                            Seus dados guardam segredos valiosos. Mas como revelá-los?
+                        </h2>
+                        <p class="text-lg text-gray-600 mb-4">
+                            Você sabe o que precisa comprar hoje? Sua equipe avisa quando um produto vai faltar?
+                        </p>
+                        <p class="text-lg text-gray-600 mb-8">
+                            Com a IA da Maloka, essas respostas são automáticas, baseadas nos seus dados.
+                        </p>
+                        <div class="text-center md:text-left">
+                            <a href="#nossas-solucoes" class="cta-button-primary">Descubra como</a>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <img src="/assets/images/varejista_construcao.png" alt="Um varejista gerente de uma loja de materiais de construção. Ele está pensativo diante de muitos dados desorganizados e dúvidas sobre situações comuns do varejo como: estoque cheio, alerta de ruptura de estoque, vendas caindo, etc. Ao seu redor há ícones representando suas dúvidas e angústias. Sua camisa é na cor laranja ou azul. Ao fundo, temos detalhes da sua loja com efeito blur." class="rounded-lg shadow-xl w-full max-w-xl">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="nossas-solucoes" class="section-padding bg-gray-50">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Soluções de inteligência artificial para PMEs varejistas</h2>
+                <p class="text-lg text-gray-600 mb-12 max-w-3xl mx-auto">
+                    Nossa IA generativa transforma seus dados em decisões estratégicas relacionados aos três pilares:
+                </p>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="users" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Conheça seus clientes</h3>
+                        <p class="text-gray-600">Segmentação inteligente, retenção e satisfação.</p>
+                    </div>
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="bar-chart-big" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Venda com inteligência</h3>
+                        <p class="text-gray-600">Análise de desempenho, precificação e promoções.</p>
+                    </div>
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="archive" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Estoques sob controle</h3>
+                        <p class="text-gray-600">Gestão eficiente, planejamento de compras e previsão de demanda.</p>
+                    </div>
+                </div>
+                <!-- imagem do cokpit-->
+                <div class="mt-12">
+                    <img src="/assets/images/cockpit.png" alt="Dashboard da solução de IA da Maloka para PMEs do varejo" class="rounded-lg shadow-xl w-full max-w-3xl mx-auto">
+                </div>
+                <div class="mt-12">
+                    <a href="https://maloka.ai/lp" class="cta-button-primary">Conheça nossa solução</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="agentes" class="section-padding bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Inteligência Artificial que fala a língua do varejista!</h2>
+                <p class="text-xl text-gray-700 mb-12">O que a IA da Maloka pode fazer pelo seu negócio?</p>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="package-search" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Analista de Estoque</h3>
+                        <p class="text-gray-600">Saiba exatamente o que e quando comprar. Evite faltas e excessos com nossa previsão inteligente e alertas proativos.</p>
+                    </div>
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="clipboard-list" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Analista de Compras</h3>
+                        <p class="text-gray-600">Otimize seu ciclo de compras, garanta os produtos certos no momento certo e melhore seu fluxo de caixa.</p>
+                    </div>
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="trending-up" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Analista de Vendas</h3>
+                        <p class="text-gray-600">Analise suas vendas, preveja a demanda para maximizar seus resultados e defina preços competitivos e lucrativos.</p>
+                    </div>
+                    <div class="card text-left">
+                        <div class="flex items-center justify-center w-12 h-12 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="smile" class="text-[#FF730e]"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Analista de Clientes</h3>
+                        <p class="text-gray-600">Entenda o comportamento dos seus clientes, segmente-os para ações personalizadas e aumente a retenção e satisfação.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="como-funciona" class="section-padding bg-gray-50">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Integração rápida, insights imediatos.</h2>
+                <p class="text-xl text-gray-700 mb-8">Do dado bruto à decisão em minutos.</p>
+                <p class="text-lg text-gray-600 mb-12 max-w-3xl mx-auto">
+                    Com a Maloka, você conecta seus sistemas de gestão (ERPs e PDVs) em poucos dias, não meses.
+                    Nossa IA analisa automaticamente seus dados, permitindo que você, varejista, “converse” com eles para obter insights estratégicos e receber sugestões de ações relacionadas a vendas, estoque e clientes.
+                </p>
+                <div class="hidden md:grid grid-cols-5 gap-4 items-center text-left">
+                    <div class="flex flex-col items-center text-center p-4 col-span-1">
+                        <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i data-lucide="upload-cloud" class="text-blue-500 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">1. Conecte</h3>
+                        <p class="text-gray-600 text-sm">ERPs/PDVs integrados.</p>
+                    </div>
+                    <div class="flex items-center justify-center col-span-1">
+                         <i data-lucide="arrow-right" class="text-gray-400 w-12 h-12"></i>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-4 col-span-1">
+                        <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i data-lucide="cpu" class="text-blue-500 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">2. Processe</h3>
+                        <p class="text-gray-600 text-sm">IA Maloka analisa.</p>
+                    </div>
+                     <div class="flex items-center justify-center col-span-1">
+                         <i data-lucide="arrow-right" class="text-gray-400 w-12 h-12"></i>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-4 col-span-1">
+                        <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i data-lucide="layout-dashboard" class="text-blue-500 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">3. Decida</h3>
+                        <p class="text-gray-600 text-sm">Dashboards e insights.</p>
+                    </div>
+                </div>
+                 <div class="grid md:hidden grid-cols-1 gap-8 items-start text-left">
+                    <div class="flex flex-col items-center text-center p-4">
+                        <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i data-lucide="upload-cloud" class="text-blue-500 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">1. Conecte seus Dados</h3>
+                        <p class="text-gray-600 text-sm">Integre facilmente seus sistemas ERPs e PDVs.</p>
+                    </div>
+                    <div class="flex items-center justify-center my-4">
+                        <i data-lucide="arrow-down" class="text-gray-400 w-12 h-12"></i>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-4">
+                        <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i data-lucide="cpu" class="text-blue-500 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">2. IA Maloka Processa</h3>
+                        <p class="text-gray-600 text-sm">Nossa IA analisa e encontra padrões valiosos.</p>
+                    </div>
+                    <div class="flex items-center justify-center my-4">
+                        <i data-lucide="arrow-down" class="text-gray-400 w-12 h-12"></i>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-4">
+                        <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i data-lucide="layout-dashboard" class="text-blue-500 w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">3. Receba Insights</h3>
+                        <p class="text-gray-600 text-sm">Acesse dashboards e sugestões acionáveis.</p>
+                    </div>
+                </div>
+                <div class="mt-12">
+                    <a href="https://maloka.ai/lp" class="cta-button-primary">Quero ver na prática</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="diferenciais" class="section-padding bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Por que a Maloka é diferente?</h2>
+                    <p class="text-lg text-gray-600 max-w-2xl mx-auto">A Maloka não é apenas mais uma ferramenta. 
+                    Somos seu parceiro estratégico, com diferenciais pensados para PMEs do varejo.
+                    Criamos um cérebro artificial que trabalha 24/7 para o seu negócio, enviando insights direto no seu WhatsApp ou email.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="flex flex-col items-center text-center p-6 rounded-lg hover:shadow-lg transition-shadow duration-300">
+                        <div class="flex items-center justify-center w-16 h-16 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="database-zap" class="text-[#FF730e] w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Data Lake Rápido e Descomplicado</h3>
+                        <p class="text-gray-600 text-sm">Integramos seus dados de ERPs e PDVs em dias, não meses. Valor imediato, sem dor de cabeça técnica.</p>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-6 rounded-lg hover:shadow-lg transition-shadow duration-300">
+                        <div class="flex items-center justify-center w-16 h-16 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="layout-grid" class="text-[#FF730e] w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Plataforma Tudo-em-Um</h3>
+                        <p class="text-gray-600 text-sm">Análises de vendas, estoque e clientes em um só lugar. Uma interface única e acessível, sem precisar de múltiplas ferramentas.</p>
+                    </div>
+                    <div class="flex flex-col items-center text-center p-6 rounded-lg hover:shadow-lg transition-shadow duration-300">
+                        <div class="flex items-center justify-center w-16 h-16 bg-[#FF730e]/20 rounded-full mb-4">
+                            <i data-lucide="message-circle-code" class="text-[#FF730e] w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Converse e Execute com IA Generativa</h3>
+                        <p class="text-gray-600 text-sm">Tenha um time completo de analistas de dados 24/7. Pergunte em linguagem natural e receba insights para agir na hora.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sobre-nos" class="section-padding bg-gray-50">
+            <div class="container mx-auto px-6">
+                <div class="flex flex-col md:flex-row items-center">
+                    <div class="md:w-1/2 text-center md:text-left mb-10 md:mb-0 md:pr-10">
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+                            Inteligência Artificial com DNA Manauara
+                        </h2>
+                        <p class="text-lg text-gray-600 mb-8">
+                            Somos uma comunidade de especialistas em IA Generativa, apaixonados por empoderar PMEs do varejo. Com talento e tecnologia da Amazônia, levamos soluções inovadoras para o mercado local e nacional.
+                        </p>
+                        <div class="text-center md:text-left">
+                            <button id="manifesto-button" class="cta-button-primary">Manifesto Maloka</button>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <img src="/assets/images/Capa_Maloka.png" alt="Maloka - transformando o varejo com inteligência artificial" class="rounded-lg shadow-xl w-full max-w-md">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="manifesto-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="modal-close-button" class="modal-close-button">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <h3 class="text-2xl font-bold text-gray-900 mb-4">Manifesto Maloka 🛖</h3>
+            <p class="text-gray-700 mb-3">Reimaginamos o Varejo com Inteligência Artificial, onde os dados se transformam em poder competitivo e eficiência para os nossos clientes.</p>
+            <div class="space-y-3 text-gray-600">
+                <div>
+                    <h4 class="font-semibold text-gray-800">Inovação e Agilidade</h4>
+                    <p>Priorizamos rapidez na adoção de tecnologia para entregar soluções de valor.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800">Foco no Varejista</h4>
+                    <p>Estamos atentos aos desafios do cliente, colocamos o varejista no centro.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800">Simplicidade</h4>
+                    <p>Transformamos dados em respostas que geram resultado.</p>
+                </div>
+                <p class="font-semibold text-gray-800 pt-2">Nosso compromisso é claro: democratizar a IA no varejo, capacitando nossos clientes a crescer com inteligência.</p>
+                <p class="font-bold text-[#FF730e]">Junte-se a nós nessa transformação!</p>
+            </div>
+        </div>
+    </div>
+
+    <footer id="contato" class="bg-gray-800 text-gray-300 py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid lg:grid-cols-3 gap-8 items-center mb-8 text-center lg:text-left">
+                <div class="lg:col-span-1">
+                    <img src="/assets/logo_maloka.png" alt="Maloka Logo" class="h-12 mb-4">
+                    <h3 class="text-2xl font-bold text-[#FF730e] mb-2">Maloka</h3>
+                    <p class="text-sm text-gray-400">Transformando o varejo com inteligência artificial. 🛖</p>
+                </div>
+
+                <div class="lg:col-span-1 text-center my-6 lg:my-0">
+                    <p class="text-lg font-semibold text-white mb-3">Pronto para desbloquear o poder dos seus dados?</p>
+                    <a href="http://wa.me/5511998821973" target="_blank" rel="noopener" class="cta-button-primary inline-block">Fale conosco</a>
+                </div>
+
+                <div class="lg:col-span-1 lg:text-right">
+                    <h4 class="text-lg font-semibold text-white mb-3">Conecte-se</h4>
+                    <div class="flex space-x-4 justify-center lg:justify-end mb-4">
+                        <a href="https://www.linkedin.com/company/malokaai/" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-[#FF730e]"><i data-lucide="linkedin" class="w-6 h-6"></i></a>
+                        <a href="https://www.instagram.com/maloka.ai" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-[#FF730e]"><i data-lucide="instagram" class="w-6 h-6"></i></a>
+                    </div>
+                    <h4 class="text-lg font-semibold text-white mb-3 mt-4">Contato</h4>
+                    <div class="space-y-1 text-sm">
+                        <p class="flex items-center justify-center lg:justify-end text-gray-300"><i data-lucide="mail" class="w-4 h-4 mr-2 text-[#FF730e]"></i> contato@maloka.ai</p>
+                        <p class="flex items-center justify-center lg:justify-end text-gray-300"><i data-lucide="phone" class="w-4 h-4 mr-2 text-[#FF730e]"></i> +55 11 99882-1973</p>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 pt-8 text-center text-sm text-gray-500">
+                <a href="politica-privacidade.html" class="hover:text-[#FF730e] mx-2">Política de Privacidade</a>
+                <span class="mx-1">|</span>
+                <a href="termos-uso.html" class="hover:text-[#FF730e] mx-2">Termos de Uso</a>
+                <p class="mt-2">&copy; <span id="currentYear"></span> Maloka AI. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+        
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Smooth scroll and active nav link highlighting
+        const navLinks = document.querySelectorAll('nav a[href^="#"]');
+        const mobileNavLinks = document.querySelectorAll('#mobile-menu a[href^="#"]');
+        const sections = document.querySelectorAll('main section[id]');
+
+        function updateActiveLink() {
+            let currentSectionId = 'hero'; // Default to hero if no section is matched
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                // Check if section is in viewport, considering nav height (approx 70-80px)
+                // A section is "current" if its top is above (viewport bottom - some threshold)
+                // and its bottom is below (viewport top + some threshold)
+                // A simpler way for top-down scrolling: if pageYOffset is past sectionTop - navHeight
+                if (pageYOffset >= sectionTop - 80) { 
+                    currentSectionId = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('nav-link-active');
+                if (link.getAttribute('href') === `#${currentSectionId}`) {
+                    link.classList.add('nav-link-active');
+                }
+            });
+             mobileNavLinks.forEach(link => {
+                link.classList.remove('text-[#FF730e]', 'font-semibold', 'bg-gray-100'); // Reset active style for mobile
+                if (link.getAttribute('href') === `#${currentSectionId}`) {
+                    link.classList.add('text-[#FF730e]', 'font-semibold', 'bg-gray-100'); // Apply active style for mobile
+                }
+            });
+        }
+
+        function smoothScrollToSection(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const targetSection = document.querySelector(targetId);
+            if (targetSection) {
+                // Close mobile menu if open
+                if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                }
+                // Calculate offset considering sticky nav height (approx 60-70px)
+                const navHeight = document.querySelector('nav').offsetHeight || 70;
+                window.scrollTo({
+                    top: targetSection.offsetTop - navHeight, 
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        navLinks.forEach(anchor => {
+            anchor.addEventListener('click', smoothScrollToSection);
+        });
+        mobileNavLinks.forEach(anchor => {
+            anchor.addEventListener('click', smoothScrollToSection);
+        });
+
+
+        window.addEventListener('scroll', updateActiveLink);
+        window.addEventListener('load', updateActiveLink); // Initial check on load
+
+        // Manifesto Modal Logic
+        const manifestoButton = document.getElementById('manifesto-button');
+        const manifestoModal = document.getElementById('manifesto-modal');
+        const modalCloseButton = document.getElementById('modal-close-button');
+
+        if (manifestoButton && manifestoModal && modalCloseButton) {
+            manifestoButton.addEventListener('click', () => {
+                manifestoModal.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent background scroll when modal is open
+            });
+
+            const closeModal = () => {
+                manifestoModal.classList.remove('active');
+                document.body.style.overflow = ''; // Restore background scroll
+            };
+
+            modalCloseButton.addEventListener('click', closeModal);
+
+            // Close modal if overlay is clicked
+            manifestoModal.addEventListener('click', (event) => {
+                if (event.target === manifestoModal) {
+                    closeModal();
+                }
+            });
+
+            // Close modal with Escape key
+            window.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && manifestoModal.classList.contains('active')) {
+                    closeModal();
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>

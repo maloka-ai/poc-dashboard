@@ -9,7 +9,7 @@ from flask_caching import Cache
 from flask_session import Session
 import time
 from dash_bootstrap_templates import load_figure_template
-from flask import Flask, redirect, session
+from flask import Flask, redirect, session, send_from_directory
 import psycopg2
 from werkzeug.security import check_password_hash
 import bcrypt
@@ -354,6 +354,18 @@ def debug_session():
         'cliente': session.get('cliente', 'nenhum')
     }
     return f"Informações da sessão: {session_info}"
+
+@server.route('/home')
+def serve_home():
+    return send_from_directory('landing', 'home.html')
+
+@server.route('/lp')
+def serve_lp():
+    return send_from_directory('landing', 'lp.html')
+
+@server.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(os.path.join(server.root_path, 'assets'), filename)
 
 # =============================================================================
 # Callback para mostrar login ou dashboard
