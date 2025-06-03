@@ -966,6 +966,6 @@ estoque_com_vendas.to_excel(caminho_arquivo_completo, index=False)
 print(f"\nTabela completa com estoque por loja e consistência exportada para: {caminho_arquivo_completo}")
 
 # Exportar para Excel
-caminho_arquivo_metricas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metricas_analise_estoque.xlsx")
-df_metricas.to_excel(caminho_arquivo_metricas, index=False)
+caminho_arquivo_metricas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metricas_analise_estoque.csv")
+df_metricas.to_csv(caminho_arquivo_metricas, index=False)
 print(f"\nTabela de métricas exportada para: {caminho_arquivo_metricas}")
