@@ -53,7 +53,7 @@ try:
     print(df_vendas.head())
     
     # Exportar para Excel
-    # df_vendas.to_excel("df_vendas_BD.xlsx", index=False)
+    df_vendas.to_excel("df_vendas_BD.xlsx", index=False)
 
     ########################################################
     # consulta da tabela venda_itens
@@ -80,7 +80,7 @@ try:
     print(df_venda_itens.head())
     
     # Exportar para Excel
-    # df_venda_itens.to_excel("df_venda_itens_BD.xlsx", index=False)
+    df_venda_itens.to_excel("df_venda_itens_BD.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produto
@@ -233,10 +233,10 @@ try:
     df_vendas['data_venda'] = pd.to_datetime(df_vendas['data_venda'])
     
     # Mesclar vendas e itens de venda
-    df_vendas_completo = df_venda_itens.merge(
-        df_vendas, 
+    df_vendas_completo = df_vendas.merge(
+        df_venda_itens, 
         on='id_venda', 
-        how='inner'
+        how='left'
     )
     
     # Adicionar informações do produto
@@ -250,14 +250,11 @@ try:
     
     # Calcular data atual e período de análise
     data_atual = datetime.now()
-    periodo_3_meses = data_atual - timedelta(days=90)
     periodo_12_meses = data_atual - timedelta(days=364)
     
-    # Filtrar vendas dos últimos 3 e 12 meses
-    df_vendas_3m = df_vendas_completo[df_vendas_completo['data_venda'] >= periodo_3_meses].copy()
+    # Filtrar vendas dos últimos 12 meses
     df_vendas_1ano = df_vendas_completo[df_vendas_completo['data_venda'] >= periodo_12_meses].copy()
     
-    print(f"Vendas nos últimos 3 meses: {len(df_vendas_3m)} registros")
     print(f"Vendas no último ano: {len(df_vendas_1ano)} registros")
     
     # Calcular a média de vendas mensais por produto
@@ -272,17 +269,12 @@ try:
     vendas_mensais_12m['media_mensal_qtd'] = vendas_mensais_12m['quantidade_total_12m'] / 12
     vendas_mensais_12m['media_mensal_valor'] = vendas_mensais_12m['valor_total_12m'] / 12
 
-    
-    # Calcular média mensal (dividindo por 3 meses)
-    vendas_mensais_12m['media_mensal_qtd'] = vendas_mensais_12m['quantidade_total_12m'] / 12
-    vendas_mensais_12m['media_mensal_valor'] = vendas_mensais_12m['valor_total_12m'] / 12
-
     # Adicionar análise de consumo mês a mês no último ano
     print("Calculando consumo mês a mês no último ano...")
     
     # Extrair mês e ano de cada venda
     df_vendas_1ano['mes_ano'] = df_vendas_1ano['data_venda'].dt.strftime('%Y-%m')
-    
+    df_vendas_1ano.to_excel("df_vendas_1ano.xlsx", index=False)
     # Criar tabela pivô com o consumo mensal por produto
     consumo_mensal = df_vendas_1ano.pivot_table(
         index='id_produto',
@@ -294,13 +286,16 @@ try:
     
     # Obter lista de todos os meses no período analisado (em ordem cronológica)
     meses_ordenados = sorted(df_vendas_1ano['mes_ano'].unique())
+
+    print("\nMeses incluídos na análise de consumo:")
+    print(', '.join(meses_ordenados))
     
     # Renomear colunas para incluir prefixo 'qtd_'
     colunas_renomeadas = {mes: f'qtd_{mes}' for mes in meses_ordenados}
     consumo_mensal = consumo_mensal.rename(columns=colunas_renomeadas)
     
     print(f"Consumo mensal calculado para {len(consumo_mensal)} produtos ao longo de {len(meses_ordenados)} meses")
-
+    print(f"Colunas de consumo mensal: {', '.join(consumo_mensal.columns)}")
     # Calcular a média de vendas mensais por produto, mas apenas para produtos vendidos no último ano
     produtos_vendidos_ultimo_ano = df_vendas_1ano['id_produto'].unique()
 
@@ -577,6 +572,7 @@ try:
     
     print(f"\nAnálise concluída com sucesso!")
     print(f"Foram analisados {len(df_recomendacao_final)} produtos.")
+    print(df_recomendacao_final.columns.tolist())
     print(f"Relatório de recomendação de compra salvo em: {caminho_arquivo}")
     
     # Mostrar resumo por criticidade
