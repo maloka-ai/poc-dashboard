@@ -40,30 +40,34 @@ def obter_dados_base(conn):
     
     # Vendas e itens de venda
     query_vendas = """
-        SELECT v.id_venda, v.data_venda, v.id_cliente, v.status 
+        SELECT v.id_venda, v.id_cliente, v.data_venda, v.total_venda
         FROM maloka_core.venda v
     """
     df_vendas = pd.read_sql(query_vendas, conn)
+    df_vendas.to_csv('vendas.csv', index=False)  # Exportar para CSV para verificação
     
     query_venda_itens = """
-        SELECT id_venda, id_produto, quantidade 
+        SELECT id_venda, id_produto, quantidade, preco_bruto, total_item
         FROM maloka_core.venda_item
     """
     df_venda_itens = pd.read_sql(query_venda_itens, conn)
+    df_venda_itens.to_csv('venda_itens.csv', index=False)  # Exportar para CSV para verificação
     
     # Produtos
     query_produtos = """
-        SELECT id_produto, nome, critico
+        SELECT id_produto, nome, preco_custo, id_categoria
         FROM maloka_core.produto
     """
     df_produtos = pd.read_sql(query_produtos, conn)
+    df_produtos.to_csv('produtos.csv', index=False)  # Exportar para CSV para verificação
     
     # Fornecedores
     query_fornecedores = """
-        SELECT id_fornecedor, nome as nome_fornecedor
+        SELECT id_fornecedor, nome as nome_fornecedor, cpf_cnpj
         FROM maloka_core.fornecedor
     """
     df_fornecedores = pd.read_sql(query_fornecedores, conn)
+    df_fornecedores.to_csv('fornecedores.csv', index=False)  # Exportar para CSV para verificação
     
     # Estoque atualizado
     query_estoque = """
@@ -75,11 +79,12 @@ def obter_dados_base(conn):
         ORDER BY id_produto, data_movimento DESC
     """
     df_estoque = pd.read_sql(query_estoque, conn)
+    df_estoque.to_csv('estoque.csv', index=False)  # Exportar para CSV para verificação
     
     # Histórico de movimentações (para aquisições)
     query_historico = """
         SELECT 
-            id_movimento,
+            id_estoque_movimento,
             id_produto,
             data_movimento,
             tipo,
@@ -90,6 +95,7 @@ def obter_dados_base(conn):
         ORDER BY id_produto, data_movimento DESC
     """
     df_historico = pd.read_sql(query_historico, conn)
+    df_historico.to_csv('historico.csv', index=False)  # Exportar para CSV para verificação
     
     # Relacionamento produto-fornecedor
     query_produto_fornecedor = """
@@ -298,7 +304,7 @@ def preparar_dataframe_final(df_analise):
     
     # Lista de todas as colunas na ordem desejada
     colunas_finais = [
-        'id_produto', 'nome', 'critico', 
+        'id_produto', 'nome', 
         *colunas_numericas,  # Colunas de vendas mensais
         'nome_fornecedor', 'estoque', 'data_estoque_atualizado', 
         'Media_3M', 'Cobertura', 'Sug_3M', 'Sug_1M',

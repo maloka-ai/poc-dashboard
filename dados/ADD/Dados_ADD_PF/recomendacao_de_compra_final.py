@@ -1,0 +1,520 @@
+from datetime import datetime, timedelta
+import pandas as pd
+import dotenv
+import os
+import warnings
+import psycopg2
+import numpy as np
+
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
+
+dotenv.load_dotenv()
+# Nome do arquivo com timestamp para evitar sobrescrever arquivos anteriores
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+
+# Configuração da conexão
+try:
+    # Conectar ao PostgreSQL
+    print("Conectando ao banco de dados PostgreSQL...")
+    conn = psycopg2.connect(
+        host= os.getenv("DB_HOST"),
+        database="add",
+        user= os.getenv("DB_USER"),
+        password= os.getenv("DB_PASS"),
+        port= os.getenv("DB_PORT")
+    )
+    
+    print("Conexão estabelecida com sucesso!")
+    
+    ########################################################
+    # consulta da tabela vendas
+    ########################################################
+    
+    print("Consultando a tabela VENDAS...")
+    query = """
+    SELECT id_venda, id_cliente, data_venda, total_venda
+    FROM maloka_core.venda
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_vendas = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_vendas)
+    num_colunas = len(df_vendas.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_vendas.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_vendas.head())
+    
+    # Exportar para Excel
+    # df_vendas.to_excel("df_vendas_BD.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela venda_itens
+    ########################################################
+    
+    print("Consultando a tabela VENDA_ITEM...")
+    query = """
+    SELECT id_venda_item, id_venda, id_produto, quantidade, total_item
+    FROM maloka_core.venda_item
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_venda_itens = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_venda_itens)
+    num_colunas = len(df_venda_itens.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_venda_itens.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_venda_itens.head())
+    
+    # Exportar para Excel
+    # df_venda_itens.to_excel("df_venda_itens_BD.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela produto
+    ########################################################
+    
+    print("Consultando a tabela PRODUTO...")
+    query = """
+    SELECT id_produto, nome AS nome_produto, id_categoria, preco_custo
+    FROM maloka_core.produto
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_produto = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_produto)
+    num_colunas = len(df_produto.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_produto.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_produto.head())
+    
+    # Exportar para Excel
+    # df_produto.to_excel("df_produto_BD.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela compra
+    ########################################################
+    
+    print("Consultando a tabela COMPRA...")
+    query = """
+    SELECT id_compra, id_fornecedor, data_compra, total_compra
+    FROM maloka_core.compra
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_compra = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_compra)
+    num_colunas = len(df_compra.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_compra.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_compra.head())
+    
+    # Exportar para Excel
+    # df_compra.to_excel("df_compra_BD.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela compra
+    ########################################################
+    
+    print("Consultando a tabela COMPRA_ITEM...")
+    query = "SELECT * FROM maloka_core.compra_item"
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_compra_item = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_compra_item)
+    num_colunas = len(df_compra_item.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_compra_item.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_compra_item.head())
+    
+    # Exportar para Excel
+    # df_compra_item.to_excel("df_compra_item_BD.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela fornecedor
+    ########################################################
+    
+    print("Consultando a tabela FORNECEDOR...")
+    query = """
+    SELECT id_fornecedor, cpf_cnpj, nome AS nome_fornecedor
+    FROM maloka_core.fornecedor
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_fornecedor = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_fornecedor)
+    num_colunas = len(df_fornecedor.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_fornecedor.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_fornecedor.head())
+    
+    # Exportar para Excel
+    # df_fornecedor.to_excel("df_fornecedor_BD.xlsx", index=False)
+
+    ########################################################
+    # consulta da tabela estoque_movimento
+    ########################################################
+    
+    print("Consultando a tabela ESTOQUE_MOVIMENTO...")
+    query = """
+    SELECT id_estoque_movimento, id_produto, quantidade, data_movimento, tipo, estoque_depois
+    FROM maloka_core.estoque_movimento
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_estoque_movimento = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_estoque_movimento)
+    num_colunas = len(df_estoque_movimento.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_estoque_movimento.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_estoque_movimento.head())
+    
+    # Exportar para Excel
+    # df_estoque_movimento.to_excel("df_estoque_movimento_BD.xlsx", index=False)
+
+    # Fechar conexão
+    conn.close()
+    print("\nConexão com o banco de dados fechada.")
+
+except Exception as e:
+    print(f"Erro: {e}")
+    print("\nVerifique se:")
+    print("1. O PostgreSQL está rodando")
+    print("2. O banco de dados existe")
+    print("3. As credenciais de conexão estão corretas")
+
+print("\n# Iniciando análise para recomendação de compras...")
+
+# Processando os dados para análise
+try:
+    # Converter data_venda para datetime
+    df_vendas['data_venda'] = pd.to_datetime(df_vendas['data_venda'])
+    
+    # Mesclar vendas e itens de venda
+    df_vendas_completo = df_venda_itens.merge(
+        df_vendas, 
+        on='id_venda', 
+        how='inner'
+    )
+    
+    # Adicionar informações do produto
+    df_vendas_completo = df_vendas_completo.merge(
+        df_produto[['id_produto', 'nome_produto', 'preco_custo']],
+        on='id_produto',
+        how='left'
+    )
+    
+    print(f"Dados de vendas processados: {len(df_vendas_completo)} registros")
+    
+    # Calcular data atual e período de análise
+    data_atual = datetime.now()
+    periodo_3_meses = data_atual - timedelta(days=90)
+    periodo_12_meses = data_atual - timedelta(days=364)
+    
+    # Filtrar vendas dos últimos 3 e 12 meses
+    df_vendas_3m = df_vendas_completo[df_vendas_completo['data_venda'] >= periodo_3_meses]
+    df_vendas_1ano = df_vendas_completo[df_vendas_completo['data_venda'] >= periodo_12_meses]
+    
+    print(f"Vendas nos últimos 3 meses: {len(df_vendas_3m)} registros")
+    print(f"Vendas no último ano: {len(df_vendas_1ano)} registros")
+    
+    # Calcular a média de vendas mensais por produto
+    vendas_mensais_3m = df_vendas_3m.groupby('id_produto').agg(
+        quantidade_total_3m=('quantidade', 'sum'),
+        valor_total_3m=('total_item', 'sum'),
+        transacoes_3m=('id_venda', 'nunique')
+    ).reset_index()
+    
+    # Calcular média mensal (dividindo por 3 meses)
+    vendas_mensais_3m['media_mensal_qtd'] = vendas_mensais_3m['quantidade_total_3m'] / 3
+    vendas_mensais_3m['media_mensal_valor'] = vendas_mensais_3m['valor_total_3m'] / 3
+    
+    # Obter estoque atual por produto
+    df_estoque_atual = df_estoque_movimento.sort_values('data_movimento', ascending=False)
+    df_estoque_atual = df_estoque_atual.drop_duplicates(subset=['id_produto'])
+    df_estoque_atual = df_estoque_atual[['id_produto', 'estoque_depois', 'data_movimento']]
+    df_estoque_atual = df_estoque_atual.rename(columns={'estoque_depois': 'estoque_atual', 
+                                                      'data_movimento': 'data_ultima_movimentacao'})
+    
+    # Combinar médias de vendas com estoque atual
+    df_recomendacao = vendas_mensais_3m.merge(
+        df_estoque_atual,
+        on='id_produto',
+        how='left'
+    )
+    
+    # Adicionar informações do produto
+    df_recomendacao = df_recomendacao.merge(
+        df_produto[['id_produto', 'nome_produto', 'preco_custo']],
+        on='id_produto',
+        how='left'
+    )
+    
+    # Calcular métricas de recomendação
+    df_recomendacao['estoque_atual'] = df_recomendacao['estoque_atual'].fillna(0)
+    df_recomendacao['cobertura_meses'] = df_recomendacao.apply(
+        lambda x: 0 if x['estoque_atual'] <= 0 else 
+                (x['estoque_atual'] / x['media_mensal_qtd'] if x['media_mensal_qtd'] > 0 else float('inf')),
+        axis=1
+    )
+    
+    # Calcular sugestão de compra para 3 meses de estoque
+    df_recomendacao['sugestao_compra_qtd'] = df_recomendacao.apply(
+        lambda x: max(0, (3 * x['media_mensal_qtd']) - x['estoque_atual']) if x['media_mensal_qtd'] > 0 else 0,
+        axis=1
+    )
+    
+    # Arredondar sugestão para cima (não queremos frações de produtos)
+    df_recomendacao['sugestao_compra_qtd'] = np.ceil(df_recomendacao['sugestao_compra_qtd'])
+    
+    # Calcular valor estimado da compra sugerida
+    df_recomendacao['valor_estimado_compra'] = df_recomendacao['sugestao_compra_qtd'] * df_recomendacao['preco_custo']
+    
+    # Classificar criticidade do estoque
+    def classificar_criticidade(cobertura):
+        if cobertura < 0.5:  # Menos de 15 dias
+            return "CRÍTICO"
+        elif cobertura < 1.0:  # Menos de 1 mês
+            return "URGENTE"
+        elif cobertura < 2.0:  # Menos de 2 meses
+            return "ATENÇÃO"
+        elif cobertura < 3.0:  # Menos de 3 meses
+            return "NORMAL"
+        else:
+            return "ADEQUADO"
+    
+    df_recomendacao['criticidade'] = df_recomendacao['cobertura_meses'].apply(classificar_criticidade)
+
+    # Obter as últimas 3 compras para cada produto (última, penúltima e antepenúltima)
+    print("Processando histórico de compras para obter últimas 3 aquisições...")
+    df_historico_compras = df_compra_item.merge(df_compra, on='id_compra', how='left')
+    df_historico_compras = df_historico_compras.sort_values(['id_produto', 'data_compra'], ascending=[True, False])
+
+    # Função para extrair as 3 compras mais recentes por produto
+    ultimas_compras_dict = {}
+    penultimas_compras_dict = {}
+    antepenultimas_compras_dict = {}
+
+    for produto_id in df_historico_compras['id_produto'].unique():
+        # Filtrar compras deste produto e ordená-las por data (mais recente primeiro)
+        compras_produto = df_historico_compras[df_historico_compras['id_produto'] == produto_id]
+        compras_produto = compras_produto.sort_values('data_compra', ascending=False)
+        
+        # Adicionar última compra
+        if len(compras_produto) >= 1:
+            ultima = compras_produto.iloc[0]
+            ultimas_compras_dict[produto_id] = {
+                'id_fornecedor': ultima['id_fornecedor'],
+                'preco_bruto': ultima['preco_bruto'],
+                'data_compra': ultima['data_compra']
+            }
+        
+        # Adicionar penúltima compra
+        if len(compras_produto) >= 2:
+            penultima = compras_produto.iloc[1]
+            penultimas_compras_dict[produto_id] = {
+                'id_fornecedor': penultima['id_fornecedor'],
+                'preco_bruto': penultima['preco_bruto'],
+                'data_compra': penultima['data_compra']
+            }
+        
+        # Adicionar antepenúltima compra
+        if len(compras_produto) >= 3:
+            antepenultima = compras_produto.iloc[2]
+            antepenultimas_compras_dict[produto_id] = {
+                'id_fornecedor': antepenultima['id_fornecedor'],
+                'preco_bruto': antepenultima['preco_bruto'],
+                'data_compra': antepenultima['data_compra']
+            }
+
+    # Converter dicionários para DataFrames
+    df_ultima_compra = pd.DataFrame.from_dict(ultimas_compras_dict, orient='index').reset_index()
+    if not df_ultima_compra.empty:
+        df_ultima_compra.rename(columns={
+            'index': 'id_produto',
+            'preco_bruto': 'ultimo_preco_compra',
+            'data_compra': 'data_ultima_compra'
+        }, inplace=True)
+
+    df_penultima_compra = pd.DataFrame.from_dict(penultimas_compras_dict, orient='index').reset_index()
+    if not df_penultima_compra.empty:
+        df_penultima_compra.rename(columns={
+            'index': 'id_produto',
+            'preco_bruto': 'penultimo_preco_compra',
+            'data_compra': 'data_penultima_compra'
+        }, inplace=True)
+
+    df_antepenultima_compra = pd.DataFrame.from_dict(antepenultimas_compras_dict, orient='index').reset_index()
+    if not df_antepenultima_compra.empty:
+        df_antepenultima_compra.rename(columns={
+            'index': 'id_produto',
+            'preco_bruto': 'antepenultimo_preco_compra',
+            'data_compra': 'data_antepenultima_compra'
+        }, inplace=True)
+
+    # Adicionar informações de fornecedor para cada compra
+    if not df_ultima_compra.empty:
+        df_ultima_compra = df_ultima_compra.merge(
+            df_fornecedor[['id_fornecedor', 'nome_fornecedor']],
+            on='id_fornecedor',
+            how='left'
+        )
+        df_ultima_compra.rename(columns={'nome_fornecedor': 'ultimo_fornecedor'}, inplace=True)
+
+    if not df_penultima_compra.empty:
+        df_penultima_compra = df_penultima_compra.merge(
+            df_fornecedor[['id_fornecedor', 'nome_fornecedor']],
+            on='id_fornecedor',
+            how='left'
+        )
+        df_penultima_compra.rename(columns={'nome_fornecedor': 'penultimo_fornecedor'}, inplace=True)
+
+    if not df_antepenultima_compra.empty:
+        df_antepenultima_compra = df_antepenultima_compra.merge(
+            df_fornecedor[['id_fornecedor', 'nome_fornecedor']],
+            on='id_fornecedor',
+            how='left'
+        )
+        df_antepenultima_compra.rename(columns={'nome_fornecedor': 'antepenultimo_fornecedor'}, inplace=True)
+
+    # Adicionar informações das compras ao dataframe de recomendação
+    colunas_ultima = ['id_produto', 'ultimo_preco_compra', 'data_ultima_compra', 'ultimo_fornecedor']
+    colunas_penultima = ['id_produto', 'penultimo_preco_compra', 'data_penultima_compra', 'penultimo_fornecedor']
+    colunas_antepenultima = ['id_produto', 'antepenultimo_preco_compra', 'data_antepenultima_compra', 'antepenultimo_fornecedor']
+
+    if not df_ultima_compra.empty:
+        df_recomendacao = df_recomendacao.merge(
+            df_ultima_compra[colunas_ultima],
+            on='id_produto',
+            how='left'
+        )
+
+    if not df_penultima_compra.empty:
+        df_recomendacao = df_recomendacao.merge(
+            df_penultima_compra[colunas_penultima],
+            on='id_produto',
+            how='left'
+        )
+
+    if not df_antepenultima_compra.empty:
+        df_recomendacao = df_recomendacao.merge(
+            df_antepenultima_compra[colunas_antepenultima],
+            on='id_produto',
+            how='left'
+        )
+
+    print("Histórico de compras processado com sucesso!")
+    
+    # Ordenar por criticidade e valor de venda
+    ordem_criticidade = {
+        "CRÍTICO": 1,
+        "URGENTE": 2,
+        "ATENÇÃO": 3,
+        "NORMAL": 4,
+        "ADEQUADO": 5
+    }
+    
+    df_recomendacao['ordem_criticidade'] = df_recomendacao['criticidade'].map(ordem_criticidade)
+    df_recomendacao = df_recomendacao.sort_values(['ordem_criticidade', 'valor_total_3m'], ascending=[True, False])
+    
+    # Selecionar e reorganizar colunas para o relatório final
+    colunas_finais = [
+        'id_produto', 
+        'nome_produto', 
+        'estoque_atual', 
+        'media_mensal_qtd',
+        'cobertura_meses', 
+        'criticidade', 
+        'sugestao_compra_qtd',
+        'preco_custo', 
+        'valor_estimado_compra',
+        # Última compra
+        'ultimo_preco_compra',
+        'ultimo_fornecedor', 
+        'data_ultima_compra',
+        # Penúltima compra
+        'penultimo_preco_compra',
+        'penultimo_fornecedor',
+        'data_penultima_compra',
+        # Antepenúltima compra
+        'antepenultimo_preco_compra',
+        'antepenultimo_fornecedor',
+        'data_antepenultima_compra',
+        # Outras informações
+        'data_ultima_movimentacao',
+        'transacoes_3m', 
+        'quantidade_total_3m', 
+        'valor_total_3m'
+    ]
+    
+    # Manter apenas as colunas que existem
+    colunas_existentes = [col for col in colunas_finais if col in df_recomendacao.columns]
+    df_recomendacao_final = df_recomendacao[colunas_existentes].copy()
+    
+    # Formatar valores decimais
+    for col in ['media_mensal_qtd', 'cobertura_meses', 'valor_estimado_compra']:
+        if col in df_recomendacao_final.columns:
+            df_recomendacao_final[col] = df_recomendacao_final[col].round(2)
+    
+    # Exportar para Excel
+    nome_arquivo = f"recomendacao_compra_{timestamp}.xlsx"
+    caminho_arquivo = os.path.join(diretorio_atual, nome_arquivo)
+    df_recomendacao_final.to_excel(caminho_arquivo, index=False)
+    
+    print(f"\nAnálise concluída com sucesso!")
+    print(f"Foram analisados {len(df_recomendacao_final)} produtos.")
+    print(f"Relatório de recomendação de compra salvo em: {caminho_arquivo}")
+    
+    # Mostrar resumo por criticidade
+    resumo_criticidade = df_recomendacao_final['criticidade'].value_counts().to_dict()
+    print("\nResumo por criticidade:")
+    for nivel, quantidade in sorted(resumo_criticidade.items(), key=lambda x: ordem_criticidade.get(x[0], 999)):
+        print(f"- {nivel}: {quantidade} produtos")
+
+except Exception as e:
+    print(f"\nErro durante a análise de recomendação: {e}")
+    import traceback
+    traceback.print_exc()
+

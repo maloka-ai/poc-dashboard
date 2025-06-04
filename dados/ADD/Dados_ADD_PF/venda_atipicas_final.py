@@ -85,7 +85,7 @@ def preparar_dados_vendas(df_vendas, df_venda_itens):
     df_combinado = df_venda_itens.merge(df_vendas, on='id_venda', how='left')
     
     # Filtrar colunas relevantes
-    filtered_df = df_combinado[['quantidade', 'data_venda', 'id_produto', 'id_cliente']]
+    filtered_df = df_combinado[['id_venda', 'quantidade', 'data_venda', 'id_produto', 'id_cliente']]
     
     # Filtrar vendas do último ano
     today = pd.Timestamp.now()
@@ -133,10 +133,10 @@ def identificar_produtos_anomalos(df):
     
     for id in ids:
         # Filtrar vendas do produto
-        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente']]
+        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente', 'id_venda']]
         
         # Agrupar por data e cliente
-        sales = sales.groupby(['data_venda', 'id_cliente'], as_index=False)['quantidade'].sum()
+        sales = sales.groupby(['data_venda', 'id_cliente', 'id_venda'], as_index=False)['quantidade'].sum()
         
         # Aplicar a função e identificar anomalias
         out = identificar_anomalias(sales)
@@ -201,7 +201,7 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
         
     else:
         # Criar um DataFrame vazio com as colunas esperadas
-        df_r = pd.DataFrame(columns=["Dia", "quantidade_atipica", "cliente", "id_produto", "produto", "estoque_atualizado"])
+        df_r = pd.DataFrame(columns=["Dia", "id_venda", "quantidade_atipica", "cliente", "id_produto", "produto", "estoque_atualizado"])
     
     return df_r
 
@@ -219,9 +219,6 @@ def exportar_resultados(df, nome_arquivo=None):
     # Obter diretório do script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     caminho_completo = os.path.join(script_dir, nome_arquivo)
-    
-    # Renomear colunas conforme necessário
-    df.rename(columns={"id_produto": 'cd_produto'}, inplace=True)
     
     try:
         # Exportar para Excel
