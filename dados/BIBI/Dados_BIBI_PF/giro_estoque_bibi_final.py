@@ -720,7 +720,7 @@ metricas['percentual_sku_com_ate_um_ano_de_vendas'] = (total_sku_venda_ultimo_an
 # Total e percentual de SKUs com estoque zero
 total_sku_estoque_zero = (estoque_com_vendas['Estoque Total'] == 0).sum()
 metricas['total_sku_com_estoque_zero'] = total_sku_estoque_zero
-metricas['%percentual_sku_com_estoque_zero'] = (total_sku_estoque_zero / total_skus) * 100
+metricas['percentual_sku_com_estoque_zero'] = (total_sku_estoque_zero / total_skus) * 100
 
 # Total e percentual de SKUs com estoque positivo
 total_sku_estoque_positivo = (estoque_com_vendas['Estoque Total'] > 0).sum()
