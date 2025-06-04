@@ -825,18 +825,18 @@ try:
     pct_inconsistentes = 100 - pct_consistentes
     
     # Adicionar às métricas
-    metricas['TOTAL SKU VERIFICADOS'] = total_skus_verificados
-    metricas['TOTAL SKU CONSISTENTES'] = consistentes
-    metricas['%SKU CONSISTENTES'] = pct_consistentes
-    metricas['TOTAL SKU INCONSISTENTES'] = inconsistentes
-    metricas['%SKU INCONSISTENTES'] = pct_inconsistentes
+    metricas['total_sku_verificados'] = total_skus_verificados
+    metricas['total_sku_consistentes'] = consistentes
+    metricas['percentual_sku_consistentes'] = pct_consistentes
+    metricas['total_sku_inconsistentes'] = inconsistentes
+    metricas['percentual_sku_inconsistentes'] = pct_inconsistentes
     
     # Estatísticas adicionais sobre as inconsistências
     inconsistencias = analise_consistencia[analise_consistencia['status_consistencia'] == 'Inconsistente']
     
     if len(inconsistencias) > 0:
         # Exibir top 10 inconsistências
-        print(f"\nTotal de SKU verificados: {total_skus_verificados}")
+        print(f"\TOTAL de SKU verificados: {total_skus_verificados}")
         print(f"SKU consistentes: {consistentes} ({pct_consistentes:.1f}%)")
         print(f"SKU inconsistentes: {inconsistentes} ({pct_inconsistentes:.1f}%)")
         
@@ -862,11 +862,11 @@ try:
      
 except Exception as e:
     print(f"Erro ao analisar consistência de estoque: {e}")
-    metricas['TOTAL SKU VERIFICADOS'] = 0
-    metricas['TOTAL SKU CONSISTENTES'] = 0
-    metricas['%SKU CONSISTENTES'] = 0
-    metricas['TOTAL SKU INCONSISTENTES'] = 0
-    metricas['%SKU INCONSISTENTES'] = 0
+    metricas['total_sku_verificados'] = 0
+    metricas['total_sku_consistentes'] = 0
+    metricas['percentual_sku_consistentes'] = 0
+    metricas['total_sku_inconsistentes'] = 0
+    metricas['percentual_sku_inconsistentes'] = 0
 
 # Totais por grupo ABC
 total_grupo_a = (estoque_com_vendas['Curva ABC'] == 'A').sum()
@@ -876,48 +876,48 @@ total_grupo_c = (estoque_com_vendas['Curva ABC'] == 'C').sum()
 # Total de produtos com vendas nos últimos 90 dias (base para os percentuais da curva ABC)
 total_produtos_com_vendas_90dias = (estoque_com_vendas['qt_vendas_ultimos_90_dias'] > 0).sum()
 
-metricas['TOTAL SKU GRUPO A'] = total_grupo_a
-metricas['TOTAL SKU GRUPO B'] = total_grupo_b
-metricas['TOTAL SKU GRUPO C'] = total_grupo_c
+metricas['total_sku_grupo_a'] = total_grupo_a
+metricas['total_sku_grupo_b'] = total_grupo_b
+metricas['total_sku_grupo_c'] = total_grupo_c
 
 # Percentuais por grupo ABC (baseado apenas nos produtos com vendas nos últimos 90 dias)
-metricas['%SKU GRUPO A'] = (total_grupo_a / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
-metricas['%SKU GRUPO B'] = (total_grupo_b / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
-metricas['%SKU GRUPO C'] = (total_grupo_c / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['percentual_sku_grupo_a'] = (total_grupo_a / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['percentual_sku_grupo_b'] = (total_grupo_b / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['percentual_sku_grupo_c'] = (total_grupo_c / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
 
 # Total venda por grupo ABC (usando valor_ultimos_90_dias)
 venda_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['valor_vendas_ultimos_90_dias'].sum()
 venda_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['valor_vendas_ultimos_90_dias'].sum()
 venda_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['valor_vendas_ultimos_90_dias'].sum()
 
-metricas['TOTAL VENDA GRUPO A'] = venda_grupo_a
-metricas['TOTAL VENDA GRUPO B'] = venda_grupo_b
-metricas['TOTAL VENDA GRUPO C'] = venda_grupo_c
+metricas['total_venda_grupo_a'] = venda_grupo_a
+metricas['total_venda_grupo_b'] = venda_grupo_b
+metricas['total_venda_grupo_c'] = venda_grupo_c
 
 # Percentual venda por grupo ABC
 venda_total = venda_grupo_a + venda_grupo_b + venda_grupo_c
-metricas['%VENDA GRUPO A'] = (venda_grupo_a / venda_total) * 100 if venda_total > 0 else 0
-metricas['%VENDA GRUPO B'] = (venda_grupo_b / venda_total) * 100 if venda_total > 0 else 0
-metricas['%VENDA GRUPO C'] = (venda_grupo_c / venda_total) * 100 if venda_total > 0 else 0
+metricas['percentual_venda_grupo_a'] = (venda_grupo_a / venda_total) * 100 if venda_total > 0 else 0
+metricas['percentual_venda_grupo_b'] = (venda_grupo_b / venda_total) * 100 if venda_total > 0 else 0
+metricas['percentual_venda_grupo_c'] = (venda_grupo_c / venda_total) * 100 if venda_total > 0 else 0
 
 # Cálculo da cobertura em dias por grupo ABC
 # Para grupo A
 estoque_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['Estoque Total'].sum()
 vendas_diarias_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_a = estoque_grupo_a / vendas_diarias_grupo_a if vendas_diarias_grupo_a > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO A'] = cobertura_grupo_a
+metricas['cobertura_em_dias_grupo_a'] = cobertura_grupo_a
 
 # Para grupo B
 estoque_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['Estoque Total'].sum()
 vendas_diarias_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_b = estoque_grupo_b / vendas_diarias_grupo_b if vendas_diarias_grupo_b > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO B'] = cobertura_grupo_b
+metricas['cobertura_em_dias_grupo_b'] = cobertura_grupo_b
 
 # Para grupo C
 estoque_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['Estoque Total'].sum()
 vendas_diarias_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_c = estoque_grupo_c / vendas_diarias_grupo_c if vendas_diarias_grupo_c > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO C'] = cobertura_grupo_c
+metricas['cobertura_em_dias_grupo_c'] = cobertura_grupo_c
 
 # Criar DataFrame com as métricas
 df_metricas = pd.DataFrame([metricas])
