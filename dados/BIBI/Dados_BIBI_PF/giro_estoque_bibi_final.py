@@ -965,7 +965,21 @@ print(f"Adicionadas {len(todas_lojas)} colunas de estoque por loja e {len(todas_
 estoque_com_vendas.to_excel(caminho_arquivo_completo, index=False)
 print(f"\nTabela completa com estoque por loja e consistência exportada para: {caminho_arquivo_completo}")
 
-# Exportar para Excel
+# Exportar para CSV - acrescentar ao arquivo existente
 caminho_arquivo_metricas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metricas_analise_estoque.csv")
-df_metricas.to_csv(caminho_arquivo_metricas, index=False)
-print(f"\nTabela de métricas exportada para: {caminho_arquivo_metricas}")
+# Verificar se o arquivo já existe
+if os.path.exists(caminho_arquivo_metricas):
+    # Carregar o arquivo existente
+    df_metricas_existente = pd.read_csv(caminho_arquivo_metricas)
+    
+    # Concatenar o DataFrame existente com as novas métricas
+    df_metricas_atualizado = pd.concat([df_metricas_existente, df_metricas], ignore_index=True)
+    
+    # Salvar o DataFrame atualizado
+    df_metricas_atualizado.to_csv(caminho_arquivo_metricas, index=False)
+    print(f"\nMétricas de hoje adicionadas ao arquivo existente: {caminho_arquivo_metricas}")
+    print(f"Total de registros no arquivo: {len(df_metricas_atualizado)}")
+else:
+    # Se o arquivo não existir, criar novo
+    df_metricas.to_csv(caminho_arquivo_metricas, index=False)
+    print(f"\nArquivo de métricas criado: {caminho_arquivo_metricas}")
