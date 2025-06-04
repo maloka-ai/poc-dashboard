@@ -701,83 +701,83 @@ except Exception as e:
 metricas = {}
 
 # DATA_HORA_ANALISE
-metricas['DATA_HORA_ANALISE'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+metricas['data_hora_analise'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Total de SKUs 
 total_skus = len(estoque_com_vendas)
-metricas['TOTAL DE SKUs'] = total_skus
+metricas['total_de_skus'] = total_skus
 
 # Total e percentual de SKUs com venda acima de 1 ano
 total_sku_venda_acima_1ano = (estoque_com_vendas['Tem Vendas > 1 ano'] == "Sim").sum()
-metricas['TOTAL SKU COM HISTORICO > 1 ANO'] = total_sku_venda_acima_1ano
-metricas['%SKU COM COM HISTORICO > 1 ANO'] = (total_sku_venda_acima_1ano / total_skus) * 100
+metricas['total_sku_com_mais_de_um_ano_de_vendas'] = total_sku_venda_acima_1ano
+metricas['percentual_sku_com_mais_de_um_ano_de_vendas'] = (total_sku_venda_acima_1ano / total_skus) * 100
 
 # Total e percentual de SKUs com venda somente no último ano
 total_sku_venda_ultimo_ano = ((estoque_com_vendas['qt_vendas_ultimo_ano'] > 0) & (estoque_com_vendas['Tem Vendas > 1 ano'] == "Não")).sum()
-metricas['TOTAL SKU COM HISTORICO < 1 ANO'] = total_sku_venda_ultimo_ano
-metricas['%SKU COM HISTORICO < 1 ANO'] = (total_sku_venda_ultimo_ano / total_skus) * 100
+metricas['total_sku_com_ate_um_ano_de_vendas'] = total_sku_venda_ultimo_ano
+metricas['percentual_sku_com_ate_um_ano_de_vendas'] = (total_sku_venda_ultimo_ano / total_skus) * 100
 
 # Total e percentual de SKUs com estoque zero
 total_sku_estoque_zero = (estoque_com_vendas['Estoque Total'] == 0).sum()
-metricas['TOTAL SKU COM ESTOQUE ZERO'] = total_sku_estoque_zero
-metricas['%SKU COM ESTOQUE ZERO'] = (total_sku_estoque_zero / total_skus) * 100
+metricas['total_sku_com_estoque_zero'] = total_sku_estoque_zero
+metricas['percentual_sku_com_estoque_zero'] = (total_sku_estoque_zero / total_skus) * 100
 
 # Total e percentual de SKUs com estoque positivo
 total_sku_estoque_positivo = (estoque_com_vendas['Estoque Total'] > 0).sum()
-metricas['TOTAL SKU COM ESTOQUE POSITIVO'] = total_sku_estoque_positivo
-metricas['%SKU COM ESTOQUE POSITIVO'] = (total_sku_estoque_positivo / total_skus) * 100
+metricas['total_sku_com_estoque_positivo'] = total_sku_estoque_positivo
+metricas['percentual_sku_com_estoque_positivo'] = (total_sku_estoque_positivo / total_skus) * 100
 
 # Custo total de estoque positivo (vamos usar a quantidade como proxy para o custo, já que não temos o valor unitário)
-metricas['CUSTO TOTAL ESTOQUE POSITIVO'] = estoque_com_vendas[estoque_com_vendas['Estoque Total'] > 0]['valor_estoque_custo'].sum()
+metricas['custo_total_estoque_positivo'] = estoque_com_vendas[estoque_com_vendas['Estoque Total'] > 0]['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs com estoque negativo
 total_sku_estoque_negativo = (estoque_com_vendas['Estoque Total'] < 0).sum()
-metricas['TOTAL SKU COM ESTOQUE NEGATIVO'] = total_sku_estoque_negativo
-metricas['%SKU COM ESTOQUE NEGATIVO'] = (total_sku_estoque_negativo / total_skus) * 100
+metricas['total_sku_com_estoque_negativo'] = total_sku_estoque_negativo
+metricas['percentual_sku_com_estoque_negativo'] = (total_sku_estoque_negativo / total_skus) * 100
 
 # Custo total de estoque negativo
-metricas['CUSTO TOTAL ESTOQUE NEGATIVO'] = abs(estoque_com_vendas[estoque_com_vendas['Estoque Total'] < 0]['valor_estoque_custo'].sum())
+metricas['custo_total_estoque_negativo'] = abs(estoque_com_vendas[estoque_com_vendas['Estoque Total'] < 0]['valor_estoque_custo'].sum())
 
 # Total e percentual de SKUs inativos com saldo
 total_inativo_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Inativo (ESTOQUE > 0)').sum()
-metricas['TOTAL SKU INATIVO (ESTOQUE > 0)'] = total_inativo_com_saldo
-metricas['%SKU INATIVO (ESTOQUE > 0)'] = (total_inativo_com_saldo / total_skus) * 100
+metricas['total_sku_inativo_com_estoque_maior_que_zero'] = total_inativo_com_saldo
+metricas['percentual_sku_inativo_com_estoque_maior_que_zero'] = (total_inativo_com_saldo / total_skus) * 100
 
 # Custo total de inativos com saldo
 filtro_inativo_saldo = (estoque_com_vendas['Situação do Produto'] == 'Inativo (ESTOQUE > 0)')
-metricas['CUSTO TOTAL INATIVO (ESTOQUE > 0)'] = estoque_com_vendas[filtro_inativo_saldo]['valor_estoque_custo'].sum()
+metricas['custo_total_inativo_com_estoque_maior_que_zero'] = estoque_com_vendas[filtro_inativo_saldo]['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs inativos sem saldo
 total_inativo_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Inativo (ESTOQUE <= 0)').sum()
-metricas['TOTAL SKU INATIVO (ESTOQUE <= 0)'] = total_inativo_sem_saldo
-metricas['%SKU INATIVO (ESTOQUE <= 0)'] = (total_inativo_sem_saldo / total_skus) * 100
+metricas['total_sku_inativo_com_estoque_menor_ou_igual_zero'] = total_inativo_sem_saldo
+metricas['percentual_sku_inativo_com_estoque_menor_ou_igual_zero'] = (total_inativo_sem_saldo / total_skus) * 100
 
 # Total e percentual de SKUs ativos com saldo
 total_ativo_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE > 0)').sum()
-metricas['TOTAL SKU ATIVO (ESTOQUE > 0)'] = total_ativo_com_saldo
-metricas['%SKU ATIVO (ESTOQUE > 0)'] = (total_ativo_com_saldo / total_skus) * 100
+metricas['total_sku_ativo_com_estoque_maior_que_zero'] = total_ativo_com_saldo
+metricas['percentual_sku_ativo_com_estoque_maior_que_zero'] = (total_ativo_com_saldo / total_skus) * 100
 
 # Custo total de ativos com saldo
-metricas['CUSTO TOTAL ATIVO (ESTOQUE > 0)'] = estoque_com_vendas[estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE > 0)']['valor_estoque_custo'].sum()
+metricas['custo_total_ativo_com_estoque_maior_que_zero'] = estoque_com_vendas[estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE > 0)']['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs ativos sem saldo
 total_ativo_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Ativo (ESTOQUE <= 0)').sum()
-metricas['TOTAL SKU ATIVO (ESTOQUE <= 0)'] = total_ativo_sem_saldo
-metricas['%SKU ATIVO (ESTOQUE <= 0)'] = (total_ativo_sem_saldo / total_skus) * 100
+metricas['total_sku_ativo_com_estoque_menor_ou_igual_zero'] = total_ativo_sem_saldo
+metricas['percentual_sku_ativo_com_estoque_menor_ou_igual_zero'] = (total_ativo_sem_saldo / total_skus) * 100
 
 # Total e percentual de SKUs sem venda com saldo
 filtro_sem_venda_com_saldo = (estoque_com_vendas['Situação do Produto'] == 'Não Comercializado (ESTOQUE > 0)')
 total_sem_venda_com_saldo = filtro_sem_venda_com_saldo.sum()
-metricas['TOTAL SKU NAO COMERCIALIZADO (ESTOQUE > 0)'] = total_sem_venda_com_saldo
-metricas['%SKU NAO COMERCIALIZADO (ESTOQUE > 0)'] = (total_sem_venda_com_saldo / total_skus) * 100
+metricas['total_sku_nao_comercializado_com_estoque_maior_que_zero'] = total_sem_venda_com_saldo
+metricas['percentual_sku_nao_comercializado_com_estoque_maior_que_zero'] = (total_sem_venda_com_saldo / total_skus) * 100
 
 # Custo total de sem venda com saldo
-metricas['CUSTO TOTAL NAO COMERCIALIZADO (ESTOQUE > 0)'] = estoque_com_vendas[filtro_sem_venda_com_saldo]['valor_estoque_custo'].sum()
+metricas['custo_total_nao_comercializado_com_estoque_maior_que_zero'] = estoque_com_vendas[filtro_sem_venda_com_saldo]['valor_estoque_custo'].sum()
 
 # Total e percentual de SKUs sem venda sem saldo
 total_sem_venda_sem_saldo = (estoque_com_vendas['Situação do Produto'] == 'Não Comercializado (ESTOQUE <= 0)').sum()
-metricas['TOTAL SKU NAO COMERCIALIZADO (ESTOQUE <= 0)'] = total_sem_venda_sem_saldo
-metricas['%SKU NAO COMERCIALIZADO (ESTOQUE <= 0)'] = (total_sem_venda_sem_saldo / total_skus) * 100
+metricas['total_sku_nao_comercializado_com_estoque_menor_ou_igual_zero'] = total_sem_venda_sem_saldo
+metricas['percentual_sku_nao_comercializado_com_estoque_menor_ou_igual_zero'] = (total_sem_venda_sem_saldo / total_skus) * 100
 
 # Análise de consistência de movimentações de estoque usando DataFrames já carregados
 print("\n=== ANÁLISE DE CONSISTÊNCIA DE MOVIMENTAÇÕES DE ESTOQUE ===")
@@ -825,18 +825,18 @@ try:
     pct_inconsistentes = 100 - pct_consistentes
     
     # Adicionar às métricas
-    metricas['TOTAL SKU VERIFICADOS'] = total_skus_verificados
-    metricas['TOTAL SKU CONSISTENTES'] = consistentes
-    metricas['%SKU CONSISTENTES'] = pct_consistentes
-    metricas['TOTAL SKU INCONSISTENTES'] = inconsistentes
-    metricas['%SKU INCONSISTENTES'] = pct_inconsistentes
+    metricas['total_sku_verificados'] = total_skus_verificados
+    metricas['total_sku_consistentes'] = consistentes
+    metricas['percentual_sku_consistentes'] = pct_consistentes
+    metricas['total_sku_inconsistentes'] = inconsistentes
+    metricas['percentual_sku_inconsistentes'] = pct_inconsistentes
     
     # Estatísticas adicionais sobre as inconsistências
     inconsistencias = analise_consistencia[analise_consistencia['status_consistencia'] == 'Inconsistente']
     
     if len(inconsistencias) > 0:
         # Exibir top 10 inconsistências
-        print(f"\nTotal de SKU verificados: {total_skus_verificados}")
+        print(f"\TOTAL de SKU verificados: {total_skus_verificados}")
         print(f"SKU consistentes: {consistentes} ({pct_consistentes:.1f}%)")
         print(f"SKU inconsistentes: {inconsistentes} ({pct_inconsistentes:.1f}%)")
         
@@ -862,11 +862,11 @@ try:
      
 except Exception as e:
     print(f"Erro ao analisar consistência de estoque: {e}")
-    metricas['TOTAL SKU VERIFICADOS'] = 0
-    metricas['TOTAL SKU CONSISTENTES'] = 0
-    metricas['%SKU CONSISTENTES'] = 0
-    metricas['TOTAL SKU INCONSISTENTES'] = 0
-    metricas['%SKU INCONSISTENTES'] = 0
+    metricas['total_sku_verificados'] = 0
+    metricas['total_sku_consistentes'] = 0
+    metricas['percentual_sku_consistentes'] = 0
+    metricas['total_sku_inconsistentes'] = 0
+    metricas['percentual_sku_inconsistentes'] = 0
 
 # Totais por grupo ABC
 total_grupo_a = (estoque_com_vendas['Curva ABC'] == 'A').sum()
@@ -876,48 +876,48 @@ total_grupo_c = (estoque_com_vendas['Curva ABC'] == 'C').sum()
 # Total de produtos com vendas nos últimos 90 dias (base para os percentuais da curva ABC)
 total_produtos_com_vendas_90dias = (estoque_com_vendas['qt_vendas_ultimos_90_dias'] > 0).sum()
 
-metricas['TOTAL SKU GRUPO A'] = total_grupo_a
-metricas['TOTAL SKU GRUPO B'] = total_grupo_b
-metricas['TOTAL SKU GRUPO C'] = total_grupo_c
+metricas['total_sku_grupo_a'] = total_grupo_a
+metricas['total_sku_grupo_b'] = total_grupo_b
+metricas['total_sku_grupo_c'] = total_grupo_c
 
 # Percentuais por grupo ABC (baseado apenas nos produtos com vendas nos últimos 90 dias)
-metricas['%SKU GRUPO A'] = (total_grupo_a / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
-metricas['%SKU GRUPO B'] = (total_grupo_b / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
-metricas['%SKU GRUPO C'] = (total_grupo_c / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['percentual_sku_grupo_a'] = (total_grupo_a / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['percentual_sku_grupo_b'] = (total_grupo_b / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
+metricas['percentual_sku_grupo_c'] = (total_grupo_c / total_produtos_com_vendas_90dias) * 100 if total_produtos_com_vendas_90dias > 0 else 0
 
 # Total venda por grupo ABC (usando valor_ultimos_90_dias)
 venda_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['valor_vendas_ultimos_90_dias'].sum()
 venda_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['valor_vendas_ultimos_90_dias'].sum()
 venda_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['valor_vendas_ultimos_90_dias'].sum()
 
-metricas['TOTAL VENDA GRUPO A'] = venda_grupo_a
-metricas['TOTAL VENDA GRUPO B'] = venda_grupo_b
-metricas['TOTAL VENDA GRUPO C'] = venda_grupo_c
+metricas['total_venda_grupo_a'] = venda_grupo_a
+metricas['total_venda_grupo_b'] = venda_grupo_b
+metricas['total_venda_grupo_c'] = venda_grupo_c
 
 # Percentual venda por grupo ABC
 venda_total = venda_grupo_a + venda_grupo_b + venda_grupo_c
-metricas['%VENDA GRUPO A'] = (venda_grupo_a / venda_total) * 100 if venda_total > 0 else 0
-metricas['%VENDA GRUPO B'] = (venda_grupo_b / venda_total) * 100 if venda_total > 0 else 0
-metricas['%VENDA GRUPO C'] = (venda_grupo_c / venda_total) * 100 if venda_total > 0 else 0
+metricas['percentual_venda_grupo_a'] = (venda_grupo_a / venda_total) * 100 if venda_total > 0 else 0
+metricas['percentual_venda_grupo_b'] = (venda_grupo_b / venda_total) * 100 if venda_total > 0 else 0
+metricas['percentual_venda_grupo_c'] = (venda_grupo_c / venda_total) * 100 if venda_total > 0 else 0
 
 # Cálculo da cobertura em dias por grupo ABC
 # Para grupo A
 estoque_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['Estoque Total'].sum()
 vendas_diarias_grupo_a = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'A']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_a = estoque_grupo_a / vendas_diarias_grupo_a if vendas_diarias_grupo_a > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO A'] = cobertura_grupo_a
+metricas['cobertura_em_dias_grupo_a'] = cobertura_grupo_a
 
 # Para grupo B
 estoque_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['Estoque Total'].sum()
 vendas_diarias_grupo_b = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'B']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_b = estoque_grupo_b / vendas_diarias_grupo_b if vendas_diarias_grupo_b > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO B'] = cobertura_grupo_b
+metricas['cobertura_em_dias_grupo_b'] = cobertura_grupo_b
 
 # Para grupo C
 estoque_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['Estoque Total'].sum()
 vendas_diarias_grupo_c = estoque_com_vendas[estoque_com_vendas['Curva ABC'] == 'C']['qt_vendas_ultimos_90_dias'].sum() / 90
 cobertura_grupo_c = estoque_grupo_c / vendas_diarias_grupo_c if vendas_diarias_grupo_c > 0 else 0
-metricas['COBERTURA EM DIAS GRUPO C'] = cobertura_grupo_c
+metricas['cobertura_em_dias_grupo_c'] = cobertura_grupo_c
 
 # Criar DataFrame com as métricas
 df_metricas = pd.DataFrame([metricas])
