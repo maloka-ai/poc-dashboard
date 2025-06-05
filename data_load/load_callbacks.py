@@ -100,7 +100,8 @@ def register_data_callbacks(app, app_cache=None):
             "df_relatorio_produtos",
             "df_previsao_retorno", 
             "df_analise_giro", 
-            "df_analise_curva_cobertura"
+            "df_analise_curva_cobertura",
+            "df_metricas_compra"
         ]
         
         for df_name in dataframes:

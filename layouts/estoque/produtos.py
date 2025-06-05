@@ -13,7 +13,7 @@ def get_produtos_layout(data):
     Cria o layout da página de criticidade de produtos com gráficos e tabelas interativas
     para análise completa de todos os níveis de criticidade do estoque.
     """
-    if data.get("df_relatorio_produtos") is None:
+    if data.get("df_metricas_compra") is None:
         return html.Div([
             html.H2("Análise de Cobertura de Estoque", className="dashboard-title"),
             create_card(
@@ -21,84 +21,45 @@ def get_produtos_layout(data):
                 html.Div([
                     html.P("Não foram encontrados dados de produtos para este cliente.", className="text-center text-muted my-4"),
                     html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
-                    html.P(            "Verifique se o arquivo relatorio_produtos_criticos.xlsx está presente no diretório de dados",  
+                    html.P(            "Verifique se o arquivo metricas_de_compra.csv está presente no diretório de dados",  
                            className="text-muted text-center")
                 ])
             )
         ], style=content_style)
     
     # Carregamos os dados de produtos críticos
-    df_criticos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
-    
-    # Verificar se a coluna de criticidade existe, caso contrário, precisamos criá-la
-    if 'criticidade' not in df_criticos.columns:
-        # Verifica se tem a coluna percentual_cobertura
-        if 'percentual_cobertura' in df_criticos.columns:
-            # Definir categorias de criticidade
-            df_criticos['criticidade'] = pd.cut(
-                df_criticos['percentual_cobertura'],
-                bins=[-float('inf'), 30, 50, 80, 100, float('inf')],
-                labels=['Crítico', 'Muito Baixo', 'Baixo', 'Adequado', 'Excesso']
-            )
-        else:
-            # Se não tiver percentual_cobertura, verifica se tem as colunas para calcular
-            if 'estoque_atualizado' in df_criticos.columns and 'Media 3M' in df_criticos.columns:
-                # Calcular percentual de cobertura
-                df_criticos['percentual_cobertura'] = (df_criticos['estoque_atualizado'] / df_criticos['Media 3M'] * 100).round(1)
-                # Definir categorias de criticidade
-                df_criticos['criticidade'] = pd.cut(
-                    df_criticos['percentual_cobertura'],
-                    bins=[-float('inf'), 30, 50, 80, 100, float('inf')],
-                    labels=['Crítico', 'Muito Baixo', 'Baixo', 'Adequado', 'Excesso']
-                )
-            else:
-                return html.Div([
-                    html.H2("Produtos Críticos", className="dashboard-title"),
-                    create_card(
-                        "Dados Insuficientes",
-                        html.Div([
-                            html.P("Os dados não contêm as colunas necessárias para análise de criticidade.", className="text-center text-muted my-4"),
-                            html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
-                            html.P("São necessárias as colunas: 'percentual_cobertura' ou 'estoque_atualizado' e 'Media 3M'", 
-                                   className="text-muted text-center")
-                        ])
-                    )
-                ], style=content_style)
+    df_produtos = pd.read_json(io.StringIO(data["df_metricas_compra"]), orient='split')
 
-    # Botão de filtro críticos (Toggle) - Adicionado
-    filtro_criticos = html.Div([
-        dbc.Button(
-            [
-                html.I(className="fas fa-filter me-2"), 
-                "Mostrar Produtos com Reposição Não-Local"
-            ],
-            id="btn-filtro-criticos",
-            color="danger",
-            className="mb-3",
-            style={"marginTop": "-2rem", "marginBottom": "1rem"}
-        ),
-        dcc.Store(id="filtro-criticos-ativo", data=False),
-    ], className="d-flex justify-content-end")
+    # # Botão de filtro críticos (Toggle) - Adicionado
+    # filtro_criticos = html.Div([
+    #     dbc.Button(
+    #         [
+    #             html.I(className="fas fa-filter me-2"), 
+    #             "Mostrar Produtos com Reposição Não-Local"
+    #         ],
+    #         id="btn-filtro-criticos",
+    #         color="danger",
+    #         className="mb-3",
+    #         style={"marginTop": "-2rem", "marginBottom": "1rem"}
+    #     ),
+    #     dcc.Store(id="filtro-criticos-ativo", data=False),
+    # ], className="d-flex justify-content-end")
     
     # Contar produtos por categoria de criticidade
-    contagem_criticidade = df_criticos['criticidade'].value_counts().sort_index()
+    contagem_criticidade = df_produtos['criticidade'].value_counts().sort_index()
     
     # Calcular métricas para a primeira linha de cards
-    total_produtos = len(df_criticos)
+    total_produtos = len(df_produtos)
 
     # Criar uma Series com o total e concatenar com a contagem_criticidade
-    total_series = pd.Series([total_produtos], index=['Todos'])
+    total_series = pd.Series([total_produtos], index=['TODOS'])
     contagem_criticidade = pd.concat([contagem_criticidade, total_series])
-
-    produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
-    produtos_baixos = len(df_criticos[df_criticos['criticidade'].isin(['Muito Baixo', 'Baixo'])])
-    
-    # Contar produtos por cada categoria de criticidade para os cards de métrica
-    produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
-    produtos_muito_baixos = len(df_criticos[df_criticos['criticidade'] == 'Muito Baixo'])
-    produtos_baixos = len(df_criticos[df_criticos['criticidade'] == 'Baixo'])
-    produtos_adequados = len(df_criticos[df_criticos['criticidade'] == 'Adequado'])
-    produtos_excesso = len(df_criticos[df_criticos['criticidade'] == 'Excesso'])
+        
+    produtos_criticos = len(df_produtos[df_produtos['criticidade'] == "CRÍTICO"])
+    produtos_muito_baixos = len(df_produtos[df_produtos['criticidade'] == "MUITO BAIXO"])
+    produtos_baixos = len(df_produtos[df_produtos['criticidade'] == "BAIXO"])
+    produtos_adequados = len(df_produtos[df_produtos['criticidade'] == "ADEQUADO"])
+    produtos_excesso = len(df_produtos[df_produtos['criticidade'] == "EXCESSO"])
     
     # Criar métricas para a primeira linha de cards - mostrando todas as categorias
     metrics = [
@@ -118,12 +79,12 @@ def get_produtos_layout(data):
         y=contagem_criticidade.values,
         color=contagem_criticidade.index,
         color_discrete_map={
-            'Crítico': 'darkred',
-            'Muito Baixo': 'orange',
-            'Baixo': color['warning'],
-            'Adequado': gradient_colors['green_gradient'][0],
-            'Excesso': color['secondary'],
-            'Todos': color['primary']
+            'CRÍTICO': 'darkred',
+            'MUITO BAIXO': 'orange',
+            'BAIXO': color['warning'],
+            'ADEQUADO': gradient_colors['green_gradient'][0],
+            'EXCESSO': color['secondary'],
+            'TODOS': color['primary']
         },
         labels={'x': 'Nível de Criticidade', 'y': 'Quantidade de Produtos'},
         template='plotly_white'
@@ -131,7 +92,7 @@ def get_produtos_layout(data):
 
     porcentagens = contagem_criticidade.copy()
     for idx in porcentagens.index:
-        if idx == 'Todos':
+        if idx == 'TODOS':
             porcentagens[idx] = 100.0  # Forçar 100% para o total
         else:
             porcentagens[idx] = (contagem_criticidade[idx] / total_produtos * 100).round(1)
@@ -160,15 +121,15 @@ def get_produtos_layout(data):
     )
 
     # Filtrar produtos críticos e ordenar pelo percentual de cobertura (do menor para o maior)
-    df_produtos_criticos = df_criticos.sort_values('percentual_cobertura')
+    df_produtos_criticos = df_produtos.sort_values('cobertura_meses')
 
-    if len(df_criticos[df_criticos['criticidade'] == 'Crítico']) > 0:
-        top_20_criticos = df_criticos[df_criticos['criticidade'] == 'Crítico'].sort_values('percentual_cobertura').head(20)
+    if len(df_produtos[df_produtos['criticidade'] == 'CRÍTICO']) > 0:
+        top_20_criticos = df_produtos[df_produtos['criticidade'] == 'CRÍTICO'].sort_values('cobertura_meses').head(20)
     else:
         top_20_criticos = df_produtos_criticos.head(20)
 
     # Verificar a coluna de descrição do produto
-    produto_col = 'desc_produto' if 'desc_produto' in df_criticos.columns else 'Produto' if 'Produto' in df_criticos.columns else None
+    produto_col = 'nome_produto' if 'nome_produto' in df_produtos.columns else 'Produto' if 'Produto' in df_produtos.columns else None
 
     if produto_col:
 
@@ -177,19 +138,19 @@ def get_produtos_layout(data):
         fig_top_criticos = px.bar(
             top_20_criticos,
             y='produto_display',
-            x='percentual_cobertura',
+            x='cobertura_meses',
             orientation='h',
-            color='percentual_cobertura',
+            color='cobertura_meses',
             color_continuous_scale=['darkred', 'orange', color['warning']],
             range_color=[0, 50],
-            labels={'percentual_cobertura': 'Cobertura (%)', 'produto_display': 'Produto'},
+            labels={'cobertura_meses': 'Cobertura (%)', 'produto_display': 'Produto'},
             template='plotly_white'
         )
         
-        if 'cd_produto' in top_20_criticos.columns:
+        if 'id_produto' in top_20_criticos.columns:
             fig_top_criticos.update_traces(
                 hovertemplate='<b>%{y}</b><br>Código: %{customdata[0]}<br>Cobertura: %{x:.1f}%',
-                customdata=top_20_criticos[['cd_produto']]
+                customdata=top_20_criticos[['id_produto']]
             )
         
         fig_top_criticos.update_layout(
@@ -214,9 +175,9 @@ def get_produtos_layout(data):
         
         for i, row in enumerate(top_20_criticos.itertuples()):
             fig_top_criticos.add_annotation(
-                x=row.percentual_cobertura,
+                x=row.cobertura_meses,
                 y=row.produto_display,
-                text=f"{row.percentual_cobertura:.1f}%".replace(".", ","),
+                text=f"{row.cobertura_meses:.1f}%".replace(".", ","),
                 showarrow=False,
                 xshift=15,
                 font=dict(size=12, color="black", family="Montserrat")
@@ -229,18 +190,15 @@ def get_produtos_layout(data):
         # Armazenamento para os dados de produtos
         dcc.Store(
             id="store-produtos-data", 
-            data=data["df_relatorio_produtos"] if data and "df_relatorio_produtos" in data else None
+            data=data["df_metricas_compra"] if data and "df_metricas_compra" in data else None
         ),
         dcc.Store(id='selected-data', data=data),
 
-        # Botão de filtro críticos adicionado abaixo do título
-        filtro_criticos,
+        # # Botão de filtro críticos adicionado abaixo do título
+        # filtro_criticos,
         
         # Linha de cartões de métricas
-        html.Div(
-            id="div-metrics-row",
-            children=metrics_row
-        ),
+        metrics_row,
         
         # Primeira linha: Gráfico de criticidade e gráfico de pizza
         dbc.Row([
@@ -292,8 +250,6 @@ def get_produtos_layout(data):
                 ])
             )
         ),
-
-        
         # Quarta linha: Card explicativo
         create_card(
             "Interpretação dos Níveis de Cobertura",

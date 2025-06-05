@@ -97,7 +97,7 @@ try:
     print(df_produto.head())
     
     # Exportar para Excel
-    # df_produto.to_excel("df_produto.xlsx", index=False)
+    df_produto.to_excel("df_produto.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produto

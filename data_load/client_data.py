@@ -165,6 +165,7 @@ def get_file_paths(client, data_type):
         "previsao_retorno_path": f"{base_path}/previsao_retorno.xlsx",
         "analise_giro_path": f"{base_path}/analise_giro_completa.xlsx",
         "analise_curva_cobertura_path": f"{base_path}/analise_curva_cobertura.xlsx",
+        "metricas_de_compra_path": glob.glob(f"{base_path}/metricas_de_compra.csv"),
     }
     
     return file_paths

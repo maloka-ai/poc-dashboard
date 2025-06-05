@@ -53,7 +53,7 @@ try:
     print(df_vendas.head())
     
     # Exportar para Excel
-    df_vendas.to_excel("df_vendas_BD.xlsx", index=False)
+    # df_vendas.to_excel("df_vendas_BD.xlsx", index=False)
 
     ########################################################
     # consulta da tabela venda_itens
@@ -80,7 +80,7 @@ try:
     print(df_venda_itens.head())
     
     # Exportar para Excel
-    df_venda_itens.to_excel("df_venda_itens_BD.xlsx", index=False)
+    # df_venda_itens.to_excel("df_venda_itens_BD.xlsx", index=False)
 
     ########################################################
     # consulta da tabela produto
@@ -257,8 +257,7 @@ try:
     
     print(f"Vendas no último ano: {len(df_vendas_1ano)} registros")
     
-    # Calcular a média de vendas mensais por produto
-    # MODIFICAÇÃO: Calcular diretamente com dados do último ano (12 meses)
+    #Calcular diretamente com dados do último ano (12 meses)
     vendas_mensais_12m = df_vendas_1ano.groupby('id_produto').agg(
         quantidade_total_12m=('quantidade', 'sum'),
         valor_total_12m=('total_item', 'sum'),
@@ -266,7 +265,7 @@ try:
     ).reset_index()
     
     # Calcular média mensal (dividindo por 12 meses)
-    vendas_mensais_12m['media_mensal_qtd'] = vendas_mensais_12m['quantidade_total_12m'] / 12
+    vendas_mensais_12m['media_12m_qtd'] = vendas_mensais_12m['quantidade_total_12m'] / 12
     vendas_mensais_12m['media_mensal_valor'] = vendas_mensais_12m['valor_total_12m'] / 12
 
     # Adicionar análise de consumo mês a mês no último ano
@@ -274,7 +273,8 @@ try:
     
     # Extrair mês e ano de cada venda
     df_vendas_1ano['mes_ano'] = df_vendas_1ano['data_venda'].dt.strftime('%Y-%m')
-    df_vendas_1ano.to_excel("df_vendas_1ano.xlsx", index=False)
+    # df_vendas_1ano.to_excel("df_vendas_1ano.xlsx", index=False)
+
     # Criar tabela pivô com o consumo mensal por produto
     consumo_mensal = df_vendas_1ano.pivot_table(
         index='id_produto',
@@ -291,11 +291,10 @@ try:
     print(', '.join(meses_ordenados))
     
     # Renomear colunas para incluir prefixo 'qtd_'
-    colunas_renomeadas = {mes: f'qtd_{mes}' for mes in meses_ordenados}
+    colunas_renomeadas = {mes: f'qtd_vendas_{mes}' for mes in meses_ordenados}
     consumo_mensal = consumo_mensal.rename(columns=colunas_renomeadas)
     
     print(f"Consumo mensal calculado para {len(consumo_mensal)} produtos ao longo de {len(meses_ordenados)} meses")
-    print(f"Colunas de consumo mensal: {', '.join(consumo_mensal.columns)}")
     # Calcular a média de vendas mensais por produto, mas apenas para produtos vendidos no último ano
     produtos_vendidos_ultimo_ano = df_vendas_1ano['id_produto'].unique()
 
@@ -324,41 +323,41 @@ try:
     df_recomendacao['estoque_atual'] = df_recomendacao['estoque_atual'].fillna(0)
     df_recomendacao['cobertura_meses'] = df_recomendacao.apply(
         lambda x: 0 if x['estoque_atual'] <= 0 else 
-                (x['estoque_atual'] / x['media_mensal_qtd'] if x['media_mensal_qtd'] > 0 else float('inf')),
+                (x['estoque_atual'] / x['media_12m_qtd'] if x['media_12m_qtd'] > 0 else float('inf')),
         axis=1
     )
     
     # Calcular sugestão de compra para 3 meses de estoque
-    df_recomendacao['Sugestao_3M'] = df_recomendacao.apply(
-        lambda x: 0 if x['media_mensal_qtd'] <= 0 else (
+    df_recomendacao['sugestao_3m'] = df_recomendacao.apply(
+        lambda x: 0 if x['media_12m_qtd'] <= 0 else (
             # Para estoque negativo: 3 meses de estoque + compensação do negativo
-            (3 * x['media_mensal_qtd'] - x['estoque_atual']) if x['estoque_atual'] < 0 
+            (3 * x['media_12m_qtd'] - x['estoque_atual']) if x['estoque_atual'] < 0 
             # Para estoque positivo: complemento até 3 meses, se necessário
-            else max(0, 3 * x['media_mensal_qtd'] - x['estoque_atual'])
+            else max(0, 3 * x['media_12m_qtd'] - x['estoque_atual'])
         ),
         axis=1
     )
     
     # Arredondar sugestão para cima (não queremos frações de produtos)
-    df_recomendacao['Sugestao_3M'] = np.ceil(df_recomendacao['Sugestao_3M'])
+    df_recomendacao['sugestao_3m'] = np.ceil(df_recomendacao['sugestao_3m'])
     
     # Calcular sugestão de compra para 1 mês de estoque
-    df_recomendacao['Sugestao_1M'] = df_recomendacao.apply(
-        lambda x: 0 if x['media_mensal_qtd'] <= 0 else (
+    df_recomendacao['sugestao_1m'] = df_recomendacao.apply(
+        lambda x: 0 if x['media_12m_qtd'] <= 0 else (
             # Para estoque negativo: 1 mês de estoque + compensação do negativo
-            (1 * x['media_mensal_qtd'] - x['estoque_atual']) if x['estoque_atual'] < 0 
+            (1 * x['media_12m_qtd'] - x['estoque_atual']) if x['estoque_atual'] < 0 
             # Para estoque positivo: complemento até 1 mês, se necessário
-            else max(0, 1 * x['media_mensal_qtd'] - x['estoque_atual'])
+            else max(0, 1 * x['media_12m_qtd'] - x['estoque_atual'])
         ),
         axis=1
     )
     
     # Arredondar sugestão para cima (não queremos frações de produtos)
-    df_recomendacao['Sugestao_1M'] = np.ceil(df_recomendacao['Sugestao_1M'])
+    df_recomendacao['sugestao_1m'] = np.ceil(df_recomendacao['sugestao_1m'])
     
     # Calcular valor estimado da compra sugerida
-    df_recomendacao['valor_estimado_compra_3M'] = df_recomendacao['Sugestao_3M'] * df_recomendacao['preco_custo']
-    df_recomendacao['valor_estimado_compra_1M'] = df_recomendacao['Sugestao_1M'] * df_recomendacao['preco_custo']
+    df_recomendacao['valor_estimado_compra_3m'] = df_recomendacao['sugestao_3m'] * df_recomendacao['preco_custo']
+    df_recomendacao['valor_estimado_compra_1m'] = df_recomendacao['sugestao_1m'] * df_recomendacao['preco_custo']
     
     # Classificar criticidade do estoque
     def classificar_criticidade(cobertura):
@@ -396,7 +395,8 @@ try:
             ultimas_compras_dict[produto_id] = {
                 'id_fornecedor': ultima['id_fornecedor'],
                 'preco_bruto': ultima['preco_bruto'],
-                'data_compra': ultima['data_compra']
+                'data_compra': ultima['data_compra'],
+                'quantidade': ultima['quantidade']
             }
         
         # Adicionar penúltima compra
@@ -405,7 +405,8 @@ try:
             penultimas_compras_dict[produto_id] = {
                 'id_fornecedor': penultima['id_fornecedor'],
                 'preco_bruto': penultima['preco_bruto'],
-                'data_compra': penultima['data_compra']
+                'data_compra': penultima['data_compra'],
+                'quantidade': penultima['quantidade']
             }
         
         # Adicionar antepenúltima compra
@@ -414,7 +415,8 @@ try:
             antepenultimas_compras_dict[produto_id] = {
                 'id_fornecedor': antepenultima['id_fornecedor'],
                 'preco_bruto': antepenultima['preco_bruto'],
-                'data_compra': antepenultima['data_compra']
+                'data_compra': antepenultima['data_compra'],
+                'quantidade': antepenultima['quantidade']
             }
 
     # Converter dicionários para DataFrames
@@ -423,7 +425,8 @@ try:
         df_ultima_compra.rename(columns={
             'index': 'id_produto',
             'preco_bruto': 'ultimo_preco_compra',
-            'data_compra': 'data_ultima_compra'
+            'data_compra': 'data_ultima_compra',
+            'quantidade': 'ultima_qtd_comprada'
         }, inplace=True)
 
     df_penultima_compra = pd.DataFrame.from_dict(penultimas_compras_dict, orient='index').reset_index()
@@ -431,7 +434,8 @@ try:
         df_penultima_compra.rename(columns={
             'index': 'id_produto',
             'preco_bruto': 'penultimo_preco_compra',
-            'data_compra': 'data_penultima_compra'
+            'data_compra': 'data_penultima_compra',
+            'quantidade': 'penultima_qtd_comprada'
         }, inplace=True)
 
     df_antepenultima_compra = pd.DataFrame.from_dict(antepenultimas_compras_dict, orient='index').reset_index()
@@ -439,7 +443,8 @@ try:
         df_antepenultima_compra.rename(columns={
             'index': 'id_produto',
             'preco_bruto': 'antepenultimo_preco_compra',
-            'data_compra': 'data_antepenultima_compra'
+            'data_compra': 'data_antepenultima_compra',
+            'quantidade': 'antepenultima_qtd_comprada'
         }, inplace=True)
 
     # Adicionar informações de fornecedor para cada compra
@@ -468,9 +473,9 @@ try:
         df_antepenultima_compra.rename(columns={'nome_fornecedor': 'antepenultimo_fornecedor'}, inplace=True)
 
     # Adicionar informações das compras ao dataframe de recomendação
-    colunas_ultima = ['id_produto', 'ultimo_preco_compra', 'data_ultima_compra', 'ultimo_fornecedor']
-    colunas_penultima = ['id_produto', 'penultimo_preco_compra', 'data_penultima_compra', 'penultimo_fornecedor']
-    colunas_antepenultima = ['id_produto', 'antepenultimo_preco_compra', 'data_antepenultima_compra', 'antepenultimo_fornecedor']
+    colunas_ultima = ['id_produto', 'ultimo_preco_compra', 'data_ultima_compra', 'ultimo_fornecedor', 'ultima_qtd_comprada']
+    colunas_penultima = ['id_produto', 'penultimo_preco_compra', 'data_penultima_compra', 'penultimo_fornecedor', 'penultima_qtd_comprada']
+    colunas_antepenultima = ['id_produto', 'antepenultimo_preco_compra', 'data_antepenultima_compra', 'antepenultimo_fornecedor', 'antepenultima_qtd_comprada']
 
     if not df_ultima_compra.empty:
         df_recomendacao = df_recomendacao.merge(
@@ -501,9 +506,40 @@ try:
     )
     
     # Preencher valores nulos do consumo mensal com zero
-    colunas_consumo = [col for col in df_recomendacao.columns if col.startswith('qtd_')]
+    colunas_consumo = [col for col in df_recomendacao.columns if col.startswith('qtd_vendas_')]
     df_recomendacao[colunas_consumo] = df_recomendacao[colunas_consumo].fillna(0)
 
+    # Calcular média móvel de 3 meses (3M) para cada produto
+    print("Calculando média móvel de 3 meses (media_3m)...")
+    
+    # Ordenar meses cronologicamente
+    meses_ordenados_decrescente = sorted(meses_ordenados, reverse=False)
+    
+    # Se tivermos pelo menos 3 meses de dados
+    if len(meses_ordenados_decrescente) >= 3:
+        # Pegar os 3 últimos meses
+        ultimos_3_meses = meses_ordenados_decrescente[-3:]
+        print(f"Calculando média móvel com base nos meses: {', '.join(ultimos_3_meses)}")
+        
+        # Calcular média dos últimos 3 meses
+        df_recomendacao['media_3m'] = 0  # Inicializar coluna
+        
+        for produto_idx in df_recomendacao.index:
+            soma_3_meses = 0
+            for mes in ultimos_3_meses:
+                coluna = f'qtd_vendas_{mes}'
+                if coluna in df_recomendacao.columns:
+                    soma_3_meses += df_recomendacao.at[produto_idx, coluna]
+            
+            # Calcular média dos últimos 3 meses
+            df_recomendacao.at[produto_idx, 'media_3m'] = soma_3_meses / len(ultimos_3_meses)
+        
+        # Arredondar para 2 casas decimais
+        df_recomendacao['media_3m'] = df_recomendacao['media_3m'].round(2)
+    else:
+        # Se não tivermos pelo menos 3 meses, usar a média mensal geral
+        print("Não há dados suficientes para calcular média móvel de 3 meses. Usando média mensal geral.")
+        df_recomendacao['media_3m'] = df_recomendacao['media_12m_qtd']
 
     print("Histórico de compras processado com sucesso!")
     
@@ -520,30 +556,34 @@ try:
     df_recomendacao = df_recomendacao.sort_values(['ordem_criticidade'], ascending=[True])
     
     # Obter colunas de consumo mensal
-    colunas_consumo = [col for col in df_recomendacao.columns if col.startswith('qtd_')]
+    colunas_consumo = [col for col in df_recomendacao.columns if col.startswith('qtd_vendas_')]
     
     # Selecionar e reorganizar colunas para o relatório final
     colunas_finais = [
         'id_produto', 
         'nome_produto', 
         'estoque_atual', 
-        'media_mensal_qtd',
+        'media_12m_qtd',
+        'media_3m',
         'cobertura_meses', 
         'criticidade', 
-        'Sugestao_1M',
-        'valor_estimado_compra_1M',
-        'Sugestao_3M',
-        'valor_estimado_compra_3M',
+        'sugestao_1m',
+        'valor_estimado_compra_1m',
+        'sugestao_3m',
+        'valor_estimado_compra_3m',
         # Última compra
         'ultimo_preco_compra',
+        'ultima_qtd_comprada',
         'ultimo_fornecedor', 
         'data_ultima_compra',
         # Penúltima compra
         'penultimo_preco_compra',
+        'penultima_qtd_comprada',
         'penultimo_fornecedor',
         'data_penultima_compra',
         # Antepenúltima compra
         'antepenultimo_preco_compra',
+        'antepenultima_qtd_comprada',
         'antepenultimo_fornecedor',
         'data_antepenultima_compra',
         # Outras informações
@@ -561,19 +601,17 @@ try:
     df_recomendacao_final = df_recomendacao[colunas_existentes].copy()
     
     # Formatar valores decimais
-    for col in ['media_mensal_qtd', 'cobertura_meses', 'valor_estimado_compra_3M', 'valor_estimado_compra_1M']:
+    for col in ['media_12m_qtd', 'media_3m', 'cobertura_meses', 'valor_estimado_compra_3m', 'valor_estimado_compra_1m']:
         if col in df_recomendacao_final.columns:
             df_recomendacao_final[col] = df_recomendacao_final[col].round(2)
     
-    # Exportar para Excel
-    nome_arquivo = f"recomendacao_compra_final.xlsx"
+    # Exportar para CSV
+    nome_arquivo = f"metricas_de_compra.csv"
     caminho_arquivo = os.path.join(diretorio_atual, nome_arquivo)
-    df_recomendacao_final.to_excel(caminho_arquivo, index=False)
+    df_recomendacao_final.to_csv(caminho_arquivo, index=False)
     
     print(f"\nAnálise concluída com sucesso!")
     print(f"Foram analisados {len(df_recomendacao_final)} produtos.")
-    print(df_recomendacao_final.columns.tolist())
-    print(f"Relatório de recomendação de compra salvo em: {caminho_arquivo}")
     
     # Mostrar resumo por criticidade
     resumo_criticidade = df_recomendacao_final['criticidade'].value_counts().to_dict()

@@ -80,6 +80,7 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         "df_previsao_retorno": None,
         "df_analise_giro": None,
         "df_analise_curva_cobertura": None,
+        "df_metricas_compra": None,
         "errors": []
     }
     
@@ -99,7 +100,6 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
         else:
             essential_errors.append("analytics_path não disponível")
             result["errors"].append("analytics_path não disponível")
-    
         # Carregar cada arquivo individualmente com tratamento de erros
         for file_key, df_key in [
             ("rc_mensal_path", "df_RC_Mensal"),
@@ -155,7 +155,17 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
                 result["df_previsao_retorno"] = pd.read_excel(file_paths["previsao_retorno_path"], sheet_name=sheet_to_use)
             except Exception as e:
                 result["errors"].append(f"Erro ao carregar previsao_retorno: {str(e)}")
-        
+
+        # Tratamento especial para df_metricas_compra
+        if file_paths["metricas_de_compra_path"]:
+            try:
+                result["df_metricas_compra"] = pd.read_csv(file_paths["metricas_de_compra_path"][0])
+            except Exception as e:
+                result["errors"].append(f"Erro ao carregar metricas_de_compra_path: {str(e)}")
+        else:
+            result["errors"].append("metricas_de_compra_path não disponível")
+
+
     except Exception as e:
         return {
             "error": True,
