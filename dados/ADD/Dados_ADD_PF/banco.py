@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 import dotenv
 import os
@@ -96,8 +96,8 @@ try:
     print("\nPrimeiros 5 registros para verificação:")
     print(df_produto.head())
     
-    # Exportar para Excel
-    # df_produto.to_excel("df_produto_BD.xlsx", index=False)
+    # Exportar para CSV
+    # df_produto.to_csv("df_produto_BD.csv", index=False)
 
     ########################################################
     # consulta da tabela compra

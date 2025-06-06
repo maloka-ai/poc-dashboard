@@ -88,7 +88,7 @@ try:
     
     print("Consultando a tabela PRODUTO...")
     query = """
-    SELECT id_produto, nome AS nome_produto, id_categoria, preco_custo
+    SELECT id_produto, nome AS nome_produto, id_categoria, preco_custo, prazo_reposicao_dias
     FROM maloka_core.produto
     """
     
@@ -580,11 +580,40 @@ try:
     
     # Obter colunas de consumo mensal
     colunas_consumo = [col for col in df_recomendacao.columns if col.startswith('qtd_vendas_')]
-    
+
+    # Garantir que prazo_reposicao_dias esteja incluído no DataFrame de recomendação
+    if 'prazo_reposicao_dias' not in df_recomendacao.columns:
+        df_recomendacao = df_recomendacao.merge(
+            df_produto[['id_produto', 'prazo_reposicao_dias']],
+            on='id_produto',
+            how='left'
+        )
+
+    # Criar coluna 'critico' baseada no prazo de reposição
+    df_recomendacao['critico'] = df_recomendacao['prazo_reposicao_dias'] >= 30
+
+    # Verificar se id_categoria está presente no DataFrame de recomendação
+    if 'id_categoria' not in df_recomendacao.columns:
+        print("Aviso: A coluna 'id_categoria' não está presente no DataFrame de recomendação.")
+        # Se não estiver, pode-se adicioná-la a partir do DataFrame produto
+        df_recomendacao = df_recomendacao.merge(
+            df_produto[['id_produto', 'id_categoria']],
+            on='id_produto',
+            how='left'
+        )
+        #adicionar o nome da categoria
+        df_recomendacao = df_recomendacao.merge(
+            df_categoria[['id_categoria', 'nome_categoria']],
+            on='id_categoria',
+            how='left'
+        )
+        
     # Selecionar e reorganizar colunas para o relatório final
     colunas_finais = [
         'id_produto', 
-        'nome_produto', 
+        'nome_produto',
+        'id_categoria',
+        'nome_categoria',
         'estoque_atual', 
         'media_12m_qtd',
         'media_3m',
@@ -613,27 +642,16 @@ try:
         'data_ultima_movimentacao',
         'transacoes_12m', 
         'quantidade_total_12m', 
-        'valor_total_12m'
+        'valor_total_12m',
+        'prazo_reposicao_dias',
+        'critico'
     ]
 
     # Adicionar colunas de consumo mensal à lista de colunas finais
     colunas_finais.extend(sorted(colunas_consumo))
-
-    # Verificar se id_categoria está presente no DataFrame de recomendação
-    if 'id_categoria' not in df_recomendacao.columns:
-        print("Aviso: A coluna 'id_categoria' não está presente no DataFrame de recomendação.")
-        # Se não estiver, pode-se adicioná-la a partir do DataFrame produto
-        df_recomendacao = df_recomendacao.merge(
-            df_produto[['id_produto', 'id_categoria']],
-            on='id_produto',
-            how='left'
-        )
     
     # Manter apenas as colunas que existem
     colunas_existentes = [col for col in colunas_finais if col in df_recomendacao.columns]
-    # Verificar se id_categoria está na lista de colunas existentes
-    if 'id_categoria' not in colunas_existentes and 'id_categoria' in df_recomendacao.columns:
-        colunas_existentes.append('id_categoria')
     # Criar DataFrame final com as colunas selecionadas
     df_recomendacao_final = df_recomendacao[colunas_existentes].copy()
     
@@ -641,13 +659,6 @@ try:
     for col in ['media_12m_qtd', 'media_3m', 'cobertura_meses', 'valor_estimado_compra_3m', 'valor_estimado_compra_1m']:
         if col in df_recomendacao_final.columns:
             df_recomendacao_final[col] = df_recomendacao_final[col].round(2)
-
-    #pegar categoria
-    df_recomendacao_final = df_recomendacao_final.merge(
-        df_categoria[['id_categoria', 'nome_categoria']],
-        on='id_categoria',
-        how='left'
-    )
     
     # Exportar para CSV
     nome_arquivo = f"metricas_de_compra.csv"
