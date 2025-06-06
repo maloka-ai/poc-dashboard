@@ -214,6 +214,29 @@ try:
     # Exportar para Excel
     # df_estoque_movimento.to_excel("df_estoque_movimento_BD.xlsx", index=False)
 
+    print("Consultando a tabela CATEGORIA...")
+    query = """
+    SELECT id_categoria, nome_categoria
+    FROM maloka_core.categoria
+    """
+    
+    # Carregar os dados diretamente em um DataFrame do pandas
+    df_categoria = pd.read_sql_query(query, conn)
+    
+    # Informações sobre os dados
+    num_registros = len(df_categoria)
+    num_colunas = len(df_categoria.columns)
+    
+    print(f"Dados obtidos com sucesso! {num_registros} registros e {num_colunas} colunas.")
+    print(f"Colunas disponíveis: {', '.join(df_categoria.columns)}")
+    
+    # Exibir uma amostra dos dados
+    print("\nPrimeiros 5 registros para verificação:")
+    print(df_categoria.head())
+    
+    # Exportar para Excel
+    # df_categoria.to_excel("df_categoria.xlsx", index=False)
+
     # Fechar conexão
     conn.close()
     print("\nConexão com o banco de dados fechada.")
@@ -241,7 +264,7 @@ try:
     
     # Adicionar informações do produto
     df_vendas_completo = df_vendas_completo.merge(
-        df_produto[['id_produto', 'nome_produto', 'preco_custo']],
+        df_produto[['id_produto', 'nome_produto', 'preco_custo', 'id_categoria']],
         on='id_produto',
         how='left'
     )
@@ -595,15 +618,36 @@ try:
 
     # Adicionar colunas de consumo mensal à lista de colunas finais
     colunas_finais.extend(sorted(colunas_consumo))
+
+    # Verificar se id_categoria está presente no DataFrame de recomendação
+    if 'id_categoria' not in df_recomendacao.columns:
+        print("Aviso: A coluna 'id_categoria' não está presente no DataFrame de recomendação.")
+        # Se não estiver, pode-se adicioná-la a partir do DataFrame produto
+        df_recomendacao = df_recomendacao.merge(
+            df_produto[['id_produto', 'id_categoria']],
+            on='id_produto',
+            how='left'
+        )
     
     # Manter apenas as colunas que existem
     colunas_existentes = [col for col in colunas_finais if col in df_recomendacao.columns]
+    # Verificar se id_categoria está na lista de colunas existentes
+    if 'id_categoria' not in colunas_existentes and 'id_categoria' in df_recomendacao.columns:
+        colunas_existentes.append('id_categoria')
+    # Criar DataFrame final com as colunas selecionadas
     df_recomendacao_final = df_recomendacao[colunas_existentes].copy()
     
     # Formatar valores decimais
     for col in ['media_12m_qtd', 'media_3m', 'cobertura_meses', 'valor_estimado_compra_3m', 'valor_estimado_compra_1m']:
         if col in df_recomendacao_final.columns:
             df_recomendacao_final[col] = df_recomendacao_final[col].round(2)
+
+    #pegar categoria
+    df_recomendacao_final = df_recomendacao_final.merge(
+        df_categoria[['id_categoria', 'nome_categoria']],
+        on='id_categoria',
+        how='left'
+    )
     
     # Exportar para CSV
     nome_arquivo = f"metricas_de_compra.csv"
