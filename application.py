@@ -37,7 +37,7 @@ from layouts.estoque import (get_produtos_layout, get_produtos_inativos_layout, 
 from utils.sidebar_utils import (create_sidebar, get_available_data_types)
 
 #helpers de layout
-from utils import (color, gradient_colors, content_style, button_style, login_color)
+from utils import (color, content_style, button_style, login_color)
 
 # =============================================================================
 # Setup caching for improved performance
@@ -76,6 +76,36 @@ application = dash.Dash(
     url_base_pathname='/app/'
 )
 
+application.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        <script>
+        // Só carrega analytics se NÃO estiver nas portas de desenvolvimento
+        if (!window.location.port || !['5000', '8050', '3000', '8080'].includes(window.location.port)) {
+            document.write('<script async src="https://www.googletagmanager.com/gtag/js?id=G-381VNKHND0"><' + '/script>');
+            document.write('<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-381VNKHND0",{"send_page_views":false});<' + '/script>');
+            console.log('✅ Analytics habilitado');
+        } else {
+            console.log('🚫 Analytics desabilitado - porta de desenvolvimento');
+        }
+        </script>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
 register_sidebar_callbacks(application)
 register_clientes_callbacks(application)
 register_estoque_callbacks(application)
@@ -110,9 +140,45 @@ application.layout = html.Div([
     dcc.Location(id='url', refresh=True),  # refresh=True para permitir recarregar após login
     dcc.Store(id='sidebar-initialized', storage_type='session', data=False),  # Novo: estado para controlar inicialização da sidebar
     dcc.Store(id='login-button-state', data={'color': login_color['buttonOff']}),
-    html.Div(id='page-content')
+    html.Div(id='page-content'),
+    html.Div(id='analytics-tracker', style={'display': 'none'})
 ])
 
+# =============================================================================
+# Callback para rastreamento de analytics
+# =============================================================================
+@application.callback(
+    Output('analytics-tracker', 'children'),
+    Input('url', 'pathname'),
+    prevent_initial_call=False
+)
+def track_page_analytics(pathname):
+    return ""
+
+application.clientside_callback(
+    """
+    function(pathname) {
+        if (typeof gtag !== 'undefined') {
+            gtag('config', 'G-381VNKHND0', {
+                page_path: pathname,
+                page_title: document.title
+            });
+            
+            gtag('event', 'page_view', {
+                page_title: document.title,
+                page_location: window.location.href,
+                page_path: pathname,
+                app_section: 'dashboard'
+            });
+            
+            console.log('GA: Rastreando página:', pathname);
+        }
+        return '';
+    }
+    """,
+    Output('analytics-tracker', 'style'),
+    Input('url', 'pathname')
+)
 # =============================================================================
 # Login Layout
 # =============================================================================
@@ -200,7 +266,9 @@ login_layout = html.Div([
             "backgroundColor": login_color['background'],
             "boxShadow": "0 2px 10px rgba(0,0,0,0.1)"
         })
-    ], style={"width": "100%", "textAlign": "center"})  # Container externo para facilitar alinhamento
+    ], style={"width": "100%", "textAlign": "center"}),  # Container externo para facilitar alinhamento
+
+    html.Div(id='login-analytics', style={'display': 'none'})
 ], style={
     "height": "100vh", 
     "background": login_color['background'], 
@@ -215,7 +283,8 @@ login_layout = html.Div([
 
 @application.callback(
     [Output("output-login", "children"),
-     Output("url", "pathname")],
+     Output("url", "pathname"),
+     Output("login-analytics", "children")], # Novo Output para rastreamento de login com analytics
     Input("botao-login", "n_clicks"),
     [State("input-email", "value"),
      State("input-senha", "value")],
@@ -223,10 +292,10 @@ login_layout = html.Div([
 )
 def validar_login(n_clicks, email, senha):
     if n_clicks is None:
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
     
     if not email or not senha:
-        return dbc.Alert("Por favor, preencha email e senha.", color="warning"), dash.no_update
+        return dbc.Alert("Por favor, preencha email e senha.", color="warning"), dash.no_update, dash.no_update
 
     # Buscar usuário no banco de dados
     try:
@@ -243,28 +312,41 @@ def validar_login(n_clicks, email, senha):
         cur.close()
         conn.close()
     except Exception as e:
-        return dbc.Alert(f"Erro na conexão com o banco: {str(e)}", color="danger"), dash.no_update
+        return dbc.Alert(f"Erro na conexão com o banco: {str(e)}", color="danger"), dash.no_update, dash.no_update
 
     if not result:
-        return dbc.Alert("Usuário não encontrado.", color="danger"), dash.no_update
+        return dbc.Alert("Usuário não encontrado.", color="danger"), dash.no_update, dash.no_update
     
     password_hash, company, is_active = result
     if not is_active:
-        return dbc.Alert("Conta inativa.", color="danger"), dash.no_update
+        return dbc.Alert("Conta inativa.", color="danger"), dash.no_update, dash.no_update
 
     try:
         if not bcrypt.checkpw(senha.strip().encode('utf-8'), password_hash.encode('utf-8')):
-            return dbc.Alert("Senha incorreta.", color="danger"), dash.no_update
+            return dbc.Alert("Senha incorreta.", color="danger"), dash.no_update, dash.no_update
     except Exception as e:
-        return dbc.Alert(f"Erro na validação da senha: {str(e)}", color="danger"), dash.no_update
+        return dbc.Alert(f"Erro na validação da senha: {str(e)}", color="danger"), dash.no_update, dash.no_update
 
     try:
         print(f"Armazenando '{company}' na sessão")
         session['cliente'] = company
         session.modified = True
-        return dbc.Alert("Login bem-sucedido! Redirecionando...", color="success"), "/"
+
+        login_success_script = """
+        <script>
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'login', {
+                method: 'email_password',
+                event_category: 'authentication',
+                event_label: 'successful_login'
+            });
+        }
+        </script>
+        """
+
+        return dbc.Alert("Login bem-sucedido! Redirecionando...", color="success"), "/", login_success_script
     except Exception as e:
-        return dbc.Alert(f"Erro ao armazenar na sessão: {str(e)}", color="danger"), dash.no_update
+        return dbc.Alert(f"Erro ao armazenar na sessão: {str(e)}", color="danger"), dash.no_update, dash.no_update
     
 # =============================================================================
 # Callback para atualizar o estilo do botão de login
@@ -338,9 +420,31 @@ def logout():
         # Se temos informação do cliente, limpar apenas seu cache específico
         if cliente_atual:
             clear_client_cache(cache, app_cache, cliente_atual)
-            
+        
+        # Retornar o HTML com o script de analytics em vez de apenas redirecionar
+        logout_html = """
+        <!DOCTYPE html>
+        <html>
+        <head><title>Logout</title></head>
+        <body>
+            <p>Realizando logout...</p>
+            <script>
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'logout', {
+                    event_category: 'authentication',
+                    event_label: 'user_logout'
+                });
+            }
+            setTimeout(function() {
+                window.location.href = '/';
+            }, 100);
+            </script>
+        </body>
+        </html>
+        """
+
         # Redirecionar para a página de login
-        return redirect('/')
+        return logout_html
     except Exception as e:
         print(f"Erro durante logout: {str(e)}")
         return redirect('/')
