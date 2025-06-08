@@ -620,7 +620,6 @@ def register_produtos_callbacks(app):
             cor_botao = "danger"
         
         return novo_estado, texto_botao, cor_botao
-    
 
     @app.callback(
     Output("produtos-criticidade-bar", "figure"),
@@ -634,7 +633,6 @@ def register_produtos_callbacks(app):
         
         # Carregamos os dados
         df_criticos = pd.read_json(io.StringIO(produtos_data), orient='split')
-
         
         # Se o filtro estiver ativo, filtrar para mostrar apenas produtos críticos
         if filtro_ativo:
@@ -644,21 +642,13 @@ def register_produtos_callbacks(app):
             contagem_criticidade = df_filtrado['criticidade'].value_counts().sort_index()
 
             total_produtos = len(df_filtrado)
-            total_series = pd.Series([total_produtos], index=['Todos'])
-            contagem_criticidade = pd.concat([contagem_criticidade, total_series])
         else:
             # Contagem normal de todos os produtos por criticidade
             contagem_criticidade = df_criticos['criticidade'].value_counts().sort_index()
             # Adicionar o total
             total_produtos = len(df_criticos)
-            total_series = pd.Series([total_produtos], index=['Todos'])
-            contagem_criticidade = pd.concat([contagem_criticidade, total_series])
-        
 
-        # Contagem normal de todos os produtos por criticidade
-        contagem_criticidade = df_criticos['criticidade'].value_counts().sort_index()
         # Adicionar o total
-        total_produtos = len(df_criticos)
         total_series = pd.Series([total_produtos], index=['TODOS'])
         contagem_criticidade = pd.concat([contagem_criticidade, total_series])
         
@@ -826,11 +816,11 @@ def register_produtos_callbacks(app):
             
             # Contar produtos por cada categoria de criticidade
             total_produtos = len(df_filtrado)
-            produtos_criticos = len(df_filtrado[df_filtrado['criticidade'] == 'Crítico'])
-            produtos_muito_baixos = len(df_filtrado[df_filtrado['criticidade'] == 'Muito Baixo'])
-            produtos_baixos = len(df_filtrado[df_filtrado['criticidade'] == 'Baixo'])
-            produtos_adequados = len(df_filtrado[df_filtrado['criticidade'] == 'Adequado'])
-            produtos_excesso = len(df_filtrado[df_filtrado['criticidade'] == 'Excesso'])
+            produtos_criticos = len(df_filtrado[df_filtrado['criticidade'] == 'CRÍTICO'])
+            produtos_muito_baixos = len(df_filtrado[df_filtrado['criticidade'] == 'MUITO BAIXO'])
+            produtos_baixos = len(df_filtrado[df_filtrado['criticidade'] == 'BAIXO'])
+            produtos_adequados = len(df_filtrado[df_filtrado['criticidade'] == 'ADEQUADO'])
+            produtos_excesso = len(df_filtrado[df_filtrado['criticidade'] == 'EXCESSO'])
             
             # Criar métricas para a primeira linha de cards - mostrando todas as categorias
             metrics = [
@@ -844,11 +834,11 @@ def register_produtos_callbacks(app):
         else:
             # Contar produtos por cada categoria de criticidade
             total_produtos = len(df_criticos)
-            produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'Crítico'])
-            produtos_muito_baixos = len(df_criticos[df_criticos['criticidade'] == 'Muito Baixo'])
-            produtos_baixos = len(df_criticos[df_criticos['criticidade'] == 'Baixo'])
-            produtos_adequados = len(df_criticos[df_criticos['criticidade'] == 'Adequado'])
-            produtos_excesso = len(df_criticos[df_criticos['criticidade'] == 'Excesso'])
+            produtos_criticos = len(df_criticos[df_criticos['criticidade'] == 'CRÍTICO'])
+            produtos_muito_baixos = len(df_criticos[df_criticos['criticidade'] == 'MUITO BAIXO'])
+            produtos_baixos = len(df_criticos[df_criticos['criticidade'] == 'BAIXO'])
+            produtos_adequados = len(df_criticos[df_criticos['criticidade'] == 'ADEQUADO'])
+            produtos_excesso = len(df_criticos[df_criticos['criticidade'] == 'EXCESSO'])
             
             # Criar métricas para a primeira linha de cards - mostrando todas as categorias
             metrics = [
@@ -867,10 +857,10 @@ def register_produtos_callbacks(app):
         [Output("produtos-criticidade-header", "children"),
         Output("produtos-criticidade-list", "children")],
         [Input("filtro-criticos-ativo", "data"),
-        Input("produtos-criticidade-bar", "clickData")]
+        Input("produtos-criticidade-bar", "clickData")],
         [State("selected-data", "data")]
     )
-    def update_produtos_criticidade_list(clickData_bar, filtro_ativo,data):
+    def update_produtos_criticidade_list(filtro_ativo, clickData_bar, data):
         ctx = dash.callback_context
         
         if not ctx.triggered:
@@ -905,8 +895,12 @@ def register_produtos_callbacks(app):
         # Initialize default criticidade
         selected_criticidade = None
         
-        if trigger_id == 'produtos-criticidade-bar' and clickData_bar:
-            selected_criticidade = clickData_bar['points'][0]['x']
+        if trigger_id == 'produtos-criticidade-bar' and isinstance(clickData_bar, dict) and 'points' in clickData_bar:
+            try:
+                selected_criticidade = clickData_bar['points'][0]['x']
+            except (KeyError, IndexError, TypeError):
+                # Em caso de erro na estrutura do objeto, não selecionamos criticidade
+                pass
         
         if selected_criticidade is None:
             return "Produtos do Nível de Cobertura Selecionado", html.Div([

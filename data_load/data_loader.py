@@ -162,8 +162,8 @@ def load_data(client, data_type, app_cache=None, cache_version="v1.0"):
                 result["df_metricas_compra"] = pd.read_csv(file_paths["metricas_de_compra_path"][0])
             except Exception as e:
                 result["errors"].append(f"Erro ao carregar metricas_de_compra_path: {str(e)}")
-        else:
-            result["errors"].append("metricas_de_compra_path não disponível")
+        # else:
+            # result["errors"].append("metricas_de_compra_path não disponível")
 
 
     except Exception as e:
