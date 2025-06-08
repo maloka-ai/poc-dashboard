@@ -17,8 +17,16 @@ def format_iso_date(date_str):
         return '-'
     
     try:
-        # Específico para o formato que você está recebendo: 2025-01-06T00:00:00.000
-        if isinstance(date_str, str) and 'T' in date_str:
+        # Específico para o formato que você está recebendo: 2024-12-10 18:40:42
+        if isinstance(date_str, str) and ' ' in date_str:
+            # Pega apenas a parte da data (antes do espaço)
+            date_part = date_str.split(' ')[0]
+            # Divide por traços para obter ano, mês e dia
+            year, month, day = date_part.split('-')
+            return f"{day}/{month}/{year}"
+            
+        # Código original para formato ISO com 'T'
+        elif isinstance(date_str, str) and 'T' in date_str:
             # Pega apenas a parte da data (antes do T)
             date_part = date_str.split('T')[0]
             # Divide por traços para obter ano, mês e dia
