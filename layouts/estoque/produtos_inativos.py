@@ -10,7 +10,7 @@ def get_produtos_inativos_layout(data):
     Cria o layout da página de produtos inativos com gráficos e tabelas interativas
     para análise de produtos que não são vendidos há um determinado período.
     """
-    if data.get("df_relatorio_produtos") is None:
+    if data.get("df_analise_curva_cobertura") is None:
         return html.Div([
             html.H2("Análise de Produtos Inativos", className="dashboard-title"),
             create_card(
@@ -18,30 +18,28 @@ def get_produtos_inativos_layout(data):
                 html.Div([
                     html.P("Não foram encontrados dados de produtos para este cliente.", className="text-center text-muted my-4"),
                     html.I(className="fas fa-exclamation-triangle fa-4x text-muted d-block text-center mb-3"),
-                    html.P("Verifique se o arquivo relatorio_produtos.xlsx está presente no diretório de dados",  
+                    html.P("Verifique se o arquivo df_analise_curva_cobertura.xlsx está presente no diretório de dados",  
                            className="text-muted text-center")
                 ])
             )
         ], style=content_style)
     else:
         # Carregar os dados do DataFrame
-        df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+        df_produtos = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
     
     # Garantir que a coluna 'recencia' esteja no formato de data
-    if 'recencia' in df_produtos.columns and df_produtos['recencia'].dtype == 'object':
+    if 'Data Última Venda' in df_produtos.columns and df_produtos['Data Última Venda'].dtype == 'object':
         # Tratamento para valores problemáticos como "0" ou vazios
-        df_produtos['recencia'] = pd.to_datetime(df_produtos['recencia'], errors='coerce')
+        df_produtos['Data Última Venda'] = pd.to_datetime(df_produtos['Data Última Venda'], errors='coerce')
         
         # Definir uma data padrão para valores que não puderam ser convertidos (NULL/NaT)
         # Usando a data atual para calcular corretamente os dias de inatividade
         data_atual = datetime.datetime.now()
-        df_produtos['recencia'].fillna(data_atual, inplace=True)
-    
-    df_produtos['antiguidade'] = pd.to_datetime(df_produtos['antiguidade'], errors='coerce')
+        df_produtos['Data Última Venda'].fillna(data_atual, inplace=True)
     
     # Calcular os dias de inatividade
     data_atual = datetime.datetime.now()
-    df_produtos['dias_inativo'] = df_produtos['dias_desde_ultima_venda']
+    df_produtos['dias_inativo'] = df_produtos['Recência (dias']
     
     # ID único para os componentes
     dias_slider_id = 'dias-inatividade-slider'
