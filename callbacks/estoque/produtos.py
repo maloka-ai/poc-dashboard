@@ -927,6 +927,7 @@ def register_produtos_callbacks(app):
             # "critico", 
             "media_3M", 
             "cobertura_percentual_30d", 
+            "cobertura_dias",
             "sugestao_1m", 
             "sugestao_3m", 
             "data_ultima_compra", 
