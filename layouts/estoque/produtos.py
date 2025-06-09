@@ -121,10 +121,10 @@ def get_produtos_layout(data):
     )
 
     # Filtrar produtos críticos e ordenar pelo percentual de cobertura (do menor para o maior)
-    df_produtos_criticos = df_produtos.sort_values('cobertura_meses')
+    df_produtos_criticos = df_produtos.sort_values('cobertura_percentual_30d')
 
     if len(df_produtos[df_produtos['criticidade'] == 'CRÍTICO']) > 0:
-        top_20_criticos = df_produtos[df_produtos['criticidade'] == 'CRÍTICO'].sort_values('cobertura_meses').head(20)
+        top_20_criticos = df_produtos[df_produtos['criticidade'] == 'CRÍTICO'].sort_values('cobertura_percentual_30d').head(20)
     else:
         top_20_criticos = df_produtos_criticos.head(20)
 
@@ -138,12 +138,12 @@ def get_produtos_layout(data):
         fig_top_criticos = px.bar(
             top_20_criticos,
             y='produto_display',
-            x='cobertura_meses',
+            x='cobertura_percentual_30d',
             orientation='h',
-            color='cobertura_meses',
+            color='cobertura_percentual_30d',
             color_continuous_scale=['darkred', 'orange', color['warning']],
             range_color=[0, 50],
-            labels={'cobertura_meses': 'Cobertura (%)', 'produto_display': 'Produto'},
+            labels={'cobertura_percentual_30d': 'Cobertura (%)', 'produto_display': 'Produto'},
             template='plotly_white'
         )
         

@@ -349,6 +349,12 @@ try:
                 (x['estoque_atual'] / x['media_12m_qtd'] if x['media_12m_qtd'] > 0 else float('inf')),
         axis=1
     )
+
+    # Adicionar cobertura em dias (1 mês = 30 dias)
+    df_recomendacao['cobertura_dias'] = df_recomendacao['cobertura_meses'] * 30
+    
+    # Adicionar cobertura em percentual (considerando 1 mês como 100%)
+    df_recomendacao['cobertura_percentual_30d'] = df_recomendacao['cobertura_meses'] * 100
     
     # Calcular sugestão de compra para 3 meses de estoque
     df_recomendacao['sugestao_3m'] = df_recomendacao.apply(
@@ -618,6 +624,8 @@ try:
         'media_12m_qtd',
         'media_3m',
         'cobertura_meses', 
+        'cobertura_dias',
+        'cobertura_percentual_30d',
         'criticidade', 
         'sugestao_1m',
         'valor_estimado_compra_1m',
@@ -656,7 +664,7 @@ try:
     df_recomendacao_final = df_recomendacao[colunas_existentes].copy()
     
     # Formatar valores decimais
-    for col in ['media_12m_qtd', 'media_3m', 'cobertura_meses', 'valor_estimado_compra_3m', 'valor_estimado_compra_1m']:
+    for col in ['media_12m_qtd', 'media_3m', 'cobertura_meses', 'cobertura_dias', 'cobertura_percentual_30d', 'valor_estimado_compra_3m', 'valor_estimado_compra_1m']:
         if col in df_recomendacao_final.columns:
             df_recomendacao_final[col] = df_recomendacao_final[col].round(2)
     
