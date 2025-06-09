@@ -737,7 +737,7 @@ def register_produtos_callbacks(app):
             df_filtrado = df_criticos
         
         # Ordenar pelo percentual de cobertura
-        df_ordenado = df_filtrado.sort_values('cobertura_meses')
+        df_ordenado = df_filtrado.sort_values('cobertura_percentual_30d')
         
         # Selecionar os Top 20
         top_20 = df_ordenado.head(20)
@@ -749,12 +749,12 @@ def register_produtos_callbacks(app):
         fig = px.bar(
             top_20,
             y='produto_display',
-            x='cobertura_meses',
+            x='cobertura_percentual_30d',
             orientation='h',
-            color='cobertura_meses',
+            color='cobertura_percentual_30d',
             color_continuous_scale=['darkred', 'orange', color['warning']],
             range_color=[0, 50 if filtro_ativo else 100],  # Ajusta range de cores com base no filtro
-            labels={'cobertura_meses': 'Cobertura (%)', 'produto_display': 'Produto'},
+            labels={'cobertura_percentual_30d': 'Cobertura (%)', 'produto_display': 'Produto'},
             template='plotly_white'
         )
         
@@ -787,9 +787,9 @@ def register_produtos_callbacks(app):
         # Adicionar valores de percentual nas barras
         for i, row in enumerate(top_20.itertuples()):
             fig.add_annotation(
-                x=row.cobertura_meses,
+                x=row.cobertura_percentual_30d,
                 y=row.produto_display,
-                text=f"{row.cobertura_meses:.1f}%".replace(".", ","),
+                text=f"{row.cobertura_percentual_30d:.1f}%".replace(".", ","),
                 showarrow=False,
                 xshift=15,
                 font=dict(size=12, color="black", family="Montserrat")
@@ -926,7 +926,7 @@ def register_produtos_callbacks(app):
             "estoque_atual", 
             # "critico", 
             "media_3M", 
-            "cobertura_meses", 
+            "cobertura_percentual_30d", 
             "sugestao_1m", 
             "sugestao_3m", 
             "data_ultima_compra", 
@@ -955,7 +955,8 @@ def register_produtos_callbacks(app):
             "estoque_atual": "Estoque Atual",
             # "critico": "Reposição Não-Local (Crítico)",
             "media_3M": "Consumo Médio (3M)",
-            "cobertura_meses": "Cobertura (%)",
+            "cobertura_percentual_30d": "% Cobertura (30d)",
+            "cobertura_dias": "Cobertura em Dias",
             "sugestao_1m": "Sugestão (1M)",
             "sugestao_3m": "Sugestão (3M)",
             # ultima compra
@@ -978,8 +979,8 @@ def register_produtos_callbacks(app):
         # Formatação especial para valores monetários e percentuais
         filtered_df_display = filtered_df[existing_columns].copy()
         
-        if 'cobertura_meses' in filtered_df_display.columns:
-            filtered_df_display['cobertura_meses'] = filtered_df_display['cobertura_meses'].apply(
+        if 'cobertura_percentual_30d' in filtered_df_display.columns:
+            filtered_df_display['cobertura_percentual_30d'] = filtered_df_display['cobertura_percentual_30d'].apply(
                 lambda x: f"{x:.1f}%".replace(".", ",")
             )
         
@@ -1031,7 +1032,7 @@ def register_produtos_callbacks(app):
             },
             style_data_conditional=[
                 {
-                    "if": {"column_id": "cobertura_meses"},
+                    "if": {"column_id": "cobertura_percentual"},
                     "fontWeight": "bold",
                     "color": "darkred" if selected_criticidade == "CRÍTICO" else 
                             "orange" if selected_criticidade == "MUITO BAIXO" else
