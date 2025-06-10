@@ -185,7 +185,7 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
             quantidade = row['quantidade']
 
             d1["vendas_atipicas"].append({
-                "Dia": emissao,
+                "data": emissao,
                 "quantidade_atipica": quantidade,
                 "cliente": str(cliente)
             })
@@ -196,12 +196,12 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
     if len(vendas_atipicas) > 0:
         # Criar DataFrame normalizado dos resultados
         df_r = pd.json_normalize(vendas_atipicas, record_path=["vendas_atipicas"], meta=["id_produto", "produto", "estoque_atualizado"])
-        df_r.sort_values("Dia", inplace=True)
-        df_r['Dia'] = pd.to_datetime(df_r['Dia'], errors='coerce').dt.strftime('%Y-%m-%d')
+        df_r.sort_values("data", inplace=True)
+        df_r['data'] = pd.to_datetime(df_r['data'], errors='coerce').dt.strftime('%Y-%m-%d')
         
     else:
         # Criar um DataFrame vazio com as colunas esperadas
-        df_r = pd.DataFrame(columns=["Dia", "id_venda", "quantidade_atipica", "cliente", "id_produto", "produto", "estoque_atualizado"])
+        df_r = pd.DataFrame(columns=["data", "id_venda", "quantidade_atipica", "cliente", "id_produto", "produto", "estoque_atualizado"])
     
     return df_r
 

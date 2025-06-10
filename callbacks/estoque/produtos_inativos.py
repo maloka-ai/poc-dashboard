@@ -388,9 +388,9 @@ def register_produtos_inativos_callbacks(app):
                                 html.Div(f"{estoque_max:.0f}", className="h4 mb-0 font-weight-bold")
                             ], className="col-md-3"),
 
-                            # Coluna 5 - Dias com Estoque Zero
+                            # Coluna 5 - Dias com Estoque Zerado
                             html.Div([
-                                html.Div("Dias com Estoque Zero", className="small text-muted"),
+                                html.Div("Dias com Estoque Zerado", className="small text-muted"),
                                 html.Div([
                                     html.Span(f"{dias_zerados}", className="h4 mb-0 font-weight-bold text-danger"),
                                     html.Span(f" ({pct_dias_zerados:.1f}%)", className="small text-muted ml-1")

@@ -491,9 +491,10 @@ def register_produtos_callbacks(app):
                         ], style={"display": "inline-block"}) if produto_selecionado.get('ultimo_fornecedor') and produto_selecionado.get('ultimo_fornecedor') != '0' and produto_selecionado.get('ultimo_fornecedor') != 0.0 else None
                     ], className="text-muted")
                 ], className="mt-4 pb-3 border-bottom") if (
-                produto_selecionado.get('ultimo_fornecedor') != '' or 
-                produto_selecionado.get('ultimo_preco_compra') != 'R$ 0,00' and 
-                produto_selecionado.get('ultimo_preco_compra') != 0.0) 
+                    produto_selecionado.get('ultimo_fornecedor') != '' or 
+                    produto_selecionado.get('ultimo_preco_compra') != 'R$ 0,00' and 
+                    produto_selecionado.get('ultimo_preco_compra') != 0.0
+                ) 
                 else None,
 
                 # Informações de fornecedor 2
@@ -524,9 +525,10 @@ def register_produtos_callbacks(app):
                         ], style={"display": "inline-block"}) if produto_selecionado.get('penultimo_fornecedor') and produto_selecionado.get('penultimo_fornecedor') != '0' and produto_selecionado.get('penultimo_fornecedor') != 0.0 else None
                     ], className="text-muted")
                 ], className="mt-4 pb-3 border-bottom") if (
-                produto_selecionado.get('penultimo_fornecedor') != '' or 
-                produto_selecionado.get('penultimo_preco_compra') != 'R$ 0,00' and 
-                produto_selecionado.get('penultimo_preco_compra') != 0.0) 
+                    produto_selecionado.get('penultimo_fornecedor') != '' or 
+                    produto_selecionado.get('penultimo_preco_compra') != 'R$ 0,00' and 
+                    produto_selecionado.get('penultimo_preco_compra') != 0.0
+                ) 
                 else None,
 
                 # Informações de fornecedor 3
@@ -557,9 +559,10 @@ def register_produtos_callbacks(app):
                         ], style={"display": "inline-block"}) if produto_selecionado.get('antepenultimo_fornecedor') and produto_selecionado.get('antepenultimo_fornecedor') != '0' and produto_selecionado.get('antepenultimo_fornecedor') != 0.0 else None
                     ], className="text-muted")
                 ], className="mt-4 pb-3 border-bottom") if (
-                produto_selecionado.get('antepenultimo_fornecedor') != '' or 
-                produto_selecionado.get('antepenultimo_preco_compra') != 'R$ 0,00' and 
-                produto_selecionado.get('antepenultimo_preco_compra') != 0.0) 
+                    produto_selecionado.get('antepenultimo_fornecedor') != '' or 
+                    produto_selecionado.get('antepenultimo_preco_compra') != 'R$ 0,00' and 
+                    produto_selecionado.get('antepenultimo_preco_compra') != 0.0
+                )
                 else None,
             ])
             
@@ -937,11 +940,11 @@ def register_produtos_callbacks(app):
             "data_penultima_compra",
             "penultima_qtd_comprada",
             "penultimo_preco_compra",
-            "peultimo_fornecedor",
+            "penultimo_fornecedor",
             "data_antepenultima_compra",
             "antepenultima_qtd_comprada", 
             "antepenultimo_preco_compra", 
-            "antepeultimo_fornecedor"
+            "antepenultimo_fornecedor"
         ]
         
         # Usar apenas colunas que existem no DataFrame
@@ -969,12 +972,12 @@ def register_produtos_callbacks(app):
             "data_penultima_compra": "Data Penúltima Compra",
             "penultima_qtd_comprada": "Penúltima Quantidade Comprada",
             "penultimo_preco_compra": "Penúltimo Preço de Compra",
-            "peultimo_fornecedor": "Penúltimo Fornecedor",
+            "penultimo_fornecedor": "Penúltimo Fornecedor",
             # antepenúltima compra
             "data_antepenultima_compra": "Data Antepenúltima Compra",
             "antepenultima_qtd_comprada": "Antepenúltima Quantidade Comprada",
             "antepenultimo_preco_compra": "Antepenúltimo Preço de Compra",
-            "antepeultimo_fornecedor": "Antepenúltimo Fornecedor"
+            "antepenultimo_fornecedor": "Antepenúltimo Fornecedor"
         }
         
         # Formatação especial para valores monetários e percentuais
