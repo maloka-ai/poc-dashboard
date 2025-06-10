@@ -83,8 +83,8 @@ application.index_string = '''
         <script>
         // Só carrega analytics se NÃO estiver nas portas de desenvolvimento
         if (!window.location.port || !['5000', '8050', '3000', '8080'].includes(window.location.port)) {
-            document.write('<script async src="https://www.googletagmanager.com/gtag/js?id=G-381VNKHND0"><' + '/script>');
-            document.write('<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-381VNKHND0",{"send_page_views":false});<' + '/script>');
+            document.write('<script async src="https://www.googletagmanager.com/gtag/js?id=G-2B0C5MHZ96"><' + '/script>');
+            document.write('<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-2B0C5MHZ96",{"send_page_views":false});<' + '/script>');
             console.log('✅ Analytics habilitado');
         } else {
             console.log('🚫 Analytics desabilitado - porta de desenvolvimento');
@@ -159,7 +159,7 @@ application.clientside_callback(
     """
     function(pathname) {
         if (typeof gtag !== 'undefined') {
-            gtag('config', 'G-381VNKHND0', {
+            gtag('config', 'G-2B0C5MHZ96', {
                 page_path: pathname,
                 page_title: document.title
             });
