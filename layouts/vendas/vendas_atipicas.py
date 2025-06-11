@@ -82,6 +82,7 @@ def get_vendas_atipicas_layout(data):
             {"name": "Data", "id": "Dia_formatada"},
             {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
             {"name": "Cliente", "id": "cliente"},
+            {"name": "ID Venda", "id": "id_venda"},
             {"name": "ID Produto", "id": "id_produto"},
             {"name": "Produto", "id": "produto"},
             {"name": "Estoque Atual", "id": "estoque_atualizado"}

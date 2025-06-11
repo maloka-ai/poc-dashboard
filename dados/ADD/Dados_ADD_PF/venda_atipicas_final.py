@@ -133,11 +133,15 @@ def identificar_produtos_anomalos(df):
     
     for id in ids:
         # Filtrar vendas do produto
-        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente']]
+        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente', 'id_venda']]
         
         # Agrupar por data e cliente
-        sales = sales.groupby(['data_venda', 'id_cliente'], as_index=False)['quantidade'].sum()
-        
+        # Pegar o primeiro id_venda em caso de agrupamento
+        sales = sales.groupby(['data_venda', 'id_cliente'], as_index=False).agg({
+            'quantidade': 'sum',
+            'id_venda': 'first'  # Pegar o primeiro id_venda do grupo
+        })
+
         # Aplicar a função e identificar anomalias
         out = identificar_anomalias(sales)
     
@@ -183,11 +187,13 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
             
             emissao = row['data_venda']
             quantidade = row['quantidade']
+            id_venda = row['id_venda']
 
             d1["vendas_atipicas"].append({
                 "data": emissao,
                 "quantidade_atipica": quantidade,
-                "cliente": str(cliente)
+                "cliente": str(cliente),
+                "id_venda": id_venda
             })
     
         vendas_atipicas.append(d1)
@@ -201,7 +207,7 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
         
     else:
         # Criar um DataFrame vazio com as colunas esperadas
-        df_r = pd.DataFrame(columns=["data", "id_venda", "quantidade_atipica", "cliente", "id_produto", "produto", "estoque_atualizado"])
+        df_r = pd.DataFrame(columns=["data", "quantidade_atipica", "cliente", "id_venda", "id_produto", "produto", "estoque_atualizado"])
     
     return df_r
 
