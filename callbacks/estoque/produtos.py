@@ -872,7 +872,7 @@ def register_produtos_callbacks(app):
                     className="text-center text-muted my-4")
             ])
         
-        if data is None or data.get("df_relatorio_produtos") is None:
+        if data is None or data.get("df_metricas_compra") is None:
             return "Dados Indisponíveis", html.Div([
                 html.P("Não foi possível carregar os dados dos produtos.", 
                     className="text-center text-muted my-4")
