@@ -295,7 +295,7 @@ def create_sidebar(client=None, available_data_types=None, collapse_states=None,
                                 className="my-1"
                             ),
                             dbc.NavLink(
-                                [html.I(className="fas fa-exclamation-circle me-2"), "Inatividade e Giro por SKU"],
+                                [html.I(className="fas fa-exclamation-circle me-2"), "Inatividade de Produtos"],
                                 href="/estoque/produtos-inativos",
                                 active="exact",
                                 style=nav_link_style,

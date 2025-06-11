@@ -33,7 +33,7 @@ def register_produtos_inativos_callbacks(app):
          Input("selected-data", "data")]
     )
     def update_produtos_inativos(dias_selecionados, data):
-        if data is None or data.get("df_relatorio_produtos") is None:
+        if data is None or data.get("df_analise_curva_cobertura") is None:
             return (
                 "Dados não disponíveis.",
                 "Sem dados de produtos",
@@ -42,22 +42,21 @@ def register_produtos_inativos_callbacks(app):
             )
             
         # Carregar os dados do DataFrame
-        df_produtos = pd.read_json(io.StringIO(data["df_relatorio_produtos"]), orient='split')
+        df_produtos = pd.read_json(io.StringIO(data["df_analise_curva_cobertura"]), orient='split')
         
-        # Garantir que a coluna 'recencia' esteja no formato de data
-        if 'recencia' in df_produtos.columns and df_produtos['recencia'].dtype == 'object':
+        # Garantir que a coluna 'Data Última Venda' esteja no formato de data
+        if 'Data Última Venda' in df_produtos.columns and df_produtos['Data Última Venda'].dtype == 'object':
             # Usar errors='coerce' para tratar valores problemáticos como "0" ou vazios
-            df_produtos['recencia'] = pd.to_datetime(df_produtos['recencia'], errors='coerce')
+            df_produtos['Data Última Venda'] = pd.to_datetime(df_produtos['Data Última Venda'], errors='coerce')
             
             # Definir uma data padrão para valores que não puderam ser convertidos (NULL/NaT)
             # Usando a data atual para calcular corretamente os dias de inatividade
             data_atual = datetime.now()
-            df_produtos['recencia'].fillna(data_atual, inplace=True)
-        df_produtos['antiguidade'] = pd.to_datetime(df_produtos['antiguidade'], errors='coerce')
+            df_produtos['Data Última Venda'].fillna(data_atual, inplace=True)
         
         # Calcular os dias de inatividade
         data_atual = datetime.now()
-        df_produtos['dias_inativo'] = df_produtos['dias_desde_ultima_venda']
+        df_produtos['dias_inativo'] = df_produtos['Recência (dias)']
         
         # Filtramos os produtos inativos pelo número de dias
         df_filtrado = df_produtos[df_produtos['dias_inativo'] >= dias_selecionados].copy()
@@ -75,24 +74,18 @@ def register_produtos_inativos_callbacks(app):
         texto_tempo = f"Produtos inativos há mais de {periodo_texto}"
         texto_contagem = f"Total de {len(df_filtrado)} produtos encontrados"
         
-        df_filtrado['recencia'] = pd.to_datetime(df_filtrado['recencia'], errors='coerce')
-        df_filtrado['Data1'] = pd.to_datetime(df_filtrado['Data1'], errors='coerce')
+        df_filtrado['Data Última Venda'] = pd.to_datetime(df_filtrado['Data Última Venda'], errors='coerce')
         # Formatamos as datas e valores para a tabela
-        df_filtrado['recencia_formatada'] = df_filtrado['recencia'].dt.strftime('%d/%m/%Y')
-        df_filtrado['data1_formatada'] = df_filtrado['Data1'].dt.strftime('%d/%m/%Y')
-        df_filtrado['antiguidade_formatada'] = df_filtrado['antiguidade'].dt.strftime('%d/%m/%Y')
+        df_filtrado['recencia_formatada'] = df_filtrado['Data Última Venda'].dt.strftime('%d/%m/%Y')
         df_filtrado['dias_inativo_formatado'] = df_filtrado['dias_inativo'].apply(lambda x: formatar_numero(x, 0))
         
         # Determinamos quais colunas mostrar (adaptando se certas colunas existirem)
         columns = [
-            {"name": "Código", "id": "cd_produto"},
-            {"name": "Produto", "id": "desc_produto"},
-            {"name": "Estoque Atual", "id": "estoque_atualizado"},
+            {"name": "ID", "id": "SKU"},
+            {"name": "Produto", "id": "Descrição do Produto"},
+            {"name": "Estoque Atual", "id": "Estoque Total"},
             {"name": "Dias Inativo", "id": "dias_inativo_formatado"},
             {"name": "Última Venda", "id": "recencia_formatada"},
-            {"name": "Última Compra", "id": "data1_formatada"},
-            {"name": "Primeira Compra", "id": "antiguidade_formatada"},
-            {"name": "Reposição Não-Local (Crítico)", "id": "critico"},
         ]
 
         # Criamos a tabela com os dados filtrados
@@ -169,15 +162,15 @@ def register_produtos_inativos_callbacks(app):
         
         # Criar cabeçalho de informações - adapt column names to match what's actually in your data
         info = html.Div([
-            html.H4(f"Produto: {produto['desc_produto']}", className="mb-2"),
+            html.H4(f"Produto: {produto['Descrição do Produto']}", className="mb-2"),
             html.Div([
-                html.Span(f"Código: {produto['cd_produto']} | "),
+                html.Span(f"Código: {produto['SKU']} | "),
                 html.Span(f"Última Venda: {produto['recencia_formatada']} | ")
             ], className="text-muted mb-3")
         ])
     
         # Return using the correct ID field from your data
-        return {'id_produto': produto['cd_produto'], 'desc_produto': produto['desc_produto']}, info
+        return {'id_produto': produto['SKU'], 'desc_produto': produto['Descrição do Produto']}, info
 
     @app.callback(
         Output('produto-analise-detalhada', 'children'),
@@ -394,18 +387,27 @@ def register_produtos_inativos_callbacks(app):
                                 html.Div("Estoque Máximo", className="small text-muted"),
                                 html.Div(f"{estoque_max:.0f}", className="h4 mb-0 font-weight-bold")
                             ], className="col-md-3"),
-                        ], className="row mb-4"),
-                        
-                        # Segunda linha
-                        html.Div([
-                            # Coluna 1 - Dias com Estoque Zero
+
+                            # Coluna 5 - Dias com Estoque Zerado
                             html.Div([
-                                html.Div("Dias com Estoque Zero", className="small text-muted"),
+                                html.Div("Dias com Estoque Zerado", className="small text-muted"),
                                 html.Div([
                                     html.Span(f"{dias_zerados}", className="h4 mb-0 font-weight-bold text-danger"),
                                     html.Span(f" ({pct_dias_zerados:.1f}%)", className="small text-muted ml-1")
                                 ])
                             ], className="col-md-3"),
+                        ], className="row mb-4"),
+                        
+                        # # Segunda linha
+                        # html.Div([
+                        #     # Coluna 1 - Dias com Estoque Zero
+                        #     html.Div([
+                        #         html.Div("Dias com Estoque Zero", className="small text-muted"),
+                        #         html.Div([
+                        #             html.Span(f"{dias_zerados}", className="h4 mb-0 font-weight-bold text-danger"),
+                        #             html.Span(f" ({pct_dias_zerados:.1f}%)", className="small text-muted ml-1")
+                        #         ])
+                        #     ], className="col-md-3"),
                             
                             # Coluna 2 - Tendência
                             # html.Div([
@@ -416,18 +418,18 @@ def register_produtos_inativos_callbacks(app):
                             #     ])
                             # ], className="col-md-3"),
 
-                            # Coluna 3 - Giro de Estoque
-                            html.Div([
-                                html.Div("Giro de Estoque (anual)", className="small text-muted"),
-                                html.Div(f"{giro_estoque:.1f}", className="h4 mb-0 font-weight-bold")
-                            ], className="col-md-3"),
+                            # # Coluna 3 - Giro de Estoque
+                            # html.Div([
+                            #     html.Div("Giro de Estoque (anual)", className="small text-muted"),
+                            #     html.Div(f"{giro_estoque:.1f}", className="h4 mb-0 font-weight-bold")
+                            # ], className="col-md-3"),
                             
-                            # Coluna 4 - Cobertura de Estoque
-                            html.Div([
-                                html.Div("Cobertura de Estoque (dias)", className="small text-muted"),
-                                html.Div(f"{cobertura_estoque:.1f}", className="h4 mb-0 font-weight-bold")
-                            ], className="col-md-3"),
-                        ], className="row mb-4"),
+                            # # Coluna 4 - Cobertura de Estoque
+                            # html.Div([
+                            #     html.Div("Cobertura de Estoque (dias)", className="small text-muted"),
+                            #     html.Div(f"{cobertura_estoque:.1f}", className="h4 mb-0 font-weight-bold")
+                            # ], className="col-md-3"),
+                        # ], className="row mb-4"),
                     ])
                 ], className="mb-4 p-3 bg-light rounded"),
                 
