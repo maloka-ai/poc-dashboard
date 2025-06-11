@@ -38,13 +38,11 @@ def get_vendas_atipicas_layout(data):
     # Calculamos métricas gerais para cards de resumo
     total_produtos_atipicos = len(df_atipicas)
     total_quantidade_atipica = df_atipicas['quantidade_atipica'].sum()
-    media_por_produto = total_quantidade_atipica / total_produtos_atipicos if total_produtos_atipicos > 0 else 0
     
     # Criamos as métricas para a primeira linha de cards
     metrics = [
         {"title": "Total de Produtos Atípicos", "value": formatar_numero(total_produtos_atipicos), "color": color['primary']},
-        {"title": "Quantidade Total Atípica", "value": formatar_numero(total_quantidade_atipica), "color": color['accent']},
-        {"title": "Média por Produto", "value": formatar_numero(media_por_produto, 1), "color": color['secondary']}
+        {"title": "Quantidade Total Atípica", "value": formatar_numero(total_quantidade_atipica), "color": color['accent']}
     ]
     
     metrics_row = create_metric_row(metrics)
