@@ -81,6 +81,7 @@ def get_vendas_atipicas_layout(data):
         columns=[
             {"name": "Data", "id": "Dia_formatada"},
             {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
+            {"name": "Média de Vendas Útimos 12m", "id": "media_vendas"},
             {"name": "Cliente", "id": "cliente"},
             {"name": "ID Venda", "id": "id_venda"},
             {"name": "ID Produto", "id": "id_produto"},

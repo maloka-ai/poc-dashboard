@@ -7,6 +7,7 @@ import warnings
 
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy connectable')
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 
 # Carrega variáveis de ambiente
@@ -89,7 +90,11 @@ def preparar_dados_vendas(df_vendas, df_venda_itens):
     
     # Filtrar vendas do último ano
     today = pd.Timestamp.now()
-    one_year_ago = today - pd.DateOffset(months=12)
+
+    #filto de 1 ano ou 6 meses
+    one_year_ago = today - pd.DateOffset(years=1)
+    six_months_ano = today - pd.DateOffset(months=6)
+
     filtered_df = filtered_df[(filtered_df['data_venda'] >= one_year_ago) & (filtered_df['data_venda'] < today)]
     
     # Converter data_venda para datetime
@@ -108,7 +113,7 @@ def identificar_anomalias(df):
     
     # Se o desvio padrão for zero ou NaN, não há variação para calcular anomalias
     if desvio_padrao == 0 or pd.isna(desvio_padrao):
-        return pd.DataFrame()  # Retorna DataFrame vazio
+        return pd.DataFrame(), 0, 0   # Retorna DataFrame vazio
     
     # Calcular Z-score
     df['z_score'] = (df['quantidade'] - media) / desvio_padrao
@@ -124,7 +129,7 @@ def identificar_anomalias(df):
     # Filtrar outliers que ocorreram nas últimas duas semanas
     outliers_duas_semana = outliers[outliers['data_venda'] >= duas_semanas_atras]
     
-    return outliers_duas_semana
+    return outliers_duas_semana, media, desvio_padrao
 
 def identificar_produtos_anomalos(df):
     """Identifica produtos com vendas anômalas."""
@@ -143,11 +148,11 @@ def identificar_produtos_anomalos(df):
         })
 
         # Aplicar a função e identificar anomalias
-        out = identificar_anomalias(sales)
+        out, media, desvio = identificar_anomalias(sales)
     
         if len(out) > 0:
             print(f"*** Anomalias encontradas para produto {id}: {len(out)} ***")
-            anomalias.append((id, out))
+            anomalias.append((id, out, media, desvio))
             
     print(f"Total de produtos com anomalias: {len(anomalias)}")
     return anomalias
@@ -156,7 +161,7 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
     """Gera relatório de vendas atípicas."""
     vendas_atipicas = []
     
-    for id, info_df in anomalias:
+    for id, info_df, media, desvio in anomalias:
         # Obter informações do produto
         produto_info = df_produtos[df_produtos['id_produto'] == id]
         if produto_info.empty:
@@ -174,6 +179,8 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
             'id_produto': id,
             'produto': produto,
             'estoque_atualizado': estoque,
+            'media_vendas': round(media, 2),
+            'desvio_padrao': round(desvio, 2),
             'vendas_atipicas': []
         }
 
@@ -201,13 +208,13 @@ def gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_esto
     # Verificar se há anomalias antes de criar o DataFrame
     if len(vendas_atipicas) > 0:
         # Criar DataFrame normalizado dos resultados
-        df_r = pd.json_normalize(vendas_atipicas, record_path=["vendas_atipicas"], meta=["id_produto", "produto", "estoque_atualizado"])
+        df_r = pd.json_normalize(vendas_atipicas, record_path=["vendas_atipicas"], meta=["id_produto", "produto", "estoque_atualizado", "media_vendas", "desvio_padrao"])
         df_r.sort_values("data", inplace=True)
         df_r['data'] = pd.to_datetime(df_r['data'], errors='coerce').dt.strftime('%Y-%m-%d')
         
     else:
         # Criar um DataFrame vazio com as colunas esperadas
-        df_r = pd.DataFrame(columns=["data", "quantidade_atipica", "cliente", "id_venda", "id_produto", "produto", "estoque_atualizado"])
+        df_r = pd.DataFrame(columns=["data", "quantidade_atipica", "cliente", "id_venda", "id_produto", "produto", "estoque_atualizado", "media_vendas", "desvio_padrao"])
     
     return df_r
 
