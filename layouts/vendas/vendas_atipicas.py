@@ -83,10 +83,10 @@ def get_vendas_atipicas_layout(data):
             {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
             {"name": "Média de Vendas Útimos 12m", "id": "media_vendas"},
             {"name": "Cliente", "id": "cliente"},
+            {"name": "Produto", "id": "produto"},
+            {"name": "Estoque Atual", "id": "estoque_atualizado"},
             {"name": "ID Venda", "id": "id_venda"},
             {"name": "ID Produto", "id": "id_produto"},
-            {"name": "Produto", "id": "produto"},
-            {"name": "Estoque Atual", "id": "estoque_atualizado"}
         ],
         data=df_atipicas.reset_index().to_dict("records"),
         filter_action="native",
