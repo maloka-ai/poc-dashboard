@@ -133,10 +133,10 @@ def identificar_produtos_anomalos(df):
     
     for id in ids:
         # Filtrar vendas do produto
-        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente', 'id_venda']]
+        sales = df[df['id_produto'] == id][['data_venda', 'quantidade', 'id_cliente']]
         
         # Agrupar por data e cliente
-        sales = sales.groupby(['data_venda', 'id_cliente', 'id_venda'], as_index=False)['quantidade'].sum()
+        sales = sales.groupby(['data_venda', 'id_cliente'], as_index=False)['quantidade'].sum()
         
         # Aplicar a função e identificar anomalias
         out = identificar_anomalias(sales)
@@ -214,7 +214,7 @@ def exportar_resultados(df, nome_arquivo=None):
     # Gerar nome de arquivo com timestamp atual se não for especificado
     if nome_arquivo is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nome_arquivo = f'vendas_atipicas_{timestamp}.xlsx'
+        nome_arquivo = f'vendas_atipicas.xlsx'
     
     # Obter diretório do script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         df_resultados = gerar_relatorio_vendas_atipicas(anomalias, df_produtos, df_clientes, df_estoque)
         
         print("Exportando resultados...")
-        exportar_resultados(df_resultados, f'vendas_atipicas_v1.xlsx')
+        exportar_resultados(df_resultados, f'vendas_atipicas.xlsx')
         
         print("Análise completa!")
         

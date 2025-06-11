@@ -29,12 +29,11 @@ def get_vendas_atipicas_layout(data):
     # Carregamos os dados de vendas atípicas
     df_atipicas = pd.read_json(io.StringIO(data["df_Vendas_Atipicas"]), orient='split')
     
-    # Convertemos a coluna 'Dia' para o formato de data, se ainda não estiver
-    if df_atipicas['Dia'].dtype == 'object':
-        df_atipicas['Dia'] = pd.to_datetime(df_atipicas['Dia'])
+    # Convertemos a coluna 'data' para o formato de data, se ainda não estiver
+    if df_atipicas['data'].dtype == 'object':
+        df_atipicas['data'] = pd.to_datetime(df_atipicas['data'])
 
-    df_atipicas['Dia_formatada'] = df_atipicas['Dia'].dt.strftime('%d/%m/%Y')
-
+    df_atipicas['Dia_formatada'] = df_atipicas['data'].dt.strftime('%d/%m/%Y')
     
     # Calculamos métricas gerais para cards de resumo
     total_produtos_atipicos = len(df_atipicas)
@@ -83,9 +82,9 @@ def get_vendas_atipicas_layout(data):
             {"name": "Data", "id": "Dia_formatada"},
             {"name": "Quantidade Atípica", "id": "quantidade_atipica"},
             {"name": "Cliente", "id": "cliente"},
+            {"name": "ID Produto", "id": "id_produto"},
             {"name": "Produto", "id": "produto"},
-            {"name": "Estoque Atual", "id": "estoque_atualizado"},
-            {"name": "Reposição Não-Local (Crítico)", "id": "critico"}
+            {"name": "Estoque Atual", "id": "estoque_atualizado"}
         ],
         data=df_atipicas.reset_index().to_dict("records"),
         filter_action="native",
