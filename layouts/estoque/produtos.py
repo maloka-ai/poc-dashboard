@@ -47,7 +47,11 @@ def get_produtos_layout(data):
             dcc.Store(id="filtro-criticos-ativo", data=False),
         ], className="d-flex justify-content-end")
     else:
-        filtro_criticos = None
+        # Não criamos o botão de filtro se não houver produtos críticos
+        filtro_criticos = html.Div([
+            html.Div(id="btn-filtro-criticos", style={"display": "none"}),
+            dcc.Store(id="filtro-criticos-ativo", data=False),
+        ], style={"display": "none"})
         
     # Contar produtos por categoria de criticidade
     contagem_criticidade = df_produtos['criticidade'].value_counts().sort_index()
