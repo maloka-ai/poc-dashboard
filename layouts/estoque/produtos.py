@@ -30,21 +30,25 @@ def get_produtos_layout(data):
     # Carregamos os dados de produtos críticos
     df_produtos = pd.read_json(io.StringIO(data["df_metricas_compra"]), orient='split')
 
+    #Caso todos os dados dentro da coluna critico forem falsos
+    if 'critico' in df_produtos.columns and df_produtos['critico'].any():
     # Botão de filtro críticos (Toggle) - Adicionado
-    filtro_criticos = html.Div([
-        dbc.Button(
-            [
-                html.I(className="fas fa-filter me-2"), 
-                "Mostrar Produtos com Reposição Não-Local"
-            ],
-            id="btn-filtro-criticos",
-            color="danger",
-            className="mb-3",
-            style={"marginTop": "-2rem", "marginBottom": "1rem"}
-        ),
-        dcc.Store(id="filtro-criticos-ativo", data=False),
-    ], className="d-flex justify-content-end")
-    
+        filtro_criticos = html.Div([
+            dbc.Button(
+                [
+                    html.I(className="fas fa-filter me-2"), 
+                    "Mostrar Produtos com Reposição Não-Local"
+                ],
+                id="btn-filtro-criticos",
+                color="danger",
+                className="mb-3",
+                style={"marginTop": "-2rem", "marginBottom": "1rem"}
+            ),
+            dcc.Store(id="filtro-criticos-ativo", data=False),
+        ], className="d-flex justify-content-end")
+    else:
+        filtro_criticos = None
+        
     # Contar produtos por categoria de criticidade
     contagem_criticidade = df_produtos['criticidade'].value_counts().sort_index()
     
