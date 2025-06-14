@@ -119,7 +119,7 @@ def identificar_anomalias(df):
     df['z_score'] = (df['quantidade'] - media) / desvio_padrao
 
     # Definir o limiar para outliers (Z > 3)
-    limiar = 4
+    limiar = 3
     outliers = df[df['z_score'] > limiar]
 
     # Definir a data de 15 dias atrás

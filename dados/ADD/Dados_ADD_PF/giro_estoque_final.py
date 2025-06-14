@@ -836,7 +836,7 @@ try:
     
     if len(inconsistencias) > 0:
         # Exibir top 10 inconsistências
-        print(f"\TOTAL de SKU verificados: {total_skus_verificados}")
+        print(f"TOTAL de SKU verificados: {total_skus_verificados}")
         print(f"SKU consistentes: {consistentes} ({pct_consistentes:.1f}%)")
         print(f"SKU inconsistentes: {inconsistentes} ({pct_inconsistentes:.1f}%)")
         
