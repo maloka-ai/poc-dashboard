@@ -442,4 +442,68 @@ if not df_mes_atual.empty:
     print(f"Dados de faturamento diário por loja salvos em: {excel_path}")
     
 else:
-    print(f"Não há dados de vendas para o mês atual ({mes_atual}/{ano_atual})")
+    # Caso não existam dados para o mês atual, buscar dados do mês anterior
+    mes_anterior = mes_atual - 1
+    ano_anterior = ano_atual
+    
+    # Ajuste caso o mês atual seja janeiro
+    if mes_anterior == 0:
+        mes_anterior = 12
+        ano_anterior = ano_atual - 1
+        
+    print(f"Não há dados de vendas para o mês atual ({mes_atual}/{ano_atual}). Buscando dados do mês anterior ({mes_anterior}/{ano_anterior})...")
+    
+    # Filtrar vendas do mês anterior
+    mask_mes_anterior = (df_vendas['data_venda'].dt.month == mes_anterior) & (df_vendas['data_venda'].dt.year == ano_anterior)
+    df_mes_anterior = df_vendas[mask_mes_anterior].copy()
+    
+    if not df_mes_anterior.empty:
+        # Criar coluna para dia do mês
+        df_mes_anterior['Dia'] = df_mes_anterior['data_venda'].dt.day
+        
+        # Agrupar por dia e loja, calculando o faturamento diário
+        df_diario_loja = df_mes_anterior.groupby(['id_loja', 'Dia'])['total_venda'].sum().reset_index()
+        
+        # Mesclar com informações das lojas para obter os nomes
+        df_diario_loja = df_diario_loja.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
+        
+        # Criar uma lista com todos os dias do mês (1 a 31)
+        todos_dias = list(range(1, 32))
+        
+        # Criar uma versão pivotada com lojas nas linhas e dias nas colunas
+        df_pivot_lojas = df_diario_loja.pivot(index='nome', columns='Dia', values='total_venda')
+        
+        # Garantir que todos os dias do mês anterior estejam presentes
+        for dia in todos_dias:
+            if dia not in df_pivot_lojas.columns:
+                df_pivot_lojas[dia] = 0
+        
+        # Ordenar as colunas para que os dias apareçam em ordem crescente
+        df_pivot_lojas = df_pivot_lojas[sorted(df_pivot_lojas.columns)]
+        
+        # Preencher valores NaN com zero
+        df_pivot_lojas = df_pivot_lojas.fillna(0)
+
+        # Adicionar uma coluna com o total por loja
+        df_pivot_lojas['total_loja'] = df_pivot_lojas.sum(axis=1)
+        
+        # Ordenar o DataFrame pelo total de vendas (do maior para o menor)
+        df_pivot_lojas = df_pivot_lojas.sort_values('total_loja', ascending=False)
+        
+        # Adicionar uma linha com o total diário (de todas as lojas juntas)
+        totais_diarios = df_diario_loja.groupby('Dia')['total_venda'].sum()
+        df_pivot_lojas.loc['total'] = pd.Series({dia: totais_diarios.get(dia, 0) for dia in df_pivot_lojas.columns})
+        
+        # Calcular o total geral (soma de todas as vendas) e adicionar na célula da última coluna da linha 'total'
+        total_geral = df_diario_loja['total_venda'].sum()
+        df_pivot_lojas.loc['total', 'total_loja'] = total_geral
+        
+        # Arredondar os valores para 2 casas decimais para melhor visualização
+        df_pivot_lojas = df_pivot_lojas.round(2)
+        
+        # Salvar em Excel
+        excel_path = os.path.join(diretorio_atual, f'faturamento_diario_lojas.xlsx')
+        df_pivot_lojas.to_excel(excel_path)
+        print(f"Dados de faturamento diário por loja do mês anterior ({mes_anterior}/{ano_anterior}) salvos em: {excel_path}")
+    else:
+        print(f"Não há dados de vendas para o mês anterior ({mes_anterior}/{ano_anterior}).")
