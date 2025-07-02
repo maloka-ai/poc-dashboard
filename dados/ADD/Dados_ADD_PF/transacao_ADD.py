@@ -265,9 +265,6 @@ else:
         # Agrupar por dia e loja, calculando o faturamento diário
         df_diario_loja = df_mes_anterior.groupby(['id_loja', 'Dia'])['total_venda'].sum().reset_index()
         
-        # Mesclar com informações das lojas para obter os nomes
-        df_diario_loja = df_diario_loja.merge(df_lojas[['id_loja', 'nome']], on='id_loja', how='left')
-        
         # Criar uma lista com todos os dias do mês (1 a 31)
         todos_dias = list(range(1, 32))
         
@@ -303,7 +300,7 @@ else:
         df_pivot_lojas = df_pivot_lojas.round(2)
         
         # Salvar em Excel
-        excel_path = os.path.join(diretorio_atual, f'faturamento_diario_lojas_mes_anterior.xlsx')
+        excel_path = os.path.join(diretorio_atual, f'faturamento_diario_lojas.xlsx')
         df_pivot_lojas.to_excel(excel_path)
         print(f"Dados de faturamento diário por loja do mês anterior ({mes_anterior}/{ano_anterior}) salvos em: {excel_path}")
     else:
