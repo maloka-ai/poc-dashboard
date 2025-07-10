@@ -851,14 +851,14 @@ try:
                       f"Diferença = {row['diferenca']:.1f}")
         
         # Exportar detalhes das inconsistências
-        caminho_inconsistencias = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_consistencia_estoque.xlsx")
-        analise_consistencia.to_excel(caminho_inconsistencias, index=False)
-        print(f"\nDetalhes das inconsistências exportados para: {caminho_inconsistencias}")
+        # caminho_inconsistencias = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_consistencia_estoque.xlsx")
+        # analise_consistencia.to_excel(caminho_inconsistencias, index=False)
+        # print(f"\nDetalhes das inconsistências exportados para: {caminho_inconsistencias}")
     else:
         print("\nNão foram encontradas inconsistências entre o histórico de estoque e os movimentos.")
-        caminho_inconsistencias = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_consistencia_estoque.xlsx")
-        analise_consistencia.to_excel(caminho_inconsistencias, index=False)
-        print(f"\nDetalhes das inconsistências exportados para: {caminho_inconsistencias}")
+        # caminho_inconsistencias = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analise_consistencia_estoque.xlsx")
+        # analise_consistencia.to_excel(caminho_inconsistencias, index=False)
+        # print(f"\nDetalhes das inconsistências exportados para: {caminho_inconsistencias}")
      
 except Exception as e:
     print(f"Erro ao analisar consistência de estoque: {e}")
